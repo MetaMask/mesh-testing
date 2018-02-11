@@ -1,0 +1,12 @@
+- [ ] network research
+  - [ ] what to measure to determine network health?
+  - [ ] what infrastructure to point at (instead of ipfs defaults)
+  - [ ] how to stand up `ws-star.cloud.ipfs.team`
+  - [ ] how do we limit peers to avoid crashing
+
+- [ ] metamask light client
+  - [ ] block sync
+  - [ ] how to setup custom protocol/rpc over libp2p
+  - [ ] pubsub with validation
+  - [ ] how to shard data
+  - [ ] how to process new txs to get new state
