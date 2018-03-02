@@ -12,13 +12,13 @@ class Node extends libp2p {
   constructor (peerInfo, peerBook, options) {
     options = options || {}
     const wrtcstar = new WebRTCStar({id: peerInfo.id})
-    const wsstar = new WebSocketStar({id: peerInfo.id})
+    // const wsstar = new WebSocketStar({id: peerInfo.id})
 
     const modules = {
       transport: [
-        new WS(),
+        // new WS(),
         wrtcstar,
-        wsstar
+        // wsstar
       ],
       connection: {
         muxer: [Multiplex],
@@ -26,7 +26,7 @@ class Node extends libp2p {
       },
       discovery: [
         wrtcstar.discovery,
-        wsstar.discovery
+        // wsstar.discovery
       ]
     }
 
