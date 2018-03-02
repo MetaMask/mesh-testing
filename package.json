@@ -9,6 +9,9 @@
     "babel-preset-es2015": "^6.24.1",
     "babel-preset-stage-2": "^6.24.1",
     "babelify": "^8.0.0",
+    "express": "^4.16.2",
+    "express-ws": "^3.0.0",
+    "hat": "0.0.3",
     "ipfs": "^0.27.7",
     "libp2p": "^0.16.4",
     "libp2p-multiplex": "^0.5.1",
@@ -17,12 +20,15 @@
     "libp2p-webrtc-star": "^0.13.3",
     "libp2p-websocket-star": "^0.7.2",
     "libp2p-websockets": "^0.10.4",
-    "peer-info": "^0.11.6"
+    "peer-info": "^0.11.6",
+    "websocket-stream": "^5.1.1",
+    "znode": "^1.1.3"
   },
   "devDependencies": {},
   "scripts": {
     "start": "beefy index.js:bundle.js --live",
-    "build": "browserify index.js > bundle.js"
+    "build": "browserify index.js > bundle.js",
+    "server": "node server.js",
   },
   "repository": {
     "type": "git",

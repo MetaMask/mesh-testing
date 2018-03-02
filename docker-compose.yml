@@ -1,0 +1,10 @@
+telemetry:
+  build: ./
+  restart: always
+  ports:
+    - "9000"
+  environment:
+    VIRTUAL_PORT: "9000"
+    VIRTUAL_HOST: "telemetry.metamask.io"
+    LETSENCRYPT_HOST: "telemetry.metamask.io"
+    LETSENCRYPT_EMAIL: "admin@metamask.io"
