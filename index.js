@@ -20,7 +20,8 @@ async function start(){
   const adminPrefix = '?admin='
   const adminCode = location.search.slice(location.search.indexOf(adminPrefix) + adminPrefix.length)
   if (adminCode) console.log(`connecting with adminCode: ${adminCode}`)
-  const ws = websocket(`ws://localhost:9000/${adminCode}`)
+  const url = (location.hostname === 'localhost') ? 'localhost:9000' : 'telemetry.metamask.io'
+  const ws = websocket(`ws://${url}/${adminCode}`)
   ws.on('error', console.error)
 
   let server = await znode(ws, RPC)
