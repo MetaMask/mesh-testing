@@ -1,7 +1,7 @@
 'use strict'
 
 const WS = require('libp2p-websockets')
-// const WebRTCStar = require('libp2p-webrtc-star')
+const WebRTCStar = require('libp2p-webrtc-star')
 const WebSocketStar = require('libp2p-websocket-star')
 const Multiplex = require('libp2p-multiplex')
 const SECIO = require('libp2p-secio')
@@ -11,13 +11,13 @@ const libp2p = require('libp2p')
 class Node extends libp2p {
   constructor (peerInfo, peerBook, options) {
     options = options || {}
-    // const wrtcstar = new WebRTCStar({id: peerInfo.id})
+    const wrtcstar = new WebRTCStar({id: peerInfo.id})
     const wsstar = new WebSocketStar({id: peerInfo.id})
 
     const modules = {
       transport: [
         new WS(),
-        // wrtcstar,
+        wrtcstar,
         wsstar
       ],
       connection: {
@@ -25,7 +25,7 @@ class Node extends libp2p {
         crypto: [SECIO]
       },
       discovery: [
-        // wrtcstar.discovery,
+        wrtcstar.discovery,
         wsstar.discovery
       ]
     }

@@ -1,32 +1,65 @@
-// const IPFS = require('ipfs')
-// const node = new IPFS()
-//
-//
-// node.on('ready', () => console.log('ready - Node is ready to use when you first create it'))
-// node.on('error', () => console.log('error - Node has hit some error while initing/starting'))
-// node.on('init', () => console.log('init - Node has successfully finished initing the repo'))
-// node.on('start', () => console.log('start - Node has started'))
-// node.on('stop', () => console.log('stop - Node has stopped'))
-//
-//
-// node.once('ready', () => {
-//
-//   // console.log('libp2p', node.libp2p)
-//   // console.log('_libp2pNode', node._libp2pNode)
-//
-//   node._libp2pNode.on('peer:discovery', (peer) => console.log('peer:discovery', peer.id.toB58String()))
-//   node._libp2pNode.on('peer:connect', (peer) => console.log('peer:connect', peer.id.toB58String()))
-//   node._libp2pNode.on('peer:disconnect', (peer) => console.log('peer:disconnect', peer.id.toB58String()))
-//
-// })
-
-
-// const Libp2pNode = require('./node')
 const createNode = require('./createNode')
 createNode((err, node) => {
+  // node.on('peer:discovery', (peerInfo) => {
+  //   // console.log('node/peer:discovery', peerInfo.id.toB58String())
+  //   console.log('node/peer:discovery', peerInfo.multiaddrs.toArray().map(i => i.toString()))
+  //   console.log('node/peer:discovery', peerInfo.protocols)
+  // })
+  node.on('peer:connect', (peerInfo) => console.log('node/peer:connect', peerInfo.id.toB58String()))
+  node.on('peer:disconnect', (peerInfo) => console.log('node/peer:disconnect', peerInfo.id.toB58String()))
+
+  node.handle('/kitsunet/test/0.0.0', (protocol, conn) => {
+    console.log('kitsunet connection established')
+    conn.getPeerInfo((err, peerInfo) => {
+      if (err) console.error(err)
+      console.log('kitsunet peer:', peerInfo.id.toB58String())
+    })
+  })
+
+  limitPeers(node, { maxPeers: 8 })
+  // autoConnectAll(node)
+
   node.start(() => {
-    node.on('peer:discovery', (peer) => console.log('peer:discovery', peer.id.toB58String()))
-    node.on('peer:connect', (peer) => console.log('peer:connect', peer.id.toB58String()))
-    node.on('peer:disconnect', (peer) => console.log('peer:disconnect', peer.id.toB58String()))
+    console.log('libp2p node started')
   })
 })
+
+function autoConnectAll(node) {
+  node.on('peer:discovery', (peerInfo) => {
+    node.dial(peerInfo, () => console.log('did dial', peerInfo.id.toB58String()))
+  })
+}
+
+function limitPeers(node, { maxPeers }) {
+  const peers = []
+  global.peers = peers
+
+  node.on('peer:connect', (peerInfo) => {
+    peers.push(peerInfo)
+    // console.log('peers:', peers.map(peerInfo => peerInfo.id.toB58String()))
+    checkLimit()
+  })
+
+  node.on('peer:disconnect', (peerInfo) => {
+    removePeerFromList(peerInfo)
+    // console.log('peers:', peers.map(peerInfo => peerInfo.id.toB58String()))
+  })
+
+  function checkLimit() {
+    while (peers.length > maxPeers) {
+      const doomedPeerInfo = selectPeerForDisconnect()
+      node.hangUp(doomedPeerInfo, () => console.log('did hangup', doomedPeerInfo.id.toB58String()))
+      removePeerFromList(doomedPeerInfo)
+    }
+  }
+
+  function selectPeerForDisconnect() {
+    return peers[0]
+  }
+
+  function removePeerFromList(peerInfo) {
+    const index = peers.indexOf(peerInfo)
+    if (index === -1) return
+    peers.splice(index, 1)
+  }
+}
