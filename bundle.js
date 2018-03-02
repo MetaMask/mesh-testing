@@ -8443,9 +8443,9 @@ function createNode (callback) {
     const peerIdStr = peerInfo.id.toB58String()
 
     // ws
-    // peerInfo.multiaddrs.add(`/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star/ipfs/${peerIdStr}`)
+    peerInfo.multiaddrs.add(`/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star/ipfs/${peerIdStr}`)
     // wrtc
-    peerInfo.multiaddrs.add(`/dns4/wrtc-star.discovery.libp2p.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`)
+    // peerInfo.multiaddrs.add(`/dns4/wrtc-star.discovery.libp2p.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`)
 
     const node = new Node(peerInfo)
     node.idStr = peerIdStr
@@ -8591,22 +8591,22 @@ const libp2p = require('libp2p')
 class Node extends libp2p {
   constructor (peerInfo, peerBook, options) {
     options = options || {}
-    const wrtcstar = new WebRTCStar({id: peerInfo.id})
-    // const wsstar = new WebSocketStar({id: peerInfo.id})
+    // const wrtcstar = new WebRTCStar({id: peerInfo.id})
+    const wsstar = new WebSocketStar({id: peerInfo.id})
 
     const modules = {
       transport: [
-        // new WS(),
-        wrtcstar,
-        // wsstar
+        new WS(),
+        // wrtcstar,
+        wsstar
       ],
       connection: {
         muxer: [Multiplex],
         crypto: [SECIO]
       },
       discovery: [
-        wrtcstar.discovery,
-        // wsstar.discovery
+        // wrtcstar.discovery,
+        wsstar.discovery
       ]
     }
 
