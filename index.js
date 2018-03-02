@@ -1,5 +1,6 @@
 const websocket = require('websocket-stream')
 const znode = require('znode')
+const qs = require('qs')
 
 const RPC = {
   ping: () => 'pong',
@@ -17,11 +18,12 @@ start()
 .catch(console.error)
 
 async function start(){
-  const adminPrefix = '?admin='
-  const adminCode = location.search.slice(location.search.indexOf(adminPrefix) + adminPrefix.length)
+  const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
+  console.log(opts)
+  const adminCode = opts.admin || ''
   if (adminCode) console.log(`connecting with adminCode: ${adminCode}`)
-  const url = (location.hostname === 'localhost') ? 'localhost:9000' : 'telemetry.metamask.io'
-  const ws = websocket(`ws://${url}/${adminCode}`)
+  const host = ((!opts.prod && location.hostname === 'localhost') ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
+  const ws = websocket(`${host}/${adminCode}`)
   ws.on('error', console.error)
 
   let server = await znode(ws, RPC)

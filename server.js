@@ -37,30 +37,39 @@ app.listen(9000, () => {
 
 // poll for connection status
 setInterval(() => {
+  // console.log('pinging')
   // ask all clients for a ping
   clients.forEach(async (client) => {
     client.isAlive = false
+    // const start = Date.now()
     await client.ping()
+    // const end = Date.now()
+    // const duration = end - start
+    // console.log('ping took', duration)
     client.isAlive = true
   })
   // if clients haven't responded, disconnect
   setTimeout(() => {
+    // console.log('culling')
     clients.slice().forEach((client) => {
       if (client.isAlive) return
       // disconnect client
       clients.splice(clients.indexOf(client), 1)
       console.log('peer disconnected')
+      console.log(`${clients.length} peers connected`)
     })
   }, heartBeatInterval * 0.8)
 }, heartBeatInterval)
 
 async function handleClient(stream, request) {
 
-  const remote = await znode(stream, {
+  const client = await znode(stream, {
     ping: async () => 'pong',
   })
-  clients.push(remote)
+  client.isAlive = true
+  clients.push(client)
   console.log('peer connected')
+  console.log(`${clients.length} peers connected`)
 
   stream.on('error', (error) => {
     // Ignore network errors like `ECONNRESET`, `EPIPE`, etc.
@@ -71,7 +80,7 @@ async function handleClient(stream, request) {
 
 async function handleAdmin(stream, request) {
 
-  const remote = await znode(stream, {
+  const admin = await znode(stream, {
     ping: async () => 'pong',
     send: async (method, args) => {
       console.log(`broadcasting "${method}" with (${args}) to ${clients.length} client(s)`)
@@ -81,6 +90,7 @@ async function handleAdmin(stream, request) {
         return result
       }))
     },
+    getPeerCount: async () => clients.length
   })
   console.log('admin connected')
 

@@ -21,6 +21,7 @@
     "libp2p-websocket-star": "^0.7.2",
     "libp2p-websockets": "^0.10.4",
     "peer-info": "^0.11.6",
+    "qs": "^6.5.1",
     "websocket-stream": "^5.1.1",
     "znode": "^1.1.3"
   },
