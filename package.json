@@ -28,7 +28,7 @@
   "scripts": {
     "start": "beefy index.js:bundle.js --live",
     "build": "browserify index.js > bundle.js",
-    "server": "node server.js",
+    "server": "node server.js"
   },
   "repository": {
     "type": "git",
