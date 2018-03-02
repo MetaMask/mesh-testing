@@ -10,7 +10,6 @@
     "babel-preset-stage-2": "^6.24.1",
     "babelify": "^8.0.0",
     "ipfs": "^0.27.7",
-    "latency-monitor": "^0.2.1",
     "libp2p": "^0.16.4",
     "libp2p-multiplex": "^0.5.1",
     "libp2p-railing": "^0.7.1",
