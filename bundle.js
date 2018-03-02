@@ -8529,7 +8529,7 @@ function instrumentNode(node) {
   })
 
   limitPeers(node, { maxPeers: 8 })
-  autoConnectAll(node)
+  // autoConnectAll(node)
 
   node.start(() => {
     console.log('libp2p node started')
