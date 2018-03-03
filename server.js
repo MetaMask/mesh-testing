@@ -94,9 +94,9 @@ async function handleAdmin(stream, request) {
       console.log(`broadcasting "${method}" with (${args}) to ${clients.length} client(s)`)
       return await broadcastCall(method, args, remoteCallTimeout)
     },
-    refresh: () => broadcastCall('refresh', [], remoteCallTimeout)
-    refreshShortDelay: () => broadcastCall('refreshShortDelay', [], remoteCallTimeout)
-    refreshLongDelay: () => broadcastCall('refreshLongDelay', [], remoteCallTimeout)
+    refresh: () => broadcastCall('refresh', [], remoteCallTimeout),
+    refreshShortDelay: () => broadcastCall('refreshShortDelay', [], remoteCallTimeout),
+    refreshLongDelay: () => broadcastCall('refreshLongDelay', [], remoteCallTimeout),
   })
   console.log('admin connected')
 
