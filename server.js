@@ -70,6 +70,7 @@ async function handleClient(stream, request) {
 
   // handle disconnect
   stream.on('error', (error) => {
+    console.log('client disconnected - stream end')
     // Ignore network errors like `ECONNRESET`, `EPIPE`, etc.
     if (error.errno) return
     throw error
@@ -89,6 +90,7 @@ async function handleAdmin(stream, request) {
 
   // handle disconnect
   stream.on('error', (error) => {
+    console.log('admin disconnected - stream end')
     // Ignore network errors like `ECONNRESET`, `EPIPE`, etc.
     if (error.errno) return
     throw error
