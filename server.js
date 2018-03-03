@@ -47,7 +47,7 @@ setInterval(() => {
   clients.forEach(async (client) => {
     client.isAlive = false
     // const start = Date.now()
-    await client.ping()
+    await client.rpc.ping()
     // const end = Date.now()
     // const duration = end - start
     // console.log('ping took', duration)
@@ -59,14 +59,16 @@ setInterval(() => {
     clients.slice().forEach((client) => {
       if (client.isAlive) return
       // disconnect client
-      clients.splice(clients.indexOf(client), 1)
+      const index = clients.indexOf(client)
+      if (index === -1) return
+      clients.splice(index, 1)
       console.log('peer disconnected')
       console.log(`${clients.length} peers connected`)
     })
   }, remoteCallTimeout)
 }, heartBeatInterval)
 
-async function handleClient(stream, request) {
+async function handleClient(stream, req) {
 
   // handle disconnect
   stream.on('error', (error) => {
@@ -77,10 +79,14 @@ async function handleClient(stream, request) {
   })
 
   // attempt connect
-  const client = await znode(stream, {
+  const rpc = await znode(stream, {
     ping: async () => 'pong',
   })
-  client.isAlive = true
+  const client = {
+    isAlive: true,
+    rpc,
+    ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+  }
   clients.push(client)
   console.log('peer connected')
   console.log(`${clients.length} peers connected`)
@@ -101,6 +107,13 @@ async function handleAdmin(stream, request) {
     ping: async () => 'pong',
     // server data
     getPeerCount: async () => clients.length,
+    getNetworkState: async () => {
+      return await Promise.all(clients.map(async (client) => {
+        const ip = client.ip
+        const peers = sendCallWithTimeout(client.rpc, 'getNetworkState', [], 5 * sec))
+        return { ip, peers }
+      }))
+    },
     // broadcast
     send: async (method, args) => {
       console.log(`broadcasting "${method}" with (${args}) to ${clients.length} client(s)`)
@@ -115,20 +128,20 @@ async function handleAdmin(stream, request) {
 }
 
 function broadcastCall(method, args, timeoutDuration) {
-  return Promise.all(clients.map((client) => sendCallWithTimeout(client, method, args, timeoutDuration)))
+  return Promise.all(clients.map((client) => sendCallWithTimeout(client.rpc, method, args, timeoutDuration)))
 }
 
-function sendCallWithTimeout(client, method, args, timeoutDuration) {
+function sendCallWithTimeout(rpc, method, args, timeoutDuration) {
   return Promise.race([
     timeout(timeoutDuration, 'timeout'),
-    sendCall(client, method, args),
+    sendCall(rpc, method, args),
   ])
 }
 
-async function sendCall(client, method, args) {
+async function sendCall(rpc, method, args) {
   let result
   try {
-    result = await client[method].apply(client, args)
+    result = await rpc[method].apply(client, args)
   } catch (err) {
     return err.message
   }
