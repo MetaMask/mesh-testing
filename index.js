@@ -8,6 +8,12 @@ const createNode = require('./createNode')
 const sec = 1000
 const min = 60 * sec
 
+const kitsunetPeers = []
+global.kitsunetPeers = kitsunetPeers
+
+const peers = []
+global.peers = peers
+
 const RPC = {
   ping: () => 'pong',
   refresh: () => window.location.reload(),
@@ -64,12 +70,15 @@ function instrumentNode(node) {
     console.log('kitsunet connection established')
     conn.getPeerInfo((err, peerInfo) => {
       if (err) console.error(err)
-      console.log('kitsunet peer:', peerInfo.id.toB58String())
+      const peerId = peerInfo.id.toB58String()
+      console.log('kitsunet peer:', peerId)
+      kitsunetPeers.push(peerId)
     })
   })
 
   limitPeers(node, { maxPeers: 8 })
   // autoConnectAll(node)
+  autoConnectWhenLonely(node, { minPeers: 4 })
 
   node.start(() => {
     console.log('libp2p node started')
@@ -82,9 +91,23 @@ function autoConnectAll(node) {
   })
 }
 
+function autoConnectWhenLonely(node, { minPeers }) {
+  let dialing = 0
+  node.on('peer:discovery', (peerInfo) => {
+    if (peers.length >= minPeers || dialing >= minPeers) return
+    dialing++
+    node.dialProtocol(peerInfo, '/kitsunet/test/0.0.0', (err, conn) => {
+      console.log('did dial', peerInfo.id.toB58String())
+      if (err) {
+        console.error(err)
+      } else {
+        console.log('dial worked')
+      }
+    })
+  })
+}
+
 function limitPeers(node, { maxPeers }) {
-  const peers = []
-  global.peers = peers
 
   node.on('peer:connect', (peerInfo) => {
     peers.push(peerInfo)
