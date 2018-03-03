@@ -2,6 +2,7 @@ const websocket = require('websocket-stream')
 const znode = require('znode')
 const qs = require('qs')
 const pify = require('pify')
+const pullStreamToStream = require('pull-stream-to-stream')
 
 const createNode = require('./createNode')
 
@@ -14,7 +15,7 @@ global.kitsunetPeers = kitsunetPeers
 const peers = []
 global.peers = peers
 
-const RPC = {
+const clientRpc = {
   ping: () => 'pong',
   refresh: () => window.location.reload(),
   refreshShortDelay: () => {
@@ -29,6 +30,13 @@ const RPC = {
     console.log(`eval result: "${result}"`)
     return result
   },
+  pingAll: async () => {
+    return await Promise.all(kitsunetPeers.map(pingKitsunetPeer))
+  }
+}
+
+const kitsunetRpc = {
+  ping: () => true,
 }
 
 start()
@@ -44,9 +52,14 @@ async function start(){
   const ws = websocket(`${host}/${adminCode}`)
   ws.on('error', console.error)
 
-  let server = await znode(ws, RPC)
+  let server = await znode(ws, clientRpc)
   global.server = server
   console.log('connected!')
+
+  if (adminCode) {
+    // keep connection alive
+    setInterval(() => server.ping(), 10 * sec)
+  }
 
   const node = await pify(createNode)()
   global.node = node
@@ -58,21 +71,24 @@ function randomFromRange(min, max) {
 }
 
 function instrumentNode(node) {
-  // node.on('peer:discovery', (peerInfo) => {
-  //   // console.log('node/peer:discovery', peerInfo.id.toB58String())
-  //   console.log('node/peer:discovery', peerInfo.multiaddrs.toArray().map(i => i.toString()))
-  //   console.log('node/peer:discovery', peerInfo.protocols)
-  // })
-  node.on('peer:connect', (peerInfo) => console.log('node/peer:connect', peerInfo.id.toB58String()))
+  node.on('peer:discovery', (peerInfo) => {
+    // console.log('node/peer:discovery', peerInfo.id.toB58String())
+    // console.log('node/peer:discovery', peerInfo.multiaddrs.toArray().map(i => i.toString()))
+    if (peerInfo.protocols.size) console.log('node/peer:discovery', peerInfo.protocols)
+  })
+  node.on('peer:connect', (peerInfo) => {
+    console.log('node/peer:connect', peerInfo.id.toB58String())
+    if (peerInfo.protocols.size) console.log('node/peer:discovery', peerInfo.protocols)
+  })
   node.on('peer:disconnect', (peerInfo) => console.log('node/peer:disconnect', peerInfo.id.toB58String()))
 
-  node.handle('/kitsunet/test/0.0.0', (protocol, conn) => {
+  node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
     console.log('kitsunet connection established')
     conn.getPeerInfo((err, peerInfo) => {
       if (err) console.error(err)
       const peerId = peerInfo.id.toB58String()
       console.log('kitsunet peer:', peerId)
-      kitsunetPeers.push(peerId)
+      connectKitsunet(conn)
     })
   })
 
@@ -83,6 +99,25 @@ function instrumentNode(node) {
   node.start(() => {
     console.log('libp2p node started')
   })
+}
+
+async function connectKitsunet(conn) {
+  global.lastConnection = conn
+  console.log('connecting over kitsunet')
+  const stream = pullStreamToStream(conn)
+  const peer = await znode(stream, kitsunetRpc)
+  kitsunetPeers.push(peer)
+  console.log('kitsunet peering succ')
+  const rtt = await pingKitsunetPeer(peer)
+  console.log('kitsunet peer ping succ', rtt)
+}
+
+async function pingKitsunetPeer(peer) {
+  const start = Date.now()
+  await peer.ping()
+  const end = Date.now()
+  const rtt = end - start
+  return rtt
 }
 
 function autoConnectAll(node) {
@@ -96,12 +131,14 @@ function autoConnectWhenLonely(node, { minPeers }) {
   node.on('peer:discovery', (peerInfo) => {
     if (peers.length >= minPeers || dialing >= minPeers) return
     dialing++
-    node.dialProtocol(peerInfo, '/kitsunet/test/0.0.0', (err, conn) => {
-      console.log('did dial', peerInfo.id.toB58String())
+    node.dialProtocol(peerInfo, '/kitsunet/test/0.0.1', (err, conn) => {
+      const peerId = peerInfo.id.toB58String()
+      console.log('did dial', peerId)
       if (err) {
-        console.error(err)
+        console.log('kitsunet dial failed')
       } else {
-        console.log('dial worked')
+        console.log('dialed succ kitsunet peer:', peerId)
+        connectKitsunet(conn)
       }
     })
   })
