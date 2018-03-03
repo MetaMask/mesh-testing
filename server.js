@@ -68,6 +68,14 @@ setInterval(() => {
 
 async function handleClient(stream, request) {
 
+  // handle disconnect
+  stream.on('error', (error) => {
+    // Ignore network errors like `ECONNRESET`, `EPIPE`, etc.
+    if (error.errno) return
+    throw error
+  })
+
+  // attempt connect
   const client = await znode(stream, {
     ping: async () => 'pong',
   })
@@ -75,16 +83,18 @@ async function handleClient(stream, request) {
   clients.push(client)
   console.log('peer connected')
   console.log(`${clients.length} peers connected`)
+}
 
+async function handleAdmin(stream, request) {
+
+  // handle disconnect
   stream.on('error', (error) => {
     // Ignore network errors like `ECONNRESET`, `EPIPE`, etc.
     if (error.errno) return
     throw error
   })
-}
 
-async function handleAdmin(stream, request) {
-
+  // attempt connect
   const admin = await znode(stream, {
     ping: async () => 'pong',
     // server data
@@ -100,35 +110,30 @@ async function handleAdmin(stream, request) {
   })
   console.log('admin connected')
 
-  function broadcastCall(method, args, timeout) {
-    return Promise.all(clients.map((client) => sendCallWithTimeout(client, method, args, timeout)))
-  }
-
-  function sendCallWithTimeout(client, method, args, duration) {
-    return Promise.race([
-      timeout(duration),
-      sendCall(client, method, args),
-    ])
-  }
-
-  async function sendCall(client, method, args) {
-    let result
-    try {
-      result = await client[method].apply(client, args)
-    } catch (err) {
-      return err.message
-    }
-    console.log(`got result: ${result}`)
-    return result
-  }
-
-  stream.on('error', (error) => {
-    // Ignore network errors like `ECONNRESET`, `EPIPE`, etc.
-    if (error.errno) return
-    throw error
-  })
 }
 
-function timeout(duration) {
-  return new Promise((resolve) => setTimeout(resolve, duration))
+function broadcastCall(method, args, timeoutDuration) {
+  return Promise.all(clients.map((client) => sendCallWithTimeout(client, method, args, timeoutDuration)))
+}
+
+function sendCallWithTimeout(client, method, args, timeoutDuration) {
+  return Promise.race([
+    timeout(timeoutDuration, 'timeout'),
+    sendCall(client, method, args),
+  ])
+}
+
+async function sendCall(client, method, args) {
+  let result
+  try {
+    result = await client[method].apply(client, args)
+  } catch (err) {
+    return err.message
+  }
+  console.log(`got result: ${result}`)
+  return result
+}
+
+function timeout(timeoutDuration, value) {
+  return new Promise((resolve) => setTimeout(() => resolve(value), timeoutDuration))
 }
