@@ -20,10 +20,10 @@ const clientRpc = {
   ping: () => 'pong',
   refresh: () => window.location.reload(),
   refreshShortDelay: () => {
-    setTimeout(() => window.location.reload(), randomFromRange(5 * sec, 10 * sec))
+    restart(timeoutDuration, randomFromRange(5 * sec, 10 * sec))
   },
   refreshLongDelay: () => {
-    setTimeout(() => window.location.reload(), randomFromRange(5 * min, 10 * min))
+    restart(timeoutDuration, randomFromRange(5 * sec, 10 * sec))
   },
   eval: (src) => {
     console.log(`evaling "${src}"`)
@@ -75,6 +75,12 @@ async function start(){
 
   const node = await pify(createNode)()
   global.node = node
+
+  // report libp2p id
+  const peerId = node.idStr
+  await server.setPeerId(peerId)
+
+  // start node
   instrumentNode(node)
 }
 
@@ -198,6 +204,11 @@ function hangupPeer(peerInfo) {
 
 function selectPeerForDisconnect() {
   return peers[0]
+}
+
+function restart(timeoutDuration) {
+  console.log(`restarting in ${timeoutDuration/1000} sec...`)
+  setTimeout(() => window.location.reload(), timeoutDuration)
 }
 
 function removeFromArray(item, array) {

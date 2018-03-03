@@ -79,14 +79,17 @@ async function handleClient(stream, req) {
   })
 
   // attempt connect
-  const rpc = await znode(stream, {
-    ping: async () => 'pong',
-  })
   const client = {
     isAlive: true,
-    rpc,
     ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
   }
+  client.rpc = await znode(stream, {
+    ping: async () => 'pong',
+    setPeerId: (peerId) => {
+      client.peerId = peerId
+    }
+  })
+
   clients.push(client)
   console.log('peer connected')
   console.log(`${clients.length} peers connected`)
@@ -108,11 +111,15 @@ async function handleAdmin(stream, request) {
     // server data
     getPeerCount: async () => clients.length,
     getNetworkState: async () => {
-      return await Promise.all(clients.map(async (client) => {
+      const results = {}
+      await Promise.all(clients.map(async (client) => {
+        const peerId = client.peerId
+        if (!peerId) return
         const ip = client.ip
         const peers = await sendCallWithTimeout(client.rpc, 'getNetworkState', [], 5 * sec)
-        return { ip, peers }
+        results[peerId] = { ip, peers }
       }))
+      return results
     },
     // broadcast
     send: async (method, args) => {
