@@ -35,13 +35,15 @@ const clientRpc = {
     return await Promise.all(kitsunetPeers.map(pingKitsunetPeerWithTimeout))
   },
   getNetworkState: async () => {
-    return await Promise.all(kitsunetPeers.map(async (peer) => {
+    const results = {}
+    await Promise.all(kitsunetPeers.map(async (peer) => {
       const peerInfo = peer.peerInfo
       const peerId = peerInfo.id.toB58String()
       const id = peerId
       const rtt = await pingKitsunetPeerWithTimeout(peer)
-      return { id, rtt }
+      results[id] = rtt
     }))
+    return results
   },
 }
 
