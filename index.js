@@ -59,6 +59,9 @@ async function start(){
     setInterval(() => server.ping(), 10 * sec)
   }
 
+  // dont boot libp2p node in admin mode
+  if (adminCode) return
+
   const node = await pify(createNode)()
   global.node = node
   instrumentNode(node)
@@ -145,6 +148,7 @@ function autoConnectWhenLonely(node, { minPeers }) {
       console.log('outgoing kitsunet connection', peerId)
       if (err) {
         console.log('kitsunet dial failed')
+        hangupPeer(peerInfo)
       } else {
         connectKitsunet(conn)
       }
@@ -168,11 +172,16 @@ function limitPeers(node, { maxPeers }) {
   function checkLimit() {
     while (peers.length > maxPeers) {
       const doomedPeerInfo = selectPeerForDisconnect()
-      node.hangUp(doomedPeerInfo, () => console.log('did hangup', doomedPeerInfo.id.toB58String()))
+      hangupPeer(doomedPeerInfo)
       removeFromArray(doomedPeerInfo, peers)
     }
   }
 
+}
+
+function hangupPeer(peerInfo) {
+  const peerId = peerInfo.id.toB58String()
+  node.hangUp(peerInfo, () => console.log('did hangup', peerId))
 }
 
 function selectPeerForDisconnect() {
