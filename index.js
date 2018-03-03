@@ -33,7 +33,16 @@ const clientRpc = {
   },
   pingAll: async () => {
     return await Promise.all(kitsunetPeers.map(pingKitsunetPeerWithTimeout))
-  }
+  },
+  getNetworkState: async () => {
+    return await Promise.all(kitsunetPeers.map(async (peer) => {
+      const peerInfo = peer.peerInfo
+      const peerId = peerInfo.id.toB58String()
+      const id = peerId
+      const rtt = await pingKitsunetPeerWithTimeout(peer)
+      return { id, rtt }
+    }))
+  },
 }
 
 const kitsunetRpc = {
@@ -87,8 +96,7 @@ function instrumentNode(node) {
     console.log('incomming kitsunet connection')
     conn.getPeerInfo((err, peerInfo) => {
       if (err) console.error(err)
-      const peerId = peerInfo.id.toB58String()
-      connectKitsunet(conn)
+      connectKitsunet(peerInfo, conn)
     })
   })
 
@@ -101,20 +109,22 @@ function instrumentNode(node) {
   })
 }
 
-async function connectKitsunet(conn) {
+async function connectKitsunet(peerInfo, conn) {
+  const peerId = peerInfo.id.toB58String()
   // do connect
   const stream = pullStreamToStream(conn)
   const peer = await znode(stream, kitsunetRpc)
-  console.log('kitsunet CONNECT')
+  peer.peerInfo = peerInfo
+  console.log('kitsunet CONNECT', peerId)
   kitsunetPeers.push(peer)
   // handle disconnect
   endOfStream(stream, (err) => {
-    console.log('kitsunet peer DISCONNECT', err.message)
+    console.log('kitsunet peer DISCONNECT', peerId, err.message)
     removeFromArray(peer, kitsunetPeers)
   })
   // ping peer as sanity check
   const rtt = await pingKitsunetPeer(peer)
-  console.log('kitsunet PING OK', rtt)
+  console.log('kitsunet PING OK', peerId, rtt)
 }
 
 function pingKitsunetPeerWithTimeout(peer) {
@@ -150,7 +160,7 @@ function autoConnectWhenLonely(node, { minPeers }) {
         console.log('kitsunet dial failed')
         hangupPeer(peerInfo)
       } else {
-        connectKitsunet(conn)
+        connectKitsunet(peerInfo, conn)
       }
     })
   })
