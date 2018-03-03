@@ -110,7 +110,7 @@ async function handleAdmin(stream, request) {
     getNetworkState: async () => {
       return await Promise.all(clients.map(async (client) => {
         const ip = client.ip
-        const peers = sendCallWithTimeout(client.rpc, 'getNetworkState', [], 5 * sec))
+        const peers = await sendCallWithTimeout(client.rpc, 'getNetworkState', [], 5 * sec)
         return { ip, peers }
       }))
     },
@@ -141,7 +141,7 @@ function sendCallWithTimeout(rpc, method, args, timeoutDuration) {
 async function sendCall(rpc, method, args) {
   let result
   try {
-    result = await rpc[method].apply(client, args)
+    result = await rpc[method].apply(rpc, args)
   } catch (err) {
     return err.message
   }
