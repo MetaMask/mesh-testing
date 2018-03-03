@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.links line {
+  stroke: #999;
+  stroke-opacity: 0.6;
+}
+
+.nodes circle {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+</style>
+<svg width="960" height="600"></svg>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+
+const data = {"QmPfpLfqmUs1wBxLhFQME6sqHwocUC2mChFb83SNVbV3vK":{"peers":{}},"QmeaUC1etygGF8gaDptKgtMQ7x9JHcRD6E7ANTmTkNczYU":{"peers":{}},"QmNYSZorQqvkxLQLrRM97UVxtoiTuBxtJG9rh9yCYxea2M":{"peers":{}},"QmdtEytzkQZUiCkNUJ5KVw1VjjRFTqw6iQkqexzvWVtodL":{"peers":{}},"QmRPAayLYBhk3Nh841C7AqsnFXEKhq7SH8ooLWpfK7Dz6X":{"peers":{}},"QmYLAkxt8wcamgJVCstfk1JpZ4BSfXDJ4FXqz7et94ZtcV":{"peers":{}},"QmZvpLLKnrbKz1mpz2ZdJtPnW8W181BZ1gndmkA1PQ1jGo":{"peers":{"QmUNBwQUn3ee2AuD3mrPcRbq1hPEgrSLv9bAsxhYhm6gLV":208,"QmTAnsNmMMHWmDtso37pFxzCVqWEMvJHo6ZQssh1pYim5D":212}},"Qmc1uNzPdYjA8FUcb7QRjpFa67xyf57VjFKr5xkN6eGXTN":{"peers":{"QmS8xwNk1Tj8TUKbefChnpAocCzGWJyc7j8sSYEr2Qg9wu":144}},"QmTsERJ17YRj46fu4YzAPg7k2DPxPrW6HdabXzqhqDz6kM":{"peers":{"QmPHDCAS9CLNqyrSNQ48ihcbD8hBU7kNjjM6qYWkjSK2CV":441}},"Qmca5Phd2ccTkr1ZYSKsR5z7o7KjqvwrStL4BzkAZa2CDg":{"peers":{"QmcFBAXgRjYck4jBgqm5zhF47CM98rCmtHJ8M3mnN24m35":600,"QmTEBijULW8xtMjQDkLmzWcZ88Ch6rojNjWfcFMMxbko6Q":608,"QmUBxenuUyc8Y6BdyMcV3Tq4zBK9r4FHc5TWerWh1MoDqN":602}},"QmUrF3oZqop8doWc4bXtSHsyX4Zc5xkYTD7dzoMfThymUt":{"peers":{"QmVUN76j92wfQ2HjHRPBUvP7GxmJNr4XR2ckeXLAEoN5aT":553,"QmX394HfMqcLFVL8xLJXrSLm7H3Rg4FAuY2Rd2Ntm9ZpCq":556}},"QmdUJn39nui26HxhFYuXhRP4SGQoAqg2QifAudg6issS5k":{"peers":{"QmURxzA2FuhoBpsk9NjpKAf6RBgz2zypZ6N7GvKEy5bQj3":125,"QmSvUT3ArzQiUiQGLcRN9zmy8W1xyPFgFH3dCgcERyYVFb":470}},"QmNtdq7Fafq7Yg5XhUhWFSJxzGiTSb9FmKmjgkJgWDN669":{"peers":{"QmZLTKPZDmuoPP4YYAUcDxHPFfXZJHcYWtio8ac4uvX5K5":538}},"QmbX5kVVDyw318kinhtXVxJ5BrGm3CkZ3bgBjiajE1sT9e":{"peers":{"QmW3BSgt7vgMhW5rk5jCJ4V5mvsJwVMaXfdoX8jCC7u4hU":608}},"QmQ8qEJrCB3cqJdeiLvHWxn83XM1YzPrEHoaPvWofgvZS7":{"peers":{"QmQ133gonZRbKmYpiZq7S9AY6TjdnQgjUHwvJhYmCkq2RG":464,"QmYBckGK5Wt5p7ngcytyH927adJVYuXQaNqdAMMTTnYJXN":464}},"QmWZRdwcjA5yWQ4urW87rMV73pPcFfuBbphEiCuQy3N9M1":{"peers":{"QmVV3mbzkjJy2MhX5JtztphoYeHhmHTESZ3UqvG4WgQCN9":566,"Qmf1NDLR8T1ir88NLwxQNkV79V1KHzFJuF6jCcDDHAs7k7":565,"QmT5bvDRfCkrtJwyRWtCcn1erwBFjtpXcye8HeNsPk5bsT":565}},"QmRN7EUHN1VfcFXKTEo5VxAhouAUvPpKQc4LzVy9DZjYRf":{"peers":{"QmRR8QugZqTJy6VaExiEbKQspfZFSkkMWgoTugaFUvLJW2":545}},"QmarVzZESKjQ46kV7gnaydhgoe3XxwCMmB2UfNNdJc1ZvE":{"peers":{"QmbvW6XTXrBirEhFXxtBGAQU6MTWoBADSfcZqhwuQa1nwV":468,"QmUBxenuUyc8Y6BdyMcV3Tq4zBK9r4FHc5TWerWh1MoDqN":468}},"QmahsKXWrwGtVPdBVYeHdiatTzJYn5RsRQCVjeEcXrTu1Y":{"peers":{"QmdNiVGrYKDVzz5A4APpUQw6Kp2ebVj5TJTeiAy6uMTpcv":587,"QmeaDTxPpDRg1ZvmHALZM1tiqmjBCiatqtxvNME4BMRiqA":589,"QmbmWM95QNGSzkuZTYXKJuaSEBgfSuMyp2XrJoPgQaLJdJ":589}},"QmSLbxwJuBCiDKDA8wLdYz9RJVVPbtN9WyJHq8Lc5njA5Y":{"peers":{"QmfW1soKaLxQyt7ZnPc59vpXZoo96bFxvGKu251VHobZvP":558,"QmVBcWrBhLyfw8N5fBu7vXCCuoLKSvLNMEEW49ygrE3yCr":559,"QmeyeL39mzVzEVorZ9WkPYryYs3vAt1rPr4YXXMTFZH18S":558}},"QmcFBAXgRjYck4jBgqm5zhF47CM98rCmtHJ8M3mnN24m35":{"peers":{"Qmca5Phd2ccTkr1ZYSKsR5z7o7KjqvwrStL4BzkAZa2CDg":545,"QmUBxenuUyc8Y6BdyMcV3Tq4zBK9r4FHc5TWerWh1MoDqN":545}},"QmSPkLEYdYQ9gDNAvW1vzbbxBkQkWq4R7X3yPPgiCCz3an":{"peers":{"QmTEBijULW8xtMjQDkLmzWcZ88Ch6rojNjWfcFMMxbko6Q":472}},"Qmf1NDLR8T1ir88NLwxQNkV79V1KHzFJuF6jCcDDHAs7k7":{"peers":{"QmdkpQgPUW8BvzQhenwUYgENKwGZAnJxQqYENQZqtjTbHb":601,"QmWZRdwcjA5yWQ4urW87rMV73pPcFfuBbphEiCuQy3N9M1":600,"QmexANQuNgmmSoKkfm2mZFub2tgNZZHRBMcf76EfLKiW6m":609}},"QmZHLuBEVEc1e7CPHU1MiLLpiCPQySL2FydPRbAfxGw7Wq":{"peers":{"QmZWMuxdqa6Liw3sm7tCGJJGRy6FngQs8KuEdTfKc4J6Hd":577,"QmRNqpzWRdgU1uzHe8irchYXPCDn4MyZnXHsXU4tarmpW2":589,"QmU3QPvd46mWy2auh2hQw2nNqeAvKz9gUK4utXxfyDNdE5":589}},"QmQLbFzquTY6vqHYjMHk729DJoByQQiAUQb8WcaQsCCxh8":{"peers":{"QmX53TJhseZ2zMneq6GRv9SHgZZQiiGVSWz1nwNrHQjKs7":241,"QmPj6g7GWgwxUULfUd3HSQZ3VCTidb8XWW8JzBtwertHT5":581,"QmUbh4vTFsCabh4qmsPxBQ5o7vym38ZjBwZH4tqrMqr1Qd":580}},"QmVYXtTbJFGojaH42eNR31LTzqKfBcfHfnP6uw3rvhLYpp":{"peers":{"QmSVXXxn7Soz2DwbKPtvR2QGM8AEXaGb6uasa4kwBf41dS":582}},"QmVV3mbzkjJy2MhX5JtztphoYeHhmHTESZ3UqvG4WgQCN9":{"peers":{"QmdkpQgPUW8BvzQhenwUYgENKwGZAnJxQqYENQZqtjTbHb":576,"QmWZRdwcjA5yWQ4urW87rMV73pPcFfuBbphEiCuQy3N9M1":576}},"QmQMwNqTSjrGQrHiYVaQnBVSWTgTFctmqZ3pCKybMA1wrh":{"peers":{"QmeLRiaXbKbLrQCTLMSHatDWRveYPPKnFh3juPc7cdzLxo":465,"QmYo9DC6rNkmFfpUkd4mahTLeoDiJFAcXg9ku2bqummJUv":479}},"QmPFxecAbhSohHoKjrUXA8jEtv56rWTK5HbiFJ8Ycw7xs1":{"peers":{"QmXKUa8zbHwHvKWrWUnyRyPKQXBvmTvPypooUREQWsYuwg":552,"QmZC7bqCNvt5G1qnPWwzQa878j6X1gZ5fjbXyJZu9TjNo9":549,"QmP4bb5GfuEiwbVyZvtdBk2L82JhTuZB4fRYzp9CgDawds":565}},"QmfT5UCrtCfMLTs5mbg8286CiUzGxB4E5one8mFyEH1f52":{"peers":{"QmVdC72qKAwEhETVsuHwsTcoQC334UspU9Kw6DQDTWt39z":475,"Qmf5Av4qGppUVcy2eZYMy8hcsovuyUQhV6T4oj3FKiqS4S":490}},"QmZWMuxdqa6Liw3sm7tCGJJGRy6FngQs8KuEdTfKc4J6Hd":{"peers":{"QmPHDCAS9CLNqyrSNQ48ihcbD8hBU7kNjjM6qYWkjSK2CV":518,"QmZHLuBEVEc1e7CPHU1MiLLpiCPQySL2FydPRbAfxGw7Wq":521,"QmU3QPvd46mWy2auh2hQw2nNqeAvKz9gUK4utXxfyDNdE5":555}},"QmREkiiiGTPVqDq4qdS9k75wmiAgFh1RHAHBAER1ZB7ay2":{"peers":{"QmVt1mPZ9Vk33XhYE8ckyCra9H64VrgDN4YyPC1ew5bj4b":460,"QmPWoqGBXvMMRZGAXug7m5YfwMZ6VwkpeEQ45F5KwKoNtS":480,"QmaC3C26akv5kWGPNomSdTPmaXhgHCoF15PeAKjRFnnzbt":480}},"QmdNiVGrYKDVzz5A4APpUQw6Kp2ebVj5TJTeiAy6uMTpcv":{"peers":{"Qmd4YtUUHuPvwEVHMRPV714vZt3xcdopr596dHpiVMNHef":446,"QmU9YqbiuFr84fakYBAQy3WDMTbUn7nxBLPKR9eg3tXisv":448,"QmahsKXWrwGtVPdBVYeHdiatTzJYn5RsRQCVjeEcXrTu1Y":468}},"QmYZLkan1BjN7ht8HhDSFuaFEto4ntrSrL5p8ugbmvfamG":{"peers":{"QmQ133gonZRbKmYpiZq7S9AY6TjdnQgjUHwvJhYmCkq2RG":494,"QmYBckGK5Wt5p7ngcytyH927adJVYuXQaNqdAMMTTnYJXN":494}},"QmS8xwNk1Tj8TUKbefChnpAocCzGWJyc7j8sSYEr2Qg9wu":{"peers":{"Qmc1uNzPdYjA8FUcb7QRjpFa67xyf57VjFKr5xkN6eGXTN":459,"QmeLRiaXbKbLrQCTLMSHatDWRveYPPKnFh3juPc7cdzLxo":463,"QmYo9DC6rNkmFfpUkd4mahTLeoDiJFAcXg9ku2bqummJUv":464}},"QmPHDCAS9CLNqyrSNQ48ihcbD8hBU7kNjjM6qYWkjSK2CV":{"peers":{"QmTsERJ17YRj46fu4YzAPg7k2DPxPrW6HdabXzqhqDz6kM":147,"QmZWMuxdqa6Liw3sm7tCGJJGRy6FngQs8KuEdTfKc4J6Hd":473}},"Qmf3NxSbKsqvrMcARRLhwCRELRciER34ptypdWWaqZdcFi":{"peers":{"QmRNqpzWRdgU1uzHe8irchYXPCDn4MyZnXHsXU4tarmpW2":590,"QmeGTguAxwAD8bs8EsGr6m7cZiGdXRkw3qSryqQrPjaEuF":635,"QmU3QPvd46mWy2auh2hQw2nNqeAvKz9gUK4utXxfyDNdE5":647}},"QmZC7bqCNvt5G1qnPWwzQa878j6X1gZ5fjbXyJZu9TjNo9":{"peers":{"QmQj8przDc5fJGJEUtNwN9xfvGD79RDBz1kvWsyfMaR54S":609,"QmPFxecAbhSohHoKjrUXA8jEtv56rWTK5HbiFJ8Ycw7xs1":610}},"QmaZBDF8LpgECzEEJ5jKsUt9AqJVYcWYWb7epStgyxVeJc":{"peers":{"QmQN2KwQLn7X7UWytWagoCHD3AACEfe5WSRJaYoDE8EA7u":606,"QmRviYdPZhkCCry61Q4j2vp2u1j1F42hvNMm7NmxZ7aZkm":606,"QmP5GH4Q11RH5M6Sg8au27NKW4Ytq2Pd6eYCCKV8dBBFBc":607}},"QmUhj6wUmTDDS6iW8QEx7tUvGXWXyu69KKsSNaBrNFeH11":{"peers":{"QmT5bvDRfCkrtJwyRWtCcn1erwBFjtpXcye8HeNsPk5bsT":538,"QmQN2KwQLn7X7UWytWagoCHD3AACEfe5WSRJaYoDE8EA7u":544,"QmRviYdPZhkCCry61Q4j2vp2u1j1F42hvNMm7NmxZ7aZkm":545}},"QmW3BSgt7vgMhW5rk5jCJ4V5mvsJwVMaXfdoX8jCC7u4hU":{"peers":{"QmbX5kVVDyw318kinhtXVxJ5BrGm3CkZ3bgBjiajE1sT9e":612}},"QmXLDRhXaJvkwjHx29TvECT6zt3fgeVzqPaXtRoGkvMvaH":{"peers":{"QmVUN76j92wfQ2HjHRPBUvP7GxmJNr4XR2ckeXLAEoN5aT":564}},"QmQ133gonZRbKmYpiZq7S9AY6TjdnQgjUHwvJhYmCkq2RG":{"peers":{"QmQ8qEJrCB3cqJdeiLvHWxn83XM1YzPrEHoaPvWofgvZS7":593,"QmYZLkan1BjN7ht8HhDSFuaFEto4ntrSrL5p8ugbmvfamG":624,"QmYBckGK5Wt5p7ngcytyH927adJVYuXQaNqdAMMTTnYJXN":818}},"QmNTr75RDDNpWQQ1isnPxmou8CHauuJEVpSmfMuzViMEaV":{"peers":{"Qmd4cxa2W7AEGJ9bi9HLFkWFXRGwEg2DpFXbETECyCZ4TT":492,"QmX394HfMqcLFVL8xLJXrSLm7H3Rg4FAuY2Rd2Ntm9ZpCq":492,"QmVUN76j92wfQ2HjHRPBUvP7GxmJNr4XR2ckeXLAEoN5aT":527}},"QmSVXXxn7Soz2DwbKPtvR2QGM8AEXaGb6uasa4kwBf41dS":{"peers":{"QmVYXtTbJFGojaH42eNR31LTzqKfBcfHfnP6uw3rvhLYpp":785,"QmakxJdc1hRDTEUCo4vK5PVfN7LT7PGCtBF9Wz9XeRZiGj":788,"QmVmcGeugEu5Ffssg5TaoMF5eJRkSMfdhrdDZbLJw9KfXP":856}},"QmU3QPvd46mWy2auh2hQw2nNqeAvKz9gUK4utXxfyDNdE5":{"peers":{"QmZWMuxdqa6Liw3sm7tCGJJGRy6FngQs8KuEdTfKc4J6Hd":589,"QmZHLuBEVEc1e7CPHU1MiLLpiCPQySL2FydPRbAfxGw7Wq":627,"Qmf3NxSbKsqvrMcARRLhwCRELRciER34ptypdWWaqZdcFi":754}},"QmcGpRuFWc2zMf3bTR26Pjf6ss5GabskWd3ujxGHwtf5QG":{"peers":{"QmWmhSxDThJFY25LpqQcL2kuUH2QhfeqHeTABnQ72fgdnu":800,"QmVysCMVHNmXS8EvPbHEcyPWpx4xJuNt4g3iCAqVeTQGbV":808,"QmTj1a5gYk5RCHNVpCbACbW5ncnWssxkdvTwEEPEQvHX7H":855}},"QmP5GH4Q11RH5M6Sg8au27NKW4Ytq2Pd6eYCCKV8dBBFBc":{"peers":{"QmaZBDF8LpgECzEEJ5jKsUt9AqJVYcWYWb7epStgyxVeJc":868,"QmQN2KwQLn7X7UWytWagoCHD3AACEfe5WSRJaYoDE8EA7u":889,"QmRviYdPZhkCCry61Q4j2vp2u1j1F42hvNMm7NmxZ7aZkm":924}},"QmTj1a5gYk5RCHNVpCbACbW5ncnWssxkdvTwEEPEQvHX7H":{"peers":{"QmWmhSxDThJFY25LpqQcL2kuUH2QhfeqHeTABnQ72fgdnu":699,"QmVysCMVHNmXS8EvPbHEcyPWpx4xJuNt4g3iCAqVeTQGbV":701,"QmcGpRuFWc2zMf3bTR26Pjf6ss5GabskWd3ujxGHwtf5QG":1070}},"QmVUN76j92wfQ2HjHRPBUvP7GxmJNr4XR2ckeXLAEoN5aT":{"peers":{"QmXLDRhXaJvkwjHx29TvECT6zt3fgeVzqPaXtRoGkvMvaH":612,"QmUrF3oZqop8doWc4bXtSHsyX4Zc5xkYTD7dzoMfThymUt":681,"QmNTr75RDDNpWQQ1isnPxmou8CHauuJEVpSmfMuzViMEaV":1118}},"QmdCxrKjMR1QLcjiUectNEFAhrLeGFoa48d11Kbzqge4dM":{"peers":{"QmPZaeyaztJpSerkrZbfNBQPknJAU89JbMFcpRatGRSuh8":656,"QmT5J2knmHxBjCWBVs68MxA4N2MD1MeDAmfhDGqtuAqoFc":656,"QmSnHXC3SDtP3VsAogx6i9voFd83ZfpCdqiCCfL57xvNWC":1294}},"QmPWoqGBXvMMRZGAXug7m5YfwMZ6VwkpeEQ45F5KwKoNtS":{"peers":{"QmREkiiiGTPVqDq4qdS9k75wmiAgFh1RHAHBAER1ZB7ay2":652,"QmQkZ25xNbRGvfoQR5K2LHgk8FFJNNiuwixyFzGFF1KmrN":1164,"QmSnHXC3SDtP3VsAogx6i9voFd83ZfpCdqiCCfL57xvNWC":1476}},"QmYNyCqSmhiTZuocGySdULULiPKatrb1hzurh34fBsWCDT":{"peers":{"QmcZTiWRpKpnGKHVtLfMZjB9Whuy9LvL6QiQ4ZtB5XLkuH":747,"QmcX8hXLdwL5JZ9EAb2aGGEmdS6LEwPyUaYGm2qR9acTqj":781,"QmXHpHdQ1j3UBzkRK9g9w5STffniAeUYCRD4sUo6U3NgPb":2072}},"QmaeX4bjbheUqTD9XNAo8E1cZCC3RWRxxYdGiYMvDhsrGa":{"peers":{"QmX394HfMqcLFVL8xLJXrSLm7H3Rg4FAuY2Rd2Ntm9ZpCq":2208,"QmPZaeyaztJpSerkrZbfNBQPknJAU89JbMFcpRatGRSuh8":2209}},"QmPZaeyaztJpSerkrZbfNBQPknJAU89JbMFcpRatGRSuh8":{"peers":{"QmdCxrKjMR1QLcjiUectNEFAhrLeGFoa48d11Kbzqge4dM":632,"QmaeX4bjbheUqTD9XNAo8E1cZCC3RWRxxYdGiYMvDhsrGa":3094}}}
+
+function buildGraph(data) {
+  const graph = { nodes: [], links: [] }
+
+  // first add kitsunet nodes
+  Object.keys(data).forEach((clientId) => {
+    graph.nodes.push({ id: clientId, group: 1 })
+  })
+
+  // then links
+  Object.keys(data).forEach((clientId) => {
+    const peerData = data[clientId].peers
+    if (peerData === 'timeout') return
+    Object.keys(peerData).forEach((peerId) => {
+      // if connected to a missing node, create node
+      const alreadyExists = !!graph.nodes.find(item => item.id === peerId)
+      if (!alreadyExists) {
+        graph.nodes.push({ id: peerId, group: 2 })
+      }
+      graph.links.push({ source: clientId, target: peerId, value: 1 })
+    })
+  })
+
+  return graph
+}
+
+
+const graph = buildGraph(data)
+
+drawGraph(graph)
+
+function drawGraph(graph) {
+
+  var svg = d3.select("svg"),
+      width = +svg.attr("width"),
+      height = +svg.attr("height");
+
+  var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+  var simulation = d3.forceSimulation()
+      .force("link", d3.forceLink().id(function(d) { return d.id; }))
+      .force("charge", d3.forceManyBody())
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("x", d3.forceX(width / 2).strength(.05))
+      .force("y", d3.forceY(height / 2).strength(.05))
+
+  var link = svg.append("g")
+      .attr("class", "links")
+    .selectAll("line")
+    .data(graph.links)
+    .enter().append("line")
+      .attr("stroke-width", function(d) { return Math.sqrt(d.value); });
+
+  var node = svg.append("g")
+      .attr("class", "nodes")
+    .selectAll("circle")
+    .data(graph.nodes)
+    .enter().append("circle")
+      .attr("r", 5)
+      .attr("fill", function(d) { return color(d.group); })
+      .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended));
+
+  node.append("title")
+      .text(function(d) { return d.id; });
+
+  simulation
+      .nodes(graph.nodes)
+      .on("tick", ticked);
+
+  simulation.force("link")
+      .links(graph.links);
+
+  function ticked() {
+    link
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node
+        .attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
+  }
+}
+
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+
+</script>
