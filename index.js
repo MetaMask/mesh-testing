@@ -99,21 +99,24 @@ function instrumentNode(node) {
 }
 
 async function connectKitsunet(conn) {
+  // do connect
   const stream = pullStreamToStream(conn)
-  endOfStream(stream, (err) => {
-    console.log('kitsunet peer DISCONNECT', err)
-    removeFromArray(peerInfo, peers)
-  })
   const peer = await znode(stream, kitsunetRpc)
-  kitsunetPeers.push(peer)
   console.log('kitsunet CONNECT')
+  kitsunetPeers.push(peer)
+  // handle disconnect
+  endOfStream(stream, (err) => {
+    console.log('kitsunet peer DISCONNECT', err.message)
+    removeFromArray(peer, kitsunetPeers)
+  })
+  // ping peer as sanity check
   const rtt = await pingKitsunetPeer(peer)
   console.log('kitsunet PING OK', rtt)
 }
 
 function pingKitsunetPeerWithTimeout(peer) {
   return Promise.race([
-    timeout(5 * sec),
+    timeout(5 * sec, 'timeout'),
     pingKitsunetPeer(peer),
   ])
 }
@@ -182,6 +185,6 @@ function removeFromArray(item, array) {
   array.splice(index, 1)
 }
 
-function timeout(duration) {
-  return new Promise((resolve) => setTimeout(resolve, duration))
+function timeout(duration, value) {
+  return new Promise((resolve) => setTimeout(() => resolve(value), duration))
 }
