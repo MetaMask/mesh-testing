@@ -3,6 +3,7 @@ const znode = require('znode')
 const qs = require('qs')
 const pify = require('pify')
 const pullStreamToStream = require('pull-stream-to-stream')
+const endOfStream = require('end-of-stream')
 
 const createNode = require('./createNode')
 
@@ -31,7 +32,7 @@ const clientRpc = {
     return result
   },
   pingAll: async () => {
-    return await Promise.all(kitsunetPeers.map(pingKitsunetPeer))
+    return await Promise.all(kitsunetPeers.map(pingKitsunetPeerWithTimeout))
   }
 }
 
@@ -39,13 +40,10 @@ const kitsunetRpc = {
   ping: () => true,
 }
 
-start()
-.then(console.log)
-.catch(console.error)
+start().catch(console.error)
 
 async function start(){
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
-  console.log(opts)
   const adminCode = opts.admin || ''
   if (adminCode) console.log(`connecting with adminCode: ${adminCode}`)
   const host = ((!opts.prod && location.hostname === 'localhost') ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
@@ -83,11 +81,10 @@ function instrumentNode(node) {
   node.on('peer:disconnect', (peerInfo) => console.log('node/peer:disconnect', peerInfo.id.toB58String()))
 
   node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
-    console.log('kitsunet connection established')
+    console.log('incomming kitsunet connection')
     conn.getPeerInfo((err, peerInfo) => {
       if (err) console.error(err)
       const peerId = peerInfo.id.toB58String()
-      console.log('kitsunet peer:', peerId)
       connectKitsunet(conn)
     })
   })
@@ -102,14 +99,23 @@ function instrumentNode(node) {
 }
 
 async function connectKitsunet(conn) {
-  global.lastConnection = conn
-  console.log('connecting over kitsunet')
   const stream = pullStreamToStream(conn)
+  endOfStream(stream, (err) => {
+    console.log('kitsunet peer DISCONNECT', err)
+    removeFromArray(peerInfo, peers)
+  })
   const peer = await znode(stream, kitsunetRpc)
   kitsunetPeers.push(peer)
-  console.log('kitsunet peering succ')
+  console.log('kitsunet CONNECT')
   const rtt = await pingKitsunetPeer(peer)
-  console.log('kitsunet peer ping succ', rtt)
+  console.log('kitsunet PING OK', rtt)
+}
+
+function pingKitsunetPeerWithTimeout(peer) {
+  return Promise.race([
+    timeout(5 * sec),
+    pingKitsunetPeer(peer),
+  ])
 }
 
 async function pingKitsunetPeer(peer) {
@@ -133,11 +139,10 @@ function autoConnectWhenLonely(node, { minPeers }) {
     dialing++
     node.dialProtocol(peerInfo, '/kitsunet/test/0.0.1', (err, conn) => {
       const peerId = peerInfo.id.toB58String()
-      console.log('did dial', peerId)
+      console.log('outgoing kitsunet connection', peerId)
       if (err) {
         console.log('kitsunet dial failed')
       } else {
-        console.log('dialed succ kitsunet peer:', peerId)
         connectKitsunet(conn)
       }
     })
@@ -153,7 +158,7 @@ function limitPeers(node, { maxPeers }) {
   })
 
   node.on('peer:disconnect', (peerInfo) => {
-    removePeerFromList(peerInfo)
+    removeFromArray(peerInfo, peers)
     // console.log('peers:', peers.map(peerInfo => peerInfo.id.toB58String()))
   })
 
@@ -161,17 +166,22 @@ function limitPeers(node, { maxPeers }) {
     while (peers.length > maxPeers) {
       const doomedPeerInfo = selectPeerForDisconnect()
       node.hangUp(doomedPeerInfo, () => console.log('did hangup', doomedPeerInfo.id.toB58String()))
-      removePeerFromList(doomedPeerInfo)
+      removeFromArray(doomedPeerInfo, peers)
     }
   }
 
-  function selectPeerForDisconnect() {
-    return peers[0]
-  }
+}
 
-  function removePeerFromList(peerInfo) {
-    const index = peers.indexOf(peerInfo)
-    if (index === -1) return
-    peers.splice(index, 1)
-  }
+function selectPeerForDisconnect() {
+  return peers[0]
+}
+
+function removeFromArray(item, array) {
+  const index = array.indexOf(item)
+  if (index === -1) return
+  array.splice(index, 1)
+}
+
+function timeout(duration) {
+  return new Promise((resolve) => setTimeout(resolve, duration))
 }

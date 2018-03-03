@@ -9,6 +9,7 @@
     "babel-preset-es2015": "^6.24.1",
     "babel-preset-stage-2": "^6.24.1",
     "babelify": "^8.0.0",
+    "end-of-stream": "^1.4.1",
     "express": "^4.16.2",
     "express-ws": "^3.0.0",
     "hat": "0.0.3",
