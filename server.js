@@ -5,7 +5,12 @@ const znode = require('znode')
 const hat = require('hat')
 const app = express()
 
-const heartBeatInterval = 10000
+const sec = 1000
+const min = 60 * sec
+
+const heartBeatInterval = 10 * sec
+const remoteCallTimeout = 5 * sec
+
 const secret = hat(256)
 console.log('secret:', secret)
 
@@ -58,7 +63,7 @@ setInterval(() => {
       console.log('peer disconnected')
       console.log(`${clients.length} peers connected`)
     })
-  }, heartBeatInterval * 0.8)
+  }, remoteCallTimeout)
 }, heartBeatInterval)
 
 async function handleClient(stream, request) {
@@ -82,21 +87,48 @@ async function handleAdmin(stream, request) {
 
   const admin = await znode(stream, {
     ping: async () => 'pong',
+    // server data
+    getPeerCount: async () => clients.length,
+    // broadcast
     send: async (method, args) => {
       console.log(`broadcasting "${method}" with (${args}) to ${clients.length} client(s)`)
-      return Promise.all(clients.map(async (client) => {
-        const result = await client[method].apply(client, args)
-        console.log(`got result: ${result}`)
-        return result
-      }))
+      return await broadcastCall(method, args, remoteCallTimeout)
     },
-    getPeerCount: async () => clients.length
+    refresh: () => broadcastCall('refresh', [], remoteCallTimeout)
+    refreshShortDelay: () => broadcastCall('refreshShortDelay', [], remoteCallTimeout)
+    refreshLongDelay: () => broadcastCall('refreshLongDelay', [], remoteCallTimeout)
   })
   console.log('admin connected')
+
+  function broadcastCall(method, args, timeout) {
+    return Promise.all(clients.map((client) => sendCallWithTimeout(client, method, args, timeout)))
+  }
+
+  function sendCallWithTimeout(client, method, args, duration) {
+    return Promise.race([
+      timeout(duration),
+      sendCall(client, method, args),
+    ])
+  }
+
+  async function sendCall(client, method, args) {
+    let result
+    try {
+      result = await client[method].apply(client, args)
+    } catch (err) {
+      return err.message
+    }
+    console.log(`got result: ${result}`)
+    return result
+  }
 
   stream.on('error', (error) => {
     // Ignore network errors like `ECONNRESET`, `EPIPE`, etc.
     if (error.errno) return
     throw error
   })
+}
+
+function timeout(duration) {
+  return new Promise((resolve) => setTimeout(resolve, duration))
 }
