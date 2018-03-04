@@ -21,10 +21,10 @@ const clientRpc = {
   ping: () => 'pong',
   refresh: () => window.location.reload(),
   refreshShortDelay: () => {
-    restart(timeoutDuration, randomFromRange(5 * sec, 10 * sec))
+    restart(randomFromRange(5 * sec, 10 * sec))
   },
   refreshLongDelay: () => {
-    restart(timeoutDuration, randomFromRange(5 * min, 10 * min))
+    restart(randomFromRange(5 * min, 10 * min))
   },
   eval: (src) => {
     console.log(`evaling "${src}"`)
