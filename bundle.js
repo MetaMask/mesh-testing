@@ -8475,6 +8475,7 @@ global.kitsunetPeers = kitsunetPeers
 
 const peers = []
 global.peers = peers
+const maxPeers = 8
 
 const clientRpc = {
   ping: () => 'pong',
@@ -8621,25 +8622,45 @@ function autoConnectWhenLonely(node, { minPeers }) {
   node.on('peer:discovery', (peerInfo) => {
     if (peers.length >= minPeers || dialing >= minPeers) return
     dialing++
-    node.dialProtocol(peerInfo, '/kitsunet/test/0.0.1', (err, conn) => {
-      const peerId = peerInfo.id.toB58String()
-      console.log('outgoing kitsunet connection', peerId)
-      if (err) {
-        console.log('kitsunet dial failed')
-        hangupPeer(peerInfo)
-      } else {
-        connectKitsunet(peerInfo, conn)
-      }
-    })
+    console.log('outgoing kitsunet connection', peerId)
+    attemptDial(peerInfo)
+    // node.dialProtocol(peerInfo, '/kitsunet/test/0.0.1', (err, conn) => {
+    //   const peerId = peerInfo.id.toB58String()
+    //   console.log('outgoing kitsunet connection', peerId)
+    //   if (err) {
+    //     console.log('kitsunet dial failed')
+    //     hangupPeer(peerInfo)
+    //   } else {
+    //     connectKitsunet(peerInfo, conn)
+    //   }
+    // })
   })
 }
 
-function limitPeers(node, { maxPeers }) {
+async function attemptDial(peerInfo) {
+  const peerId = peerInfo.id.toB58String()
+  // too many peers
+  if (peers.length > maxPeers) {
+    hangupPeer(peerInfo)
+  }
+  // attempt connection
+  try {
+    console.log('kitsunet dial', peerId)
+    const conn = await pify(node.dialProtocol).call(node, peerInfo, '/kitsunet/test/0.0.1')
+    await connectKitsunet(peerInfo, conn)
+  } catch (err) {
+    console.log('kitsunet dial failed:', err.message)
+    hangupPeer(peerInfo)
+  }
+}
+
+function limitPeers(node) {
 
   node.on('peer:connect', (peerInfo) => {
     peers.push(peerInfo)
     // console.log('peers:', peers.map(peerInfo => peerInfo.id.toB58String()))
-    checkLimit()
+    // checkLimit()
+    attemptDial(peerInfo)
   })
 
   node.on('peer:disconnect', (peerInfo) => {
@@ -8647,13 +8668,13 @@ function limitPeers(node, { maxPeers }) {
     // console.log('peers:', peers.map(peerInfo => peerInfo.id.toB58String()))
   })
 
-  function checkLimit() {
-    while (peers.length > maxPeers) {
-      const doomedPeerInfo = selectPeerForDisconnect()
-      hangupPeer(doomedPeerInfo)
-      removeFromArray(doomedPeerInfo, peers)
-    }
-  }
+  // function checkLimit() {
+  //   while (peers.length > maxPeers) {
+  //     const doomedPeerInfo = selectPeerForDisconnect()
+  //     hangupPeer(doomedPeerInfo)
+  //     removeFromArray(doomedPeerInfo, peers)
+  //   }
+  // }
 
 }
 
@@ -8662,9 +8683,9 @@ function hangupPeer(peerInfo) {
   node.hangUp(peerInfo, () => console.log('did hangup', peerId))
 }
 
-function selectPeerForDisconnect() {
-  return peers[0]
-}
+// function selectPeerForDisconnect() {
+//   return peers[0]
+// }
 
 function restart(timeoutDuration) {
   console.log(`restarting in ${timeoutDuration/1000} sec...`)
