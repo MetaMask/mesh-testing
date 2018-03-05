@@ -174,6 +174,7 @@ function autoConnectWhenLonely(node, { minPeers }) {
   setInterval(() => {
     if (peers.length >= minPeers) return
     const peerInfo = discoveredPeers.shift()
+    if (!peerInfo) return
     const peerId = peerInfo.id.toB58String()
     console.log('kitsunet random dial:', peerId)
     attemptDial(peerInfo)
