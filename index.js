@@ -168,6 +168,7 @@ function pingKitsunetPeerWithTimeout(peer) {
 }
 
 async function pingKitsunetPeer(peer) {
+  if (!peer.rpc) return
   const start = Date.now()
   await peer.rpc.ping()
   const end = Date.now()
