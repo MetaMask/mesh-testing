@@ -158,7 +158,7 @@ async function connectKitsunet(peerInfo, conn) {
 function pingKitsunetPeerWithTimeout(peer) {
   return Promise.race([
     timeout(5 * sec, 'timeout'),
-    pingKitsunetPeer(peer.rpc),
+    pingKitsunetPeer(peer),
   ])
 }
 
