@@ -9,6 +9,7 @@ const createNode = require('./createNode')
 
 const sec = 1000
 const min = 60 * sec
+const hour = 60 * min
 
 const kitsunetPeers = []
 global.kitsunetPeers = kitsunetPeers
@@ -61,6 +62,7 @@ const kitsunetRpc = {
 start().catch(console.error)
 
 async function start(){
+  // parse params
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
   const adminCode = opts.admin || ''
   if (adminCode) console.log(`connecting with adminCode: ${adminCode}`)
@@ -77,8 +79,11 @@ async function start(){
     setInterval(() => server.ping(), 10 * sec)
   }
 
-  // dont boot libp2p node in admin mode
+  // in admin mode, dont boot libp2p node
   if (adminCode) return
+
+  // force refresh every hour so as to not lose nodes
+  restart(hour)
 
   const node = await pify(createNode)()
   global.node = node
