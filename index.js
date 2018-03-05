@@ -17,6 +17,11 @@ const peers = []
 global.peers = peers
 const maxPeers = 8
 
+const discoveredPeers = []
+global.discoveredPeers = discoveredPeers
+const maxDiscovered = 25
+
+
 const clientRpc = {
   ping: () => 'pong',
   refresh: () => window.location.reload(),
@@ -47,6 +52,7 @@ const clientRpc = {
     return results
   },
 }
+global.clientRpc = clientRpc
 
 const kitsunetRpc = {
   ping: () => true,
@@ -91,15 +97,24 @@ function randomFromRange(min, max) {
 
 function instrumentNode(node) {
   node.on('peer:discovery', (peerInfo) => {
+    const peerId = peerInfo.id.toB58String()
     // console.log('node/peer:discovery', peerInfo.id.toB58String())
-    // console.log('node/peer:discovery', peerInfo.multiaddrs.toArray().map(i => i.toString()))
-    if (peerInfo.protocols.size) console.log('node/peer:discovery', peerInfo.protocols)
+    // add to discovered peers list
+    if (discoveredPeers.length >= maxDiscovered) return
+    const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
+    if (alreadyExists) return
+    discoveredPeers.push(peerInfo)
   })
   node.on('peer:connect', (peerInfo) => {
-    console.log('node/peer:connect', peerInfo.id.toB58String())
-    if (peerInfo.protocols.size) console.log('node/peer:discovery', peerInfo.protocols)
+    // console.log('node/peer:connect', peerInfo.id.toB58String())
+    peers.push(peerInfo)
+    // attempt to upgrage to kitsunet connection
+    attemptDial(peerInfo)
   })
-  node.on('peer:disconnect', (peerInfo) => console.log('node/peer:disconnect', peerInfo.id.toB58String()))
+
+  node.on('peer:disconnect', (peerInfo) => {
+    removeFromArray(peerInfo, peers)
+  })
 
   node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
     console.log('incomming kitsunet connection')
@@ -109,8 +124,6 @@ function instrumentNode(node) {
     })
   })
 
-  limitPeers(node, { maxPeers: 8 })
-  // autoConnectAll(node)
   autoConnectWhenLonely(node, { minPeers: 4 })
 
   node.start(() => {
@@ -120,12 +133,18 @@ function instrumentNode(node) {
 
 async function connectKitsunet(peerInfo, conn) {
   const peerId = peerInfo.id.toB58String()
+  // check if already connected
+  const alreadyConnected = kitsunetPeers.find(peer => peer.peerInfo.id.toB58String() === peerId)
+  if (alreadyConnected) {
+    console.log('kitsunet already connected', peerId)
+    return
+  }
   // do connect
-  const stream = pullStreamToStream(conn)
-  const peer = await znode(stream, kitsunetRpc)
-  peer.peerInfo = peerInfo
-  console.log('kitsunet CONNECT', peerId)
+  const peer = { peerInfo }
   kitsunetPeers.push(peer)
+  const stream = pullStreamToStream(conn)
+  peer.rpc = await znode(stream, kitsunetRpc)
+  console.log('kitsunet CONNECT', peerId)
   // handle disconnect
   endOfStream(stream, (err) => {
     console.log('kitsunet peer DISCONNECT', peerId, err.message)
@@ -139,42 +158,26 @@ async function connectKitsunet(peerInfo, conn) {
 function pingKitsunetPeerWithTimeout(peer) {
   return Promise.race([
     timeout(5 * sec, 'timeout'),
-    pingKitsunetPeer(peer),
+    pingKitsunetPeer(peer.rpc),
   ])
 }
 
 async function pingKitsunetPeer(peer) {
   const start = Date.now()
-  await peer.ping()
+  await peer.rpc.ping()
   const end = Date.now()
   const rtt = end - start
   return rtt
 }
 
-function autoConnectAll(node) {
-  node.on('peer:discovery', (peerInfo) => {
-    node.dial(peerInfo, () => console.log('did dial', peerInfo.id.toB58String()))
-  })
-}
-
 function autoConnectWhenLonely(node, { minPeers }) {
-  let dialing = 0
-  node.on('peer:discovery', (peerInfo) => {
-    if (peers.length >= minPeers || dialing >= minPeers) return
-    dialing++
-    console.log('outgoing kitsunet connection', peerId)
+  setInterval(() => {
+    if (peers.length >= minPeers) return
+    const peerInfo = discoveredPeers.shift()
+    const peerId = peerInfo.id.toB58String()
+    console.log('kitsunet random dial:', peerId)
     attemptDial(peerInfo)
-    // node.dialProtocol(peerInfo, '/kitsunet/test/0.0.1', (err, conn) => {
-    //   const peerId = peerInfo.id.toB58String()
-    //   console.log('outgoing kitsunet connection', peerId)
-    //   if (err) {
-    //     console.log('kitsunet dial failed')
-    //     hangupPeer(peerInfo)
-    //   } else {
-    //     connectKitsunet(peerInfo, conn)
-    //   }
-    // })
-  })
+  }, 10 * sec)
 }
 
 async function attemptDial(peerInfo) {
@@ -183,49 +186,29 @@ async function attemptDial(peerInfo) {
   if (peers.length > maxPeers) {
     hangupPeer(peerInfo)
   }
+  // check if already connected
+  const alreadyConnected = kitsunetPeers.find(peer => peer.peerInfo.id.toB58String() === peerId)
+  if (alreadyConnected) {
+    // console.log('kitsunet already connected', peerId)
+    return
+  }
   // attempt connection
   try {
-    console.log('kitsunet dial', peerId)
+    // console.log('kitsunet dial', peerId)
     const conn = await pify(node.dialProtocol).call(node, peerInfo, '/kitsunet/test/0.0.1')
     await connectKitsunet(peerInfo, conn)
   } catch (err) {
-    console.log('kitsunet dial failed:', err.message)
+    // console.log('kitsunet dial failed:', peerId, err.message)
     hangupPeer(peerInfo)
   }
 }
 
-function limitPeers(node) {
-
-  node.on('peer:connect', (peerInfo) => {
-    peers.push(peerInfo)
-    // console.log('peers:', peers.map(peerInfo => peerInfo.id.toB58String()))
-    // checkLimit()
-    attemptDial(peerInfo)
-  })
-
-  node.on('peer:disconnect', (peerInfo) => {
-    removeFromArray(peerInfo, peers)
-    // console.log('peers:', peers.map(peerInfo => peerInfo.id.toB58String()))
-  })
-
-  // function checkLimit() {
-  //   while (peers.length > maxPeers) {
-  //     const doomedPeerInfo = selectPeerForDisconnect()
-  //     hangupPeer(doomedPeerInfo)
-  //     removeFromArray(doomedPeerInfo, peers)
-  //   }
-  // }
-
-}
-
 function hangupPeer(peerInfo) {
   const peerId = peerInfo.id.toB58String()
-  node.hangUp(peerInfo, () => console.log('did hangup', peerId))
+  node.hangUp(peerInfo, () => {
+    // console.log('did hangup', peerId)
+  })
 }
-
-// function selectPeerForDisconnect() {
-//   return peers[0]
-// }
 
 function restart(timeoutDuration) {
   console.log(`restarting in ${timeoutDuration/1000} sec...`)
