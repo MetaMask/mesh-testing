@@ -8507,6 +8507,8 @@ const clientRpc = {
       const peerInfo = peer.peerInfo
       const peerId = peerInfo.id.toB58String()
       const id = peerId
+      // stagger start times
+      await timeout(randomFromRange(0, 5 * sec))
       const rtt = await pingKitsunetPeerWithTimeout(peer)
       results[id] = rtt
     }))
@@ -8622,7 +8624,7 @@ async function connectKitsunet(peerInfo, conn) {
 
 function pingKitsunetPeerWithTimeout(peer) {
   return Promise.race([
-    timeout(5 * sec, 'timeout'),
+    timeout(10 * sec, 'timeout'),
     pingKitsunetPeer(peer),
   ])
 }
