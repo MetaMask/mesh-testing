@@ -115,7 +115,7 @@ async function handleAdmin(stream, request) {
       await Promise.all(clients.map(async (client) => {
         const peerId = client.peerId
         if (!peerId) return
-        const peers = await sendCallWithTimeout(client.rpc, 'getNetworkState', [], 5 * sec)
+        const peers = await sendCallWithTimeout(client.rpc, 'getNetworkState', [], 20 * sec)
         results[peerId] = { peers }
       }))
       return results
