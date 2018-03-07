@@ -27,6 +27,8 @@ const discoveredPeers = []
 global.discoveredPeers = discoveredPeers
 const maxDiscovered = 25
 
+const networkState = new Map()
+global.networkState = networkState
 
 const clientRpc = {
   ping: () => 'pong',
@@ -35,7 +37,7 @@ const clientRpc = {
     restart(randomFromRange(5 * sec, 10 * sec))
   },
   refreshLongDelay: () => {
-    restart(randomFromRange(5 * min, 10 * min))
+    restart(randomFromRange(2 * min, 10 * min))
   },
   eval: (src) => {
     console.log(`evaling "${src}"`)
@@ -46,21 +48,19 @@ const clientRpc = {
   pingAll: async () => {
     return await Promise.all(kitsunetPeers.map(pingKitsunetPeerWithTimeout))
   },
-  getNetworkState: async () => {
-    const results = {}
-    await Promise.all(kitsunetPeers.map(async (peer) => {
-      const peerInfo = peer.peerInfo
-      const peerId = peerInfo.id.toB58String()
-      const id = peerId
-      // stagger start times
-      await timeout(randomFromRange(0, 5 * sec))
-      const rtt = await pingKitsunetPeerWithTimeout(peer)
-      results[id] = rtt
-    }))
-    return results
-  },
+  getNetworkState,
 }
 global.clientRpc = clientRpc
+
+function getNetworkState() {
+  const results = {}
+  Array.from(networkState).map(([peerId, state]) => {
+    if (!state.ping) return
+    results[peerId] = state.ping
+  })
+  return results
+}
+global.getNetworkState = getNetworkState
 
 const kitsunetRpc = {
   ping: () => true,
@@ -159,28 +159,49 @@ function instrumentNode(node) {
   })
 }
 
+function updatePeerState(peerId, value) {
+  if (value) {
+    const oldValue = networkState.get(peerId)
+    const newValue = Object.assign({}, oldValue, value)
+    networkState.set(peerId, newValue)
+  } else {
+    networkState.delete(peerId)
+  }
+}
+
 async function connectKitsunet(peerInfo, conn) {
   const peerId = peerInfo.id.toB58String()
   // check if already connected
-  const alreadyConnected = kitsunetPeers.find(peer => peer.peerInfo.id.toB58String() === peerId)
+  const alreadyConnected = networkState.has(peerId)
   if (alreadyConnected) {
     console.log('kitsunet already connected', peerId)
     return
   }
-  // do connect
-  const peer = { peerInfo }
+  // create peer obj
+  const peer = { id: peerId, peerInfo }
   kitsunetPeers.push(peer)
+  updatePeerState(peerId, { status: 'connecting' })
+  // do connect
   const stream = pullStreamToStream(conn)
   peer.rpc = await znode(stream, kitsunetRpc)
   console.log('kitsunet CONNECT', peerId)
+  updatePeerState(peerId, { status: 'connected' })
   // handle disconnect
   endOfStream(stream, (err) => {
     console.log('kitsunet peer DISCONNECT', peerId, err.message)
     removeFromArray(peer, kitsunetPeers)
+    updatePeerState(peerId, null)
   })
-  // ping peer as sanity check
-  const rtt = await pingKitsunetPeer(peer)
-  console.log('kitsunet PING OK', peerId, rtt)
+  // ping until disconnected
+  keepPinging(peer)
+}
+
+async function keepPinging(peer) {
+  while (networkState.has(peer.id)) {
+    const ping = await pingKitsunetPeer(peer)
+    updatePeerState(peer.id, { ping })
+    await timeout(1 * min)
+  }
 }
 
 function pingKitsunetPeerWithTimeout(peer) {
@@ -217,7 +238,7 @@ async function attemptDial(peerInfo) {
     hangupPeer(peerInfo)
   }
   // check if already connected
-  const alreadyConnected = kitsunetPeers.find(peer => peer.peerInfo.id.toB58String() === peerId)
+  const alreadyConnected = networkState.has(peerId)
   if (alreadyConnected) {
     // console.log('kitsunet already connected', peerId)
     return
