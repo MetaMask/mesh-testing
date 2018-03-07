@@ -3,9 +3,19 @@
 
 - clients are both dialing kitsunet at eachother
 - how will we ever get wrtc stable?
+  - per-protocol connection limits
 
 - stream each peer's networkState to cnc
+- use peerBook for connections list
+  libp2p.switch.muxedConn
+  libp2p.getPeers (?)
+- on connect, start timeout to check for kitsunet connection
+- track pubsub
 
+- opened https://github.com/libp2p/js-libp2p/issues/175
+- we want more low level hooks for rejecting connection attempts
+- how will we ever get wrtc stable?
+  - per-protocol connection limits
 
 - [ ] network research
   - [ ] what to measure to determine network health?
