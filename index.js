@@ -4,6 +4,11 @@ const qs = require('qs')
 const pify = require('pify')
 const pullStreamToStream = require('pull-stream-to-stream')
 const endOfStream = require('end-of-stream')
+const {
+  setupDom,
+  buildGraph,
+  drawGraph,
+} = require('./graph')
 
 const createNode = require('./createNode')
 
@@ -79,6 +84,22 @@ async function start(){
   if (adminCode) {
     // keep connection alive
     setInterval(() => server.ping(), 10 * sec)
+    // setup network graph
+    setupDom({
+      container: document.body,
+      action: async () => {
+        // get state
+        console.log('getting network state')
+        const state = await server.getNetworkState()
+        console.log('updating graph')
+        const graph = buildGraph(state)
+        // clear graph
+        const svg = document.querySelector('svg')
+        if (svg) svg.remove()
+        // draw graph
+        drawGraph(graph)
+      }
+    })
   }
 
   // in admin mode, dont boot libp2p node
@@ -126,7 +147,7 @@ function instrumentNode(node) {
   node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
     console.log('incomming kitsunet connection')
     conn.getPeerInfo((err, peerInfo) => {
-      if (err) console.error(err)
+      if (err) return console.error(err)
       connectKitsunet(peerInfo, conn)
     })
   })
