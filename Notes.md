@@ -1,3 +1,12 @@
+- how do i prevent new connections?
+- how to tell if a peer supports my protocol? (just attempt dial?)
+
+- clients are both dialing kitsunet at eachother
+- how will we ever get wrtc stable?
+
+- stream each peer's networkState to cnc
+
+
 - [ ] network research
   - [ ] what to measure to determine network health?
   - [ ] what infrastructure to point at (instead of ipfs defaults)
