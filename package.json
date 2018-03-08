@@ -29,7 +29,10 @@
     "websocket-stream": "^5.1.1",
     "znode": "^1.1.3"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "beefy": "^2.1.8",
+    "browserify": "^16.1.1"
+  },
   "scripts": {
     "start": "beefy index.js:bundle.js --live",
     "build": "browserify index.js > bundle.js",
