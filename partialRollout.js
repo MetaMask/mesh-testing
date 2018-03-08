@@ -12,6 +12,9 @@ if (matchesThreshold) {
 }
 
 function activateBundle(){
+  console.log('tests temporarily disabled')
+  return
+
   const script = document.createElement('script')
   script.src = './bundle.js'
   script.type = 'text/javascript'
