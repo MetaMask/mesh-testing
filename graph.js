@@ -23,6 +23,26 @@ function setupDom({ container, action }) {
       stroke: #fff;
       stroke-width: 1.5px;
     }
+
+    button.refresh {
+      width: 120px;
+      height: 30px;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 3px;
+      outline: none;
+      border: 0;
+      cursor: pointer;
+    }
+
+    button.refresh:hover {
+      background-color: green;
+    }
+
+    .legend {
+      font-family: "Arial", sans-serif;
+      font-size: 11px;
+    }
     `
   )
   document.head.appendChild(style)
@@ -35,7 +55,8 @@ function setupDom({ container, action }) {
 
   // action button
   const button = document.createElement('button')
-  button.innerText = 'refresh graph'
+  button.innerText = 'Refresh Graph'
+  button.setAttribute("class", "refresh")
   button.addEventListener('click', action)
   container.appendChild(button)
 }
@@ -83,12 +104,12 @@ function drawGraph(graph) {
   //     width = +svg.attr("width"),
   //     height = +svg.attr("height");
 
+
   var width = 960
   var height = 600
   var svg = d3.select("body").append("svg")
     .attr("width", width)
     .attr("height", height)
-
 
   // var color = d3.scaleOrdinal(d3.schemeCategory20);
 
@@ -128,6 +149,8 @@ function drawGraph(graph) {
   simulation.force("link")
       .links(graph.links);
 
+  addLegend();
+
   function ticked() {
     link
         .attr("x1", function(d) { return d.source.x; })
@@ -156,5 +179,43 @@ function drawGraph(graph) {
     d.fx = null;
     d.fy = null;
   }
+
+  function addLegend() {
+    var legendData = d3.scaleOrdinal()
+      .domain(["GOOD - connected to Command N Control (CNC) node", "BAD - bad response", "MISSING - not connected to CNC but known to peers via libp2p"])
+      .range([ '#1f77b4', '#aec7e8', '#ff7f0e' ]);
+
+    var svg = d3.select("svg");
+
+    var legend = svg.append("g")
+      .attr("class", "legend")
+      .attr("transform", "translate(20,20)")
+
+    var legendRect = legend
+      .selectAll('g')
+      .data(legendData.domain());
+
+    var legendRectE = legendRect.enter()
+      .append("g")
+      .attr("transform", function(d,i){
+        return 'translate(0, ' + (i * 20) + ')';
+      });
+
+    legendRectE
+      .append('path')
+      .attr("d", d3.symbol().type(d3.symbolCircle))
+      .style("fill", function (d,i) {
+          return legendData(i);
+      });
+
+    legendRectE
+      .append("text")
+      .attr("x", 10)
+      .attr("y", 5)
+      .text(function (d) {
+          return d;
+      });
+
+  } // end addLegend()
 
 }
