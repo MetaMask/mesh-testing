@@ -23,6 +23,26 @@ function setupDom({ container, action }) {
       stroke: #fff;
       stroke-width: 1.5px;
     }
+
+    button.refresh {
+      width: 120px;
+      height: 30px;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 3px;
+      outline: none;
+      border: 0;
+      cursor: pointer;
+    }
+
+    button.refresh:hover {
+      background-color: green;
+    }
+
+    .legend {
+      font-family: "Arial", sans-serif;
+      font-size: 11px;
+    }
     `
   )
   document.head.appendChild(style)
@@ -35,7 +55,8 @@ function setupDom({ container, action }) {
 
   // action button
   const button = document.createElement('button')
-  button.innerText = 'refresh graph'
+  button.innerText = 'Refresh Graph'
+  button.setAttribute("class", "refresh")
   button.addEventListener('click', action)
   container.appendChild(button)
 }
@@ -83,12 +104,12 @@ function drawGraph(graph) {
   //     width = +svg.attr("width"),
   //     height = +svg.attr("height");
 
+
   var width = 960
   var height = 600
   var svg = d3.select("body").append("svg")
     .attr("width", width)
     .attr("height", height)
-
 
   // var color = d3.scaleOrdinal(d3.schemeCategory20);
 
@@ -128,6 +149,8 @@ function drawGraph(graph) {
   simulation.force("link")
       .links(graph.links);
 
+  addLegend();
+
   function ticked() {
     link
         .attr("x1", function(d) { return d.source.x; })
@@ -155,6 +178,97 @@ function drawGraph(graph) {
     if (!d3.event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
+  }
+
+  function addLegend() {
+    var legendData = d3.scaleOrdinal()
+      .domain(["GOOD - connected to Command N Control (CNC) node", "BAD - bad response", "MISSING - not connected to CNC but known to peers via libp2p"])
+      .range([ '#1f77b4', '#aec7e8', '#ff7f0e' ]);
+
+    var svg = d3.select("svg");
+
+    var legend = svg.append("g")
+      .attr("class", "legend")
+      .attr("transform", "translate(20,20)")
+
+    var legendRect = legend
+      .selectAll('g')
+      .data(legendData.domain());
+
+    var legendRectE = legendRect.enter()
+      .append("g")
+      .attr("transform", function(d,i){
+        return 'translate(0, ' + (i * 20) + ')';
+      });
+
+    legendRectE
+      .append('path')
+      .attr("d", d3.symbol().type(d3.symbolCircle))
+      .style("fill", function (d,i) {
+          return legendData(i);
+      });
+
+    legendRectE
+      .append("text")
+      .attr("x", 10)
+      .attr("y", 5)
+      .text(function (d) {
+          return d;
+      });
+
+  } // end addLegend()
+
+  // Inline d3 legend extension (require wasn't working right)
+  // d3.legend.js
+  // (C) 2012 ziggy.jonsson.nyc@gmail.com
+  // MIT licence
+  d3.legend = function(g) {
+    g.each(function() {
+      var g= d3.select(this),
+          items = {},
+          svg = d3.select(g.property("nearestViewportElement")),
+          legendPadding = g.attr("data-style-padding") || 5,
+          lb = g.selectAll(".legend-box").data([true]),
+          li = g.selectAll(".legend-items").data([true])
+
+      lb.enter().append("rect").classed("legend-box",true)
+      li.enter().append("g").classed("legend-items",true)
+
+      svg.selectAll("[data-legend]").each(function() {
+          var self = d3.select(this)
+          items[self.attr("data-legend")] = {
+            pos : self.attr("data-legend-pos") || this.getBBox().y,
+            color : self.attr("data-legend-color") != undefined ? self.attr("data-legend-color") : self.style("fill") != 'none' ? self.style("fill") : self.style("stroke")
+          }
+        })
+
+      items = d3.entries(items).sort(function(a,b) { return a.value.pos-b.value.pos})
+
+      li.selectAll("text")
+          .data(items,function(d) { return d.key})
+          .call(function(d) { d.enter().append("text")})
+          .call(function(d) { d.exit().remove()})
+          .attr("y",function(d,i) { return i+"em"})
+          .attr("x","1em")
+          .text(function(d) { ;return d.key})
+
+      li.selectAll("circle")
+          .data(items,function(d) { return d.key})
+          .call(function(d) { d.enter().append("circle")})
+          .call(function(d) { d.exit().remove()})
+          .attr("cy",function(d,i) { return i-0.25+"em"})
+          .attr("cx",0)
+          .attr("r","0.4em")
+          .style("fill",function(d) { console.log(d.value.color);return d.value.color})
+
+      // Reposition and resize the box
+      var lbbox = li[0][0].getBBox()
+      lb.attr("x",(lbbox.x-legendPadding))
+          .attr("y",(lbbox.y-legendPadding))
+          .attr("height",(lbbox.height+2*legendPadding))
+          .attr("width",(lbbox.width+2*legendPadding))
+    })
+    return g
   }
 
 }
