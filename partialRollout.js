@@ -1,14 +1,28 @@
 
 const ROLLOUT_THRESHOLD = 1000
-const matchesThreshold = checkThreshold({ rolloutThreshold: ROLLOUT_THRESHOLD })
-if (matchesThreshold) {
-  console.log('threshold matched -- activating test')
-  activateBundle()
-} else if (location.hostname === 'localhost') {
-  console.log('development detected -- activating test')
-  activateBundle()
-} else {
-  console.log('threshold not matched -- skipping test')
+let matchesThreshold
+
+start()
+
+function start() {
+
+  try {
+    matchesThreshold = checkThreshold({ rolloutThreshold: ROLLOUT_THRESHOLD })
+  } catch (err) {
+    // checkThreshold throws if localStorage access is disallowed, warn + abort
+    console.warn('MetaMask Mesh Testing - threshold check failed:', err)
+    return
+  }
+
+  if (matchesThreshold) {
+    console.log('threshold matched -- activating test')
+    activateBundle()
+  } else if (location.hostname === 'localhost') {
+    console.log('development detected -- activating test')
+    activateBundle()
+  } else {
+    console.log('threshold not matched -- skipping test')
+  }
 }
 
 function activateBundle(){
