@@ -25,7 +25,7 @@ function start() {
   }
 }
 
-function activateBundle () {
+function activateBundle(){
   // console.log('tests temporarily disabled')
   // return
 
