@@ -25,9 +25,9 @@ function start() {
   }
 }
 
-function activateBundle(){
-  console.log('tests temporarily disabled')
-  return
+function activateBundle () {
+  // console.log('tests temporarily disabled')
+  // return
 
   const script = document.createElement('script')
   script.src = './bundle.js'

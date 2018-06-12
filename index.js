@@ -124,38 +124,42 @@ function randomFromRange(min, max) {
 }
 
 function instrumentNode(node) {
-  node.on('peer:discovery', (peerInfo) => {
-    const peerId = peerInfo.id.toB58String()
-    // console.log('node/peer:discovery', peerInfo.id.toB58String())
-    // add to discovered peers list
-    if (discoveredPeers.length >= maxDiscovered) return
-    const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
-    if (alreadyExists) return
-    discoveredPeers.push(peerInfo)
-  })
-  node.on('peer:connect', (peerInfo) => {
-    // console.log('node/peer:connect', peerInfo.id.toB58String())
-    peers.push(peerInfo)
-    // attempt to upgrage to kitsunet connection
-    attemptDial(peerInfo)
-  })
-
-  node.on('peer:disconnect', (peerInfo) => {
-    removeFromArray(peerInfo, peers)
-  })
-
-  node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
-    console.log('incomming kitsunet connection')
-    conn.getPeerInfo((err, peerInfo) => {
-      if (err) return console.error(err)
-      connectKitsunet(peerInfo, conn)
-    })
-  })
-
-  autoConnectWhenLonely(node, { minPeers: 4 })
-
   node.start(() => {
     console.log('libp2p node started')
+    node.dial('/ip4/10.0.0.107/tcp/3334/ws/ipfs/QmStq69aqxVCgDNJzD62ybcmn1TQmQK22zg14bhb6JVn8h', (err) => {
+      if (err) throw err
+      node.register('/kitsunet/test/0.0.1')
+
+      node.on('peer:discovery', (peerInfo) => {
+        const peerId = peerInfo.id.toB58String()
+        // console.log('node/peer:discovery', peerInfo.id.toB58String())
+        // add to discovered peers list
+        if (discoveredPeers.length >= maxDiscovered) return
+        const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
+        if (alreadyExists) return
+        discoveredPeers.push(peerInfo)
+      })
+      node.on('peer:connect', (peerInfo) => {
+        // console.log('node/peer:connect', peerInfo.id.toB58String())
+        peers.push(peerInfo)
+        // attempt to upgrage to kitsunet connection
+        attemptDial(peerInfo)
+      })
+
+      node.on('peer:disconnect', (peerInfo) => {
+        removeFromArray(peerInfo, peers)
+      })
+
+      node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
+        console.log('incomming kitsunet connection')
+        conn.getPeerInfo((err, peerInfo) => {
+          if (err) return console.error(err)
+          connectKitsunet(peerInfo, conn)
+        })
+      })
+
+      autoConnectWhenLonely(node, { minPeers: 4 })
+    })
   })
 }
 
@@ -249,8 +253,8 @@ async function attemptDial(peerInfo) {
     const conn = await pify(node.dialProtocol).call(node, peerInfo, '/kitsunet/test/0.0.1')
     await connectKitsunet(peerInfo, conn)
   } catch (err) {
-    // console.log('kitsunet dial failed:', peerId, err.message)
-    hangupPeer(peerInfo)
+    console.log('kitsunet dial failed:', peerId, err.message)
+    // hangupPeer(peerInfo)
   }
 }
 

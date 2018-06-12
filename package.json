@@ -14,7 +14,7 @@
     "express": "^4.16.2",
     "express-ws": "^3.0.0",
     "hat": "0.0.3",
-    "ipfs": "^0.27.7",
+    "ipfs": "^0.29.3",
     "libp2p": "^0.16.4",
     "libp2p-multiplex": "^0.5.1",
     "libp2p-railing": "^0.7.1",
@@ -34,7 +34,7 @@
     "browserify": "^16.1.1"
   },
   "scripts": {
-    "start": "beefy index.js:bundle.js --live",
+    "start": "beefy index.js:bundle.js",
     "build": "browserify index.js > bundle.js",
     "server": "node server.js"
   },
