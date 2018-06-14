@@ -10,6 +10,9 @@ const {
   drawGraph,
 } = require('./graph')
 
+const parallel = require('async/parallel')
+const reflect = require('async/reflect')
+
 const createNode = require('./createNode')
 
 const sec = 1000
@@ -123,11 +126,16 @@ function randomFromRange(min, max) {
   return min + Math.random() * (max - min)
 }
 
+const RENDEZVOUS_NODES = [
+  // '/dns4/tigress.kitsunet.metamask.io/tcp/443/wss/ipfs/QmZMmjMMP9VUyBkA6zFdEGmuFRdwjsiHZ3KtxMp89i7Xwv',
+  // '/dns4/viper.kitsunet.metamask.io/tcp/443/wss/ipfs/QmR6X4y3N4pHMXCPf4NaN91sk9Gwz8TvRkMebK5Fjtwgoy',
+  // '/dns4/crane.kitsunet.metamask.io/tcp/443/wss/ipfs/QmSJY8gjJYArR4u3rTjANWkSLwr75dVTjnknvdfbe7uiCi',
+  '/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
+]
 function instrumentNode(node) {
   node.start(() => {
     console.log('libp2p node started')
-    node.dial('/ip4/10.0.0.107/tcp/3334/ws/ipfs/QmStq69aqxVCgDNJzD62ybcmn1TQmQK22zg14bhb6JVn8h', (err) => {
-      if (err) throw err
+    parallel(RENDEZVOUS_NODES.map((addr) => (cb) => node.dial(addr, cb)), () => {
       node.register('/kitsunet/test/0.0.1')
 
       node.on('peer:discovery', (peerInfo) => {
@@ -139,6 +147,7 @@ function instrumentNode(node) {
         if (alreadyExists) return
         discoveredPeers.push(peerInfo)
       })
+
       node.on('peer:connect', (peerInfo) => {
         // console.log('node/peer:connect', peerInfo.id.toB58String())
         peers.push(peerInfo)
