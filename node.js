@@ -6,19 +6,21 @@ const WebSocketStar = require('libp2p-websocket-star')
 const Multiplex = require('libp2p-multiplex')
 const SECIO = require('libp2p-secio')
 const Railing = require('libp2p-railing')
-const libp2p = require('libp2p')
+const Libp2p = require('libp2p')
+const {Discovery} = require('libp2p-rendezvous')
+const series = require('async/series')
 
-class Node extends libp2p {
+class Node extends Libp2p {
   constructor (peerInfo, peerBook, options) {
     options = options || {}
     // const wrtcstar = new WebRTCStar({id: peerInfo.id})
-    const wsstar = new WebSocketStar({id: peerInfo.id})
+    // const wsstar = new WebSocketStar({id: peerInfo.id})
 
     const modules = {
       transport: [
         new WS(),
         // wrtcstar,
-        wsstar
+        // wsstar
       ],
       connection: {
         muxer: [Multiplex],
@@ -26,7 +28,7 @@ class Node extends libp2p {
       },
       discovery: [
         // wrtcstar.discovery,
-        wsstar.discovery
+        // wsstar.discovery
       ]
     }
 
@@ -36,6 +38,30 @@ class Node extends libp2p {
     }
 
     super(modules, peerInfo, peerBook, options)
+    this._rndvzDiscovery = new Discovery(this)
+    this._rndvzDiscovery.on('peer', (peerInfo) => this.emit('peer:discovery', peerInfo))
+  }
+
+  start(callback) {
+    series([
+      (cb) => super.start(cb),
+      (cb) => this._rndvzDiscovery.start(cb)
+    ], callback)
+  }
+
+  stop(callback) {
+    series([
+      (cb) => this._rndvzDiscovery.stop(cb),
+      (cb) => super.stop(cb)
+    ], callback)
+  }
+
+  register(ns, callback) {
+    this._rndvzDiscovery.register(ns, callback)
+  }
+
+  unregister(ns, callback) {
+    this._rndvzDiscovery.unregister(ns, callback)
   }
 }
 

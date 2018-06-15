@@ -1,5 +1,5 @@
 
-const ROLLOUT_THRESHOLD = 1000
+const ROLLOUT_THRESHOLD = 200
 let matchesThreshold
 
 start()
@@ -26,8 +26,8 @@ function start() {
 }
 
 function activateBundle(){
-  console.log('tests temporarily disabled')
-  return
+  // console.log('tests temporarily disabled')
+  // return
 
   const script = document.createElement('script')
   script.src = './bundle.js'
