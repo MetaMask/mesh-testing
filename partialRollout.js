@@ -1,5 +1,5 @@
 
-const ROLLOUT_THRESHOLD = 200
+const ROLLOUT_THRESHOLD = 2000
 let matchesThreshold
 
 start()
@@ -36,6 +36,9 @@ function activateBundle(){
 }
 
 function checkThreshold({ rolloutThreshold }){
+  // temporarily disable
+  return false
+
   // load or setup id
   let id = localStorage.getItem('id')
   if (!id) {
