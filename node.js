@@ -1,8 +1,8 @@
 'use strict'
 
 const WS = require('libp2p-websockets')
-const WebRTCStar = require('libp2p-webrtc-star')
-const WebSocketStar = require('libp2p-websocket-star')
+// const WebRTCStar = require('libp2p-webrtc-star')
+// const WebSocketStar = require('libp2p-websocket-star')
 const Multiplex = require('libp2p-multiplex')
 const SECIO = require('libp2p-secio')
 const Railing = require('libp2p-railing')
