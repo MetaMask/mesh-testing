@@ -90,23 +90,19 @@ async function start(){
     // setup network graph
     setupDom({
       container: document.body,
-      action: async () => {
-        // get state
-        console.log('getting network state')
-        const state = await server.getNetworkState()
-        console.log('updating graph')
-        const graph = buildGraph(state)
-        // clear graph
-        const svg = document.querySelector('svg')
-        if (svg) svg.remove()
-        // draw graph
-        drawGraph(graph)
-      }
+      action: updateNetworkStateAndGraph,
     })
+    await updateNetworkStateAndGraph()
   }
 
   // in admin mode, dont boot libp2p node
   if (adminCode) return
+
+  // submit network state to backend on interval
+  setInterval(async () => {
+    const state = getNetworkState()
+    await server.submitNetworkState(state)
+  }, 5 * sec)
 
   // force refresh every hour so as to not lose nodes
   restart(hour)
@@ -120,6 +116,19 @@ async function start(){
 
   // start node
   instrumentNode(node)
+
+  async function updateNetworkStateAndGraph () {
+    // get state
+    console.log('getting network state')
+    const state = await server.getNetworkState()
+    console.log('updating graph')
+    const graph = buildGraph(state.clients)
+    // clear graph
+    const svg = document.querySelector('svg')
+    if (svg) svg.remove()
+    // draw graph
+    drawGraph(graph)
+  }
 }
 
 function randomFromRange(min, max) {
