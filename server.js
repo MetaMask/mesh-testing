@@ -11,6 +11,8 @@ const min = 60 * sec
 const heartBeatInterval = 10 * sec
 const remoteCallTimeout = 5 * sec
 
+const networkState = { clients: {} }
+
 const secret = hat(256)
 console.log('secret:', secret)
 
@@ -61,8 +63,12 @@ setInterval(() => {
       // disconnect client
       const index = clients.indexOf(client)
       if (index === -1) return
+      // remove peer
       clients.splice(index, 1)
       console.log('peer disconnected')
+      const peerId = client.peerId
+      delete networkState.clients[peerId]
+
       console.log(`${clients.length} peers connected`)
     })
   }, remoteCallTimeout)
@@ -87,6 +93,11 @@ async function handleClient(stream, req) {
     ping: async () => 'pong',
     setPeerId: (peerId) => {
       client.peerId = peerId
+    },
+    submitNetworkState: (peers) => {
+      const peerId = client.peerId
+      if (!peerId) return
+      networkState.clients[peerId] = { peers }
     }
   })
 
@@ -110,16 +121,7 @@ async function handleAdmin(stream, request) {
     ping: async () => 'pong',
     // server data
     getPeerCount: async () => clients.length,
-    getNetworkState: async () => {
-      const results = {}
-      await Promise.all(clients.map(async (client) => {
-        const peerId = client.peerId
-        if (!peerId) return
-        const peers = await sendCallWithTimeout(client.rpc, 'getNetworkState', [], 20 * sec)
-        results[peerId] = { peers }
-      }))
-      return results
-    },
+    getNetworkState: async () => networkState,
     // broadcast
     send: async (method, args) => {
       console.log(`broadcasting "${method}" with (${args}) to ${clients.length} client(s)`)
