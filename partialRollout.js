@@ -36,9 +36,6 @@ function activateBundle(){
 }
 
 function checkThreshold({ rolloutThreshold }){
-  // temporarily disable
-  return false
-
   // load or setup id
   let id = localStorage.getItem('id')
   if (!id) {
