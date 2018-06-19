@@ -20,10 +20,10 @@ function createNode (callback) {
 
     const node = new Node(peerInfo, null, {
       relay: {
-        enabled: true,
-        hop: {
-          enabled: true
-        }
+        enabled: true
+        // hop: {
+        //   enabled: true
+        // }
       }
     })
     node.idStr = peerIdStr

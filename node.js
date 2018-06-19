@@ -18,7 +18,7 @@ class Node extends Libp2p {
 
     const modules = {
       transport: [
-        new WS(),
+        new WS()
         // wrtcstar,
         // wsstar
       ],
@@ -39,28 +39,14 @@ class Node extends Libp2p {
 
     super(modules, peerInfo, peerBook, options)
     this._rndvzDiscovery = new Discovery(this)
-    this._rndvzDiscovery.on('peer', (peerInfo) => this.emit('peer:discovery', peerInfo))
+    modules.discovery.push(this._rndvzDiscovery)
   }
 
-  start(callback) {
-    series([
-      (cb) => super.start(cb),
-      (cb) => this._rndvzDiscovery.start(cb)
-    ], callback)
-  }
-
-  stop(callback) {
-    series([
-      (cb) => this._rndvzDiscovery.stop(cb),
-      (cb) => super.stop(cb)
-    ], callback)
-  }
-
-  register(ns, callback) {
+  register (ns, callback) {
     this._rndvzDiscovery.register(ns, callback)
   }
 
-  unregister(ns, callback) {
+  unregister (ns, callback) {
     this._rndvzDiscovery.unregister(ns, callback)
   }
 }
