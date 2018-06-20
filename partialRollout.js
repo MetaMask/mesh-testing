@@ -15,18 +15,18 @@ function start() {
   }
 
   if (matchesThreshold) {
-    console.log('threshold matched -- activating test')
+    console.log('MetaMask Mesh Testing - threshold matched -- activating test')
     activateBundle()
   } else if (location.hostname === 'localhost') {
-    console.log('development detected -- activating test')
+    console.log('MetaMask Mesh Testing - development detected -- activating test')
     activateBundle()
   } else {
-    console.log('threshold not matched -- skipping test')
+    console.log('MetaMask Mesh Testing - threshold not matched -- skipping test')
   }
 }
 
 function activateBundle(){
-  // console.log('tests temporarily disabled')
+  // console.log('MetaMask Mesh Testing - tests temporarily disabled')
   // return
 
   const script = document.createElement('script')
