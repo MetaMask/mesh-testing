@@ -4,16 +4,17 @@ const qs = require('qs')
 const pify = require('pify')
 const pullStreamToStream = require('pull-stream-to-stream')
 const endOfStream = require('end-of-stream')
+const parallel = require('async/parallel')
+const reflect = require('async/reflect')
+const createHttpClientStream = require('http-poll-stream/src/client')
+
 const {
   setupDom,
   buildGraph,
   drawGraph,
 } = require('./graph')
 
-const parallel = require('async/parallel')
-const reflect = require('async/reflect')
-
-const createNode = require('./createNode')
+const createLibp2pNode = require('./createNode')
 
 const sec = 1000
 const min = 60 * sec
@@ -75,16 +76,22 @@ async function start(){
   // parse params
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
   const adminCode = opts.admin || ''
-  if (adminCode) console.log(`MetaMask Mesh Testing - connecting with adminCode: ${adminCode}`)
-  const host = ((!opts.prod && location.hostname === 'localhost') ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
-  const ws = websocket(`${host}/${adminCode}`)
-  ws.on('error', console.error)
-
-  let server = await znode(ws, clientRpc)
-  global.server = server
-  console.log('MetaMask Mesh Testing - connected!')
 
   if (adminCode) {
+    await setupAdmin()
+  } else {
+    await setupClient()
+  }
+
+  async function setupAdmin () {
+    console.log(`MetaMask Mesh Testing - connecting with adminCode: ${adminCode}`)
+    const serverConnection = connectToTelemetryServer(adminCode)
+    global.serverConnection = serverConnection
+    // return
+    let server = await znode(serverConnection, clientRpc)
+    global.server = server
+    console.log('MetaMask Mesh Testing - connected!')
+
     // keep connection alive
     setInterval(() => server.ping(), 10 * sec)
     // setup network graph
@@ -93,29 +100,37 @@ async function start(){
       action: updateNetworkStateAndGraph,
     })
     await updateNetworkStateAndGraph()
+
+    // in admin mode, dont boot libp2p node
   }
 
-  // in admin mode, dont boot libp2p node
-  if (adminCode) return
+  async function setupClient () {
+    // configure libp2p client
+    const node = await pify(createLibp2pNode)()
+    global.node = node
+    const peerId = node.idStr
+    // start libp2p node
+    await pify(startLibp2pNode)(node)
+    console.log('MetaMask Mesh Testing - libp2p node started')
 
-  // submit network state to backend on interval
-  setInterval(async () => {
-    const state = getNetworkState()
-    await server.submitNetworkState(state)
-  }, 5 * sec)
+    // connect to telemetry server
+    const serverConnection = connectToTelemetryServer()
+    global.serverConnection = serverConnection
+    // return
+    let server = await znode(serverConnection, clientRpc)
+    global.server = server
+    console.log('MetaMask Mesh Testing - connected to telemetry!')
+    await server.setPeerId(peerId)
 
-  // force refresh every hour so as to not lose nodes
-  restart(hour)
+    // submit network state to backend on interval
+    setInterval(async () => {
+      const state = getNetworkState()
+      await server.submitNetworkState(state)
+    }, 5 * sec)
 
-  const node = await pify(createNode)()
-  global.node = node
-
-  // report libp2p id
-  const peerId = node.idStr
-  await server.setPeerId(peerId)
-
-  // start node
-  instrumentNode(node)
+    // schedule refresh every hour so everyone stays hot and fresh
+    restart(hour)
+  }
 
   async function updateNetworkStateAndGraph () {
     // get state
@@ -129,6 +144,20 @@ async function start(){
     // draw graph
     drawGraph(graph)
   }
+
+  function connectToTelemetryServer(adminCode) {
+    const devMode = (!opts.prod && location.hostname === 'localhost')
+    // const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
+    // const ws = websocket(`${host}/${adminCode}`)
+    // ws.on('error', console.error)
+    // return ws
+    const connectionId = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
+    const host = devMode ? 'http://localhost:9000' : 'https://telemetry.metamask.io'
+    const uri = adminCode ? `${host}/${adminCode}/stream/${connectionId}` : `${host}/stream/${connectionId}`
+    const clientStream = createHttpClientStream({ uri })
+    clientStream.on('error', console.error)
+    return clientStream
+  }
 }
 
 function randomFromRange(min, max) {
@@ -141,9 +170,10 @@ const RENDEZVOUS_NODES = [
   // '/dns4/crane.kitsunet.metamask.io/tcp/443/wss/ipfs/QmSJY8gjJYArR4u3rTjANWkSLwr75dVTjnknvdfbe7uiCi',
   '/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
 ]
-function instrumentNode(node) {
+function startLibp2pNode(node, cb) {
   node.start(() => {
-    console.log('MetaMask Mesh Testing - libp2p node started')
+    cb()
+
     parallel(RENDEZVOUS_NODES.map((addr) => (cb) => node.dial(addr, cb)), () => {
       node.register('/kitsunet/test/0.0.1')
 

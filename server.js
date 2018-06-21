@@ -1,9 +1,14 @@
 const express = require('express')
+const cors = require('cors')
 const expressWebSocket = require('express-ws')
 const websocketStream = require('websocket-stream/stream')
 const znode = require('znode')
 const hat = require('hat')
+const createHttpClientHandler = require('./src/server/http-poll-stream')
+
+
 const app = express()
+app.use(cors())
 
 const sec = 1000
 const min = 60 * sec
@@ -22,13 +27,34 @@ expressWebSocket(app, null, {
 
 const clients = []
 
+//
+// setup client
+//
+
+app.post('/stream/:connectionId', createHttpClientHandler({
+  onNewConnection: ({ connectionStream, req }) => {
+    handleClient(connectionStream, req)
+    // connectionStream.pipe(process.stdout)
+    // connectionStream._writable.pipe(process.stdout)
+  }
+}))
+
 app.ws('/', function(ws, req) {
   const stream = websocketStream(ws, {
     binary: true,
   })
-
   handleClient(stream, req)
 })
+
+//
+// setup admin
+//
+
+app.post(`/${secret}/stream/:connectionId`, createHttpClientHandler({
+  onNewConnection: ({ connectionStream, req }) => {
+    handleAdmin(connectionStream, req)
+  }
+}))
 
 app.ws(`/${secret}`, function(ws, req) {
   const stream = websocketStream(ws, {
@@ -75,7 +101,6 @@ setInterval(() => {
 }, heartBeatInterval)
 
 async function handleClient(stream, req) {
-
   // handle disconnect
   stream.on('error', (error) => {
     console.log('client disconnected - stream end')
