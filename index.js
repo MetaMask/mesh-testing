@@ -20,6 +20,11 @@ const sec = 1000
 const min = 60 * sec
 const hour = 60 * min
 
+const networkStateSubmitInterval = 30 * sec
+const peerPingInterval = 1 * min
+const peerPingTimeout = 20 * sec
+const autoConnectAttemptInterval = 10 * sec
+
 const kitsunetPeers = []
 global.kitsunetPeers = kitsunetPeers
 
@@ -92,8 +97,6 @@ async function start(){
     global.server = server
     console.log('MetaMask Mesh Testing - connected!')
 
-    // keep connection alive
-    setInterval(() => server.ping(), 10 * sec)
     // setup network graph
     setupDom({
       container: document.body,
@@ -123,10 +126,11 @@ async function start(){
     await server.setPeerId(peerId)
 
     // submit network state to backend on interval
+    // this also keeps the connection alive
     setInterval(async () => {
       const state = getNetworkState()
       await server.submitNetworkState(state)
-    }, 5 * sec)
+    }, networkStateSubmitInterval)
 
     // schedule refresh every hour so everyone stays hot and fresh
     restart(hour)
@@ -252,13 +256,13 @@ async function keepPinging(peer) {
   while (networkState.has(peer.id)) {
     const ping = await pingKitsunetPeer(peer)
     updatePeerState(peer.id, { ping })
-    await timeout(1 * min)
+    await timeout(peerPingInterval)
   }
 }
 
 function pingKitsunetPeerWithTimeout(peer) {
   return Promise.race([
-    timeout(10 * sec, 'timeout'),
+    timeout(peerPingTimeout, 'timeout'),
     pingKitsunetPeer(peer),
   ])
 }
@@ -280,7 +284,7 @@ function autoConnectWhenLonely(node, { minPeers }) {
     const peerId = peerInfo.id.toB58String()
     console.log('MetaMask Mesh Testing - kitsunet random dial:', peerId)
     attemptDial(peerInfo)
-  }, 10 * sec)
+  }, autoConnectAttemptInterval)
 }
 
 async function attemptDial(peerInfo) {

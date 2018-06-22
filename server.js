@@ -13,8 +13,8 @@ app.use(cors())
 const sec = 1000
 const min = 60 * sec
 
-const heartBeatInterval = 10 * sec
-const remoteCallTimeout = 5 * sec
+const heartBeatInterval = 1 * min
+const remoteCallTimeout = 45 * sec
 
 const networkState = { clients: {} }
 
