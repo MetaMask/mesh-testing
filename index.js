@@ -172,7 +172,8 @@ const RENDEZVOUS_NODES = [
   // '/dns4/tigress.kitsunet.metamask.io/tcp/443/wss/ipfs/QmZMmjMMP9VUyBkA6zFdEGmuFRdwjsiHZ3KtxMp89i7Xwv',
   // '/dns4/viper.kitsunet.metamask.io/tcp/443/wss/ipfs/QmR6X4y3N4pHMXCPf4NaN91sk9Gwz8TvRkMebK5Fjtwgoy',
   // '/dns4/crane.kitsunet.metamask.io/tcp/443/wss/ipfs/QmSJY8gjJYArR4u3rTjANWkSLwr75dVTjnknvdfbe7uiCi',
-  '/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
+  // '/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
+  '/ip4/127.0.0.1/tcp/30334/ws/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
 ]
 function startLibp2pNode(node, cb) {
   node.start(() => {
@@ -183,7 +184,7 @@ function startLibp2pNode(node, cb) {
 
       node.on('peer:discovery', (peerInfo) => {
         const peerId = peerInfo.id.toB58String()
-        // console.log('MetaMask Mesh Testing - node/peer:discovery', peerInfo.id.toB58String())
+        console.log('MetaMask Mesh Testing - node/peer:discovery', peerInfo.id.toB58String())
         // add to discovered peers list
         if (discoveredPeers.length >= maxDiscovered) return
         const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
@@ -192,7 +193,7 @@ function startLibp2pNode(node, cb) {
       })
 
       node.on('peer:connect', (peerInfo) => {
-        // console.log('MetaMask Mesh Testing - node/peer:connect', peerInfo.id.toB58String())
+        console.log('MetaMask Mesh Testing - node/peer:connect', peerInfo.id.toB58String())
         peers.push(peerInfo)
         // attempt to upgrage to kitsunet connection
         attemptDial(peerInfo)
@@ -296,13 +297,14 @@ async function attemptDial(peerInfo) {
   // check if already connected
   const alreadyConnected = networkState.has(peerId)
   if (alreadyConnected) {
-    // console.log('MetaMask Mesh Testing - kitsunet already connected', peerId)
+    console.log('MetaMask Mesh Testing - kitsunet already connected', peerId)
     return
   }
   // attempt connection
   try {
-    // console.log('MetaMask Mesh Testing - kitsunet dial', peerId)
+    console.log('MetaMask Mesh Testing - kitsunet dial', peerId)
     const conn = await pify(node.dialProtocol).call(node, peerInfo, '/kitsunet/test/0.0.1')
+    console.log('MetaMask Mesh Testing - kitsunet dial success', peerId)
     await connectKitsunet(peerInfo, conn)
   } catch (err) {
     console.log('MetaMask Mesh Testing - kitsunet dial failed:', peerId, err.message)
@@ -313,7 +315,7 @@ async function attemptDial(peerInfo) {
 function hangupPeer(peerInfo) {
   const peerId = peerInfo.id.toB58String()
   node.hangUp(peerInfo, () => {
-    // console.log('MetaMask Mesh Testing - did hangup', peerId)
+    console.log('MetaMask Mesh Testing - did hangup', peerId)
   })
 }
 
