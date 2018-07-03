@@ -18,12 +18,13 @@ function createNode (callback) {
     // wrtc
     // peerInfo.multiaddrs.add(`/dns4/wrtc-star.discovery.libp2p.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`)
 
+    peerInfo.multiaddrs.add(`/ipfs/${peerIdStr}/p2p-webrtc-circuit`)
     const node = new Node(peerInfo, null, {
       relay: {
         enabled: true,
-        hop: {
-          enabled: true
-        }
+        // hop: {
+        //   enabled: true
+        // }
       }
     })
     node.idStr = peerIdStr

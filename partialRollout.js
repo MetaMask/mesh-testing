@@ -1,5 +1,5 @@
 
-const ROLLOUT_THRESHOLD = 2000
+const ROLLOUT_THRESHOLD = 4000
 let matchesThreshold
 
 start()
