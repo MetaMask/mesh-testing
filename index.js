@@ -7,14 +7,10 @@ const endOfStream = require('end-of-stream')
 const parallel = require('async/parallel')
 const reflect = require('async/reflect')
 const createHttpClientStream = require('http-poll-stream/src/client')
-
-const {
-  setupDom,
-  buildGraph,
-  drawGraph,
-} = require('./graph')
+const ObservableStore = require('obs-store')
 
 const createLibp2pNode = require('./createNode')
+const startAdminApp = require('./src/admin/index')
 
 const sec = 1000
 const min = 60 * sec
@@ -97,12 +93,14 @@ async function start(){
     global.server = server
     console.log('MetaMask Mesh Testing - connected!')
 
-    // setup network graph
-    setupDom({
-      container: document.body,
-      action: updateNetworkStateAndGraph,
-    })
-    await updateNetworkStateAndGraph()
+    const store = new ObservableStore()
+    startAdminApp({ store })
+
+    while (true) {
+      const clientData = await updateNetworkStateAndGraph()
+      store.updateState({ clientData })
+      await timeout(8000)
+    }
 
     // in admin mode, dont boot libp2p node
   }
@@ -138,15 +136,10 @@ async function start(){
 
   async function updateNetworkStateAndGraph () {
     // get state
-    console.log('MetaMask Mesh Testing - getting network state')
+    console.log('MetaMask Mesh Testing - fetching network state')
     const state = await server.getNetworkState()
-    console.log('MetaMask Mesh Testing - updating graph')
-    const graph = buildGraph(state.clients)
-    // clear graph
-    const svg = document.querySelector('svg')
-    if (svg) svg.remove()
-    // draw graph
-    drawGraph(graph)
+    console.log(state)
+    return state.clients
   }
 
   function connectToTelemetryServer(adminCode) {
