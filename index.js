@@ -110,9 +110,7 @@ async function start(){
 
     // ping server to trigger pushes
     while (true) {
-      console.log('pinging server...')
       await server.ping()
-      console.log('server pinged ok')
       await timeout(networkStateSubmitInterval)
     }
 
