@@ -109,7 +109,7 @@ setInterval(() => {
       delete networkState.clients[clientId]
     }
   })
-  networkStore.setState(networkState)
+  networkStore.putState(networkState)
 }, 10 * sec)
 
 function disconnectClient(clientId) {
@@ -124,7 +124,7 @@ function disconnectClient(clientId) {
   // update network state
   const networkState = networkStore.getState()
   delete networkState.clients[clientId]
-  networkStore.setState(networkState)
+  networkStore.putState(networkState)
   // report current connected count
   console.log(`${clients.length} peers connected`)
 }
@@ -151,7 +151,7 @@ async function handleClient(stream, req) {
       // update network state
       const networkState = networkStore.getState()
       networkState.clients[peerId] = { peers: [] }
-      networkStore.setState(networkState)
+      networkStore.putState(networkState)
     },
     submitNetworkState: (peers) => {
       const peerId = client.peerId
@@ -159,7 +159,7 @@ async function handleClient(stream, req) {
       // update network state
       const networkState = networkStore.getState()
       networkState.clients[peerId] = { peers }
-      networkStore.setState(networkState)
+      networkStore.putState(networkState)
     },
     disconnect: () => {
       console.log(`client "${client.peerId}" sent disconnect request`)
