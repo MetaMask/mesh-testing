@@ -28,11 +28,10 @@ expressWebSocket(app, null, {
 
 const clients = []
 
-//
+// report stack for unhandled promise rejections
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
   console.error(reason)
-  // application specific logging, throwing an error, or other logic here
 });
 
 //
@@ -42,8 +41,6 @@ process.on('unhandledRejection', (reason, p) => {
 app.post('/stream/:connectionId', createHttpClientHandler({
   onNewConnection: ({ connectionStream, req }) => {
     handleClient(connectionStream, req)
-    // connectionStream.pipe(process.stdout)
-    // connectionStream._writable.pipe(process.stdout)
   }
 }))
 
@@ -95,20 +92,27 @@ setInterval(() => {
     clients.slice().forEach((client) => {
       if (client.isAlive) return
       // disconnect client
-      const index = clients.indexOf(client)
-      if (index === -1) return
-      // remove peer
-      clients.splice(index, 1)
-      console.log('peer disconnected')
-      const peerId = client.peerId
-      // update network state
-      const networkState = networkStore.getState()
-      delete networkState.clients[peerId]
-      networkStore.updateState(networkState)
-      console.log(`${clients.length} peers connected`)
+      disconnectClient(client.peerId)
     })
   }, remoteCallTimeout)
 }, heartBeatInterval)
+
+function disconnectClient(clientId) {
+  const index = clients.findIndex(client => client.peerId === clientId)
+  console.log(`disconnecting client "${clientId}"`)
+  if (index === -1) return console.log(`unable to find client "${clientId}"`)
+  const client = clients[index]
+  // remove peer
+  clients.splice(index, 1)
+  // destroy stream
+  client.stream.destroy()
+  // update network state
+  const networkState = networkStore.getState()
+  delete networkState.clients[clientId]
+  networkStore.updateState(networkState)
+  // report current connected count
+  console.log(`${clients.length} peers connected`)
+}
 
 async function handleClient(stream, req) {
   // handle disconnect
@@ -123,6 +127,7 @@ async function handleClient(stream, req) {
   const client = {
     isAlive: true,
     ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+    stream,
   }
   client.rpc = await znode(stream, {
     ping: async () => 'pong',
@@ -140,7 +145,11 @@ async function handleClient(stream, req) {
       const networkState = networkStore.getState()
       networkState.clients[peerId] = { peers }
       networkStore.updateState(networkState)
-    }
+    },
+    disconnect: () => {
+      console.log(`client "${client.peerId}" sent disconnect request`)
+      disconnectClient(client.peerId)
+    },
   })
 
   clients.push(client)
