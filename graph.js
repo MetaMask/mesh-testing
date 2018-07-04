@@ -1,5 +1,10 @@
 // const graph = buildGraph(data)
 // drawGraph(graph)
+const h = require('virtual-dom/h')
+const svg = require('virtual-dom/virtual-hyperscript/svg')
+const diff = require('virtual-dom/diff')
+const patch = require('virtual-dom/patch')
+const createElement = require('virtual-dom/create-element')
 
 const d3 = require('d3')
 
@@ -10,6 +15,20 @@ module.exports = {
 }
 
 function setupDom({ container, action }) {
+
+  let tree = render(h('loading...'))
+  let rootNode = createElement(tree)
+  container.appendChild(rootNode)
+
+  function rerender(newTree) {
+    // const newTree = render(state)
+    const patches = diff(tree, newTree)
+    rootNode = patch(rootNode, patches)
+    tree = newTree
+  }
+
+  return rerender
+
   // svg styles
   const style = document.createElement('style')
   style.textContent = (
@@ -100,9 +119,14 @@ function buildGraph(data) {
 
 function drawGraph(graph) {
 
-  // var svg = d3.select("svg"),
-  //     width = +svg.attr("width"),
-  //     height = +svg.attr("height");
+// <g class="links">
+//   <line stroke-width="1.4142135623730951" x1="342.9665253160333" y1="450.5750273281297" x2="365.3450900870052" y2="427.9821861292355"></line>
+// </g>
+// <g class="nodes">
+// <circle r="5" fill="#1f77b4" cx="497.1573540662415" cy="296.85932870507446">
+//   <title>QmbfiPLzd75iiqRzHmnj5tbPTozvWykKcnHAyt7rTL6pMr</title>
+// </circle>
+// </g>
 
 
   var width = 960
