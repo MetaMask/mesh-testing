@@ -16,7 +16,7 @@ const sec = 1000
 const min = 60 * sec
 const hour = 60 * min
 
-const networkStateSubmitInterval = 30 * sec
+const networkStateSubmitInterval = 15 * sec
 const peerPingInterval = 1 * min
 const peerPingTimeout = 20 * sec
 const autoConnectAttemptInterval = 10 * sec
@@ -37,12 +37,12 @@ global.networkState = networkState
 
 const clientRpc = {
   ping: () => 'pong',
-  refresh: () => window.location.reload(),
+  refresh: () => restart(),
   refreshShortDelay: () => {
-    restart(randomFromRange(5 * sec, 10 * sec))
+    restartWithDelay(randomFromRange(5 * sec, 10 * sec))
   },
   refreshLongDelay: () => {
-    restart(randomFromRange(2 * min, 10 * min))
+    restartWithDelay(randomFromRange(2 * min, 10 * min))
   },
   eval: (src) => {
     console.log(`MetaMask Mesh Testing - evaling "${src}"`)
@@ -137,7 +137,7 @@ async function start(){
     }, networkStateSubmitInterval)
 
     // schedule refresh every hour so everyone stays hot and fresh
-    restart(hour)
+    restartWithDelay(hour)
   }
 
   function connectToTelemetryServerViaPost(adminCode) {
@@ -318,9 +318,16 @@ function hangupPeer(peerInfo) {
   })
 }
 
-function restart(timeoutDuration) {
+function restartWithDelay(timeoutDuration) {
   console.log(`MetaMask Mesh Testing - restarting in ${timeoutDuration/1000} sec...`)
-  setTimeout(() => window.location.reload(), timeoutDuration)
+  setTimeout(restart, timeoutDuration)
+}
+
+function restart() {
+  console.log('restarting...')
+  global.server.disconnect()
+  // leave 3 sec for network activity
+  setTimeout(() => window.location.reload(), 3 * sec)
 }
 
 function removeFromArray(item, array) {

@@ -45,7 +45,7 @@ function startApp(opts = {}) {
     // single node
     restartNode: async (nodeId) => {
       console.log(`START sending "refreshShortDelay" to ${nodeId}`)
-      const result = await global.server.sendToClient(nodeId, 'refreshShortDelay', [])
+      const result = await global.server.sendToClient(nodeId, 'refresh', [])
       console.log(`END sending "refreshShortDelay" to ${nodeId}: ${result}`)
     },
     pingNode: async (nodeId) => {
