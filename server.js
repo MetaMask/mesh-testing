@@ -102,7 +102,7 @@ setInterval(() => {
 // but i can see that it somehow is not
 setInterval(() => {
   const networkState = networkStore.getState()
-  Object.keys(networkState.clients).forEach((cliendId) => {
+  Object.keys(networkState.clients).forEach((clientId) => {
     const client = clients.find(c => c.id === clientId)
     if (!client) {
       console.log(`orphaned client found, cleaning up: ${cliendId}`)
