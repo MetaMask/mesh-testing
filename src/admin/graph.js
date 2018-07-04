@@ -3,8 +3,9 @@ const s = require('virtual-dom/virtual-hyperscript/svg')
 
 module.exports = renderGraph
 
-function renderGraph(state) {
-  const { nodes, links } = state
+function renderGraph(state, actions) {
+  const { graph } = state
+  const { nodes, links } = graph
 
   return (
 
@@ -12,21 +13,24 @@ function renderGraph(state) {
       width: 960,
       height: 600,
     }, [
-      s('g', { class: 'links' }, links.map(renderLink)),
-      s('g', { class: 'nodes' }, nodes.map(renderNode)),
+      s('g', { class: 'links' }, links.map((link) => renderLink(link, state, actions))),
+      s('g', { class: 'nodes' }, nodes.map((node) => renderNode(node, state, actions))),
     ])
 
   )
 }
 
-function renderNode(node) {
+function renderNode(node, state, actions) {
+  const { selectedNode } = state
+  const isSelected = selectedNode === node.id
   return (
 
     s('circle', {
-      r: '5',
+      r: isSelected ? 10 : 5,
       fill: node.color,
       cx: node.x,
       cy: node.y,
+      onclick: () => actions.selectNode(node.id)
     }, [
       s('title', `${node.id}`),
     ])
@@ -34,7 +38,7 @@ function renderNode(node) {
   )
 }
 
-function renderLink(link) {
+function renderLink(link, state, actions) {
   const { source, target } = link
   return (
 

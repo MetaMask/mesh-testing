@@ -34,18 +34,96 @@ function startApp(opts = {}) {
     rerender()
   })
 
+  let selectedNode = undefined
+  const actions = {
+    // ui state
+    selectNode: (nodeId) => {
+      selectedNode = nodeId
+      rerender()
+    },
+    // network state
+    // single node
+    restartNode: async (nodeId) => {
+      console.log(`START sending "refreshShortDelay" to ${nodeId}`)
+      const result = await global.server.sendToClient(nodeId, 'refreshShortDelay', [])
+      console.log(`END sending "refreshShortDelay" to ${nodeId}: ${result}`)
+    },
+    pingNode: async (nodeId) => {
+      console.log(`START sending "ping" to ${nodeId}`)
+      const result = await global.server.sendToClient(nodeId, 'ping', [])
+      console.log(`END sending "ping" to ${nodeId}: ${result}`)
+    },
+    // broadcast
+    restartAllShortDelay: () => {
+      global.server.refreshShortDelay()
+    },
+    restartAllLongDelay: () => {
+      global.server.refreshLongDelay()
+    },
+  }
+
   function rerender() {
     const state = getState()
-    updateDom(render(state))
+    updateDom(render(state, actions))
   }
 
   // mix in local graph over store state
   function getState() {
     return Object.assign({},
       store.getState(),
-      { graph: currentGraph },
+      {
+        selectedNode,
+        graph: currentGraph,
+      },
     )
   }
+}
+
+function render(state, actions) {
+  const { graph, selectedNode } = state
+  return (
+
+    h('.app-container', [
+
+      appStyle(),
+
+      h('section', [
+        h('.app-info-count', `nodes: ${graph.nodes.length}`),
+        h('.app-info-count', `links: ${graph.links.length}`),
+      ]),
+
+      h('section', [
+        renderGraph(state, actions),
+      ]),
+
+      h('section', [
+        h('h2', 'node controls'),
+        h('.app-selected-node', [
+          `selected: ${selectedNode || 'none'}`,
+        ]),
+        h('button', {
+          disabled: !selectedNode,
+          onclick: () => actions.restartNode(selectedNode),
+        }, 'restart'),
+        h('button', {
+          disabled: !selectedNode,
+          onclick: () => actions.pingNode(selectedNode),
+        }, 'ping'),
+      ]),
+
+      h('section', [
+        h('h2', 'global controls'),
+        h('button', {
+          onclick: () => actions.restartAllShortDelay()
+        }, 'restart all (5-10s delay)'),
+        h('button', {
+          onclick: () => actions.restartAllLongDelay()
+        }, 'restart all (2-10m delay)'),
+      ]),
+
+    ])
+
+  )
 }
 
 function mergeGraph(oldGraph, newGraph) {
@@ -76,32 +154,6 @@ function createGraphIndex(graph) {
     graphIndex.links[link.id] = link
   })
   return graphIndex
-}
-
-function render(state) {
-  const { graph } = state
-  return (
-
-    h('.app-container', [
-      appStyle(),
-      h('.app-info-count', `nodes: ${graph.nodes.length}`),
-      h('.app-info-count', `links: ${graph.links.length}`),
-      renderGraph(graph),
-      h('button', {
-        onclick: () => {
-          console.log('refreshShortDelay')
-          global.server.refreshShortDelay()
-        },
-      }, 'restart all (5-10s delay)'),
-      h('button', {
-        onclick: () => {
-          console.log('refreshLongDelay')
-          global.server.refreshLongDelay()
-        },
-      }, 'restart all (2-10m delay)'),
-    ])
-
-  )
 }
 
 function appStyle() {
