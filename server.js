@@ -167,7 +167,7 @@ async function handleAdmin(stream, request) {
     // send to client
     sendToClient: async (clientId, method, args) => {
       console.log(`forwarding "${method}" with (${args}) to client ${clientId}`)
-      const client = clients.find(c => c.id === clientId)
+      const client = clients.find(c => c.peerId === clientId)
       if (!client) return console.log(`no client found ${clientId}`)
       return await sendCallWithTimeout(client.rpc, method, args, remoteCallTimeout)
     },
