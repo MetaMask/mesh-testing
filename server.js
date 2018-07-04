@@ -105,7 +105,7 @@ setInterval(() => {
   Object.keys(networkState.clients).forEach((clientId) => {
     const client = clients.find(c => c.id === clientId)
     if (!client) {
-      console.log(`orphaned client found, cleaning up: ${cliendId}`)
+      console.log(`orphaned client found, cleaning up: ${clientId}`)
       delete networkState.clients[clientId]
     }
   })
