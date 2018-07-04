@@ -183,6 +183,7 @@ async function handleAdmin(stream, request) {
 }
 
 function broadcastCall(method, args, timeoutDuration) {
+  console.log(`broadcasting to ${clients.length} clients:`, method, args)
   return Promise.all(clients.map((client) => sendCallWithTimeout(client.rpc, method, args, timeoutDuration)))
 }
 
