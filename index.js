@@ -55,7 +55,6 @@ const clientRpc = {
   },
   getNetworkState,
 }
-global.clientRpc = clientRpc
 
 function getNetworkState() {
   const results = {}
@@ -85,24 +84,39 @@ async function start(){
   }
 
   async function setupAdmin () {
+    // connect to telemetry
     console.log(`MetaMask Mesh Testing - connecting with adminCode: ${adminCode}`)
     const serverConnection = connectToTelemetryServer(adminCode)
     global.serverConnection = serverConnection
-    // return
-    let server = await znode(serverConnection, clientRpc)
-    global.server = server
-    console.log('MetaMask Mesh Testing - connected!')
 
+    // setup admin ui app
     const store = new ObservableStore()
     startAdminApp({ store })
 
+    // setup admin rpc
+    const server = await znode(serverConnection, {
+      ping: async () => 'pong',
+      sendNetworkState: async (networkState) => {
+        store.updateState(networkState)
+      },
+    })
+    global.server = server
+    console.log('MetaMask Mesh Testing - connected!')
+
+    // request current network state
+    console.log('MetaMask Mesh Testing - fetching network state')
+    const networkState = await server.getNetworkState()
+    store.updateState(networkState)
+
+    // ping server to trigger pushes
     while (true) {
-      const clientData = await updateNetworkStateAndGraph()
-      store.updateState({ clientData })
-      await timeout(8000)
+      console.log('pinging server...')
+      await server.ping()
+      console.log('server pinged ok')
+      await timeout(networkStateSubmitInterval)
     }
 
-    // in admin mode, dont boot libp2p node
+    // in admin mode, we dont boot libp2p node
   }
 
   async function setupClient () {
@@ -132,14 +146,6 @@ async function start(){
 
     // schedule refresh every hour so everyone stays hot and fresh
     restart(hour)
-  }
-
-  async function updateNetworkStateAndGraph () {
-    // get state
-    console.log('MetaMask Mesh Testing - fetching network state')
-    const state = await server.getNetworkState()
-    console.log(state)
-    return state.clients
   }
 
   function connectToTelemetryServer(adminCode) {

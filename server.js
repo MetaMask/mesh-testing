@@ -4,6 +4,7 @@ const expressWebSocket = require('express-ws')
 const websocketStream = require('websocket-stream/stream')
 const znode = require('znode')
 const hat = require('hat')
+const ObservableStore = require('obs-store')
 const createHttpClientHandler = require('./src/server/http-poll-stream')
 
 
@@ -16,7 +17,7 @@ const min = 60 * sec
 const heartBeatInterval = 1 * min
 const remoteCallTimeout = 45 * sec
 
-const networkState = { clients: {} }
+const networkStore = new ObservableStore({ clients: {} })
 
 const secret = hat(256)
 console.log('secret:', secret)
@@ -26,6 +27,13 @@ expressWebSocket(app, null, {
 })
 
 const clients = []
+
+//
+process.on('unhandledRejection', (reason, p) => {
+  console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+  console.error(reason)
+  // application specific logging, throwing an error, or other logic here
+});
 
 //
 // setup client
@@ -93,8 +101,10 @@ setInterval(() => {
       clients.splice(index, 1)
       console.log('peer disconnected')
       const peerId = client.peerId
+      // update network state
+      const networkState = networkStore.getState()
       delete networkState.clients[peerId]
-
+      networkStore.updateState(networkState)
       console.log(`${clients.length} peers connected`)
     })
   }, remoteCallTimeout)
@@ -118,11 +128,18 @@ async function handleClient(stream, req) {
     ping: async () => 'pong',
     setPeerId: (peerId) => {
       client.peerId = peerId
+      // update network state
+      const networkState = networkStore.getState()
+      networkState.clients[peerId] = { peers: [] }
+      networkStore.updateState(networkState)
     },
     submitNetworkState: (peers) => {
       const peerId = client.peerId
       if (!peerId) return
+      // update network state
+      const networkState = networkStore.getState()
       networkState.clients[peerId] = { peers }
+      networkStore.updateState(networkState)
     }
   })
 
@@ -146,7 +163,7 @@ async function handleAdmin(stream, request) {
     ping: async () => 'pong',
     // server data
     getPeerCount: async () => clients.length,
-    getNetworkState: async () => networkState,
+    getNetworkState: async () => networkStore.getState(),
     // broadcast
     send: async (method, args) => {
       console.log(`broadcasting "${method}" with (${args}) to ${clients.length} client(s)`)
@@ -157,6 +174,11 @@ async function handleAdmin(stream, request) {
     refreshLongDelay: () => broadcastCall('refreshLongDelay', [], remoteCallTimeout),
   })
   console.log('admin connected')
+
+  // send network state on updates
+  networkStore.subscribe(networkState => {
+    admin.sendNetworkState(networkState)
+  })
 
 }
 

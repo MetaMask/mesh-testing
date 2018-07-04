@@ -26,7 +26,7 @@ function startApp(opts = {}) {
   store.subscribe((state) => {
     console.log('store did update', state)
     // merge state
-    const { clientData } = state
+    const clientData = state.clients
     const newGraph = buildGraph(clientData)
     currentGraph = mergeGraph(currentGraph, newGraph)
     // reset simulation
@@ -88,6 +88,12 @@ function render(state) {
       h('.app-info-count', `nodes: ${graph.nodes.length}`),
       h('.app-info-count', `links: ${graph.links.length}`),
       renderGraph(graph),
+      h('button', {
+        onClick: () => global.server.refreshShortDelay()
+      }, 'restart all (5-10s)'),
+      h('button', {
+        onClick: () => global.server.refreshLongDelay()
+      }, 'restart all (2-10m)'),
     ])
 
   )
