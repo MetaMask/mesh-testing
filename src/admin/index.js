@@ -24,7 +24,6 @@ function startApp(opts = {}) {
   simulation.on('tick', rerender)
   store.subscribe(rerender)
   store.subscribe((state) => {
-    console.log('store did update', state)
     // merge state
     const clientData = state.clients
     const newGraph = buildGraph(clientData)

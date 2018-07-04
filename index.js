@@ -86,7 +86,7 @@ async function start(){
   async function setupAdmin () {
     // connect to telemetry
     console.log(`MetaMask Mesh Testing - connecting with adminCode: ${adminCode}`)
-    const serverConnection = connectToTelemetryServer(adminCode)
+    const serverConnection = connectToTelemetryServerViaWs(adminCode)
     global.serverConnection = serverConnection
 
     // setup admin ui app
@@ -108,12 +108,6 @@ async function start(){
     const networkState = await server.getNetworkState()
     store.updateState(networkState)
 
-    // ping server to trigger pushes
-    while (true) {
-      await server.ping()
-      await timeout(networkStateSubmitInterval)
-    }
-
     // in admin mode, we dont boot libp2p node
   }
 
@@ -127,7 +121,7 @@ async function start(){
     console.log('MetaMask Mesh Testing - libp2p node started')
 
     // connect to telemetry server
-    const serverConnection = connectToTelemetryServer()
+    const serverConnection = connectToTelemetryServerViaPost()
     global.serverConnection = serverConnection
     // return
     let server = await znode(serverConnection, clientRpc)
@@ -146,7 +140,7 @@ async function start(){
     restart(hour)
   }
 
-  function connectToTelemetryServer(adminCode) {
+  function connectToTelemetryServerViaPost(adminCode) {
     const devMode = (!opts.prod && location.hostname === 'localhost')
     // const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
     // const ws = websocket(`${host}/${adminCode}`)
@@ -158,6 +152,14 @@ async function start(){
     const clientStream = createHttpClientStream({ uri })
     clientStream.on('error', console.error)
     return clientStream
+  }
+
+  function connectToTelemetryServerViaWs(adminCode) {
+    const devMode = (!opts.prod && location.hostname === 'localhost')
+    const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
+    const ws = websocket(`${host}/${adminCode}`)
+    ws.on('error', console.error)
+    return ws
   }
 }
 
