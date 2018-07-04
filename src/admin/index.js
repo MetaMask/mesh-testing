@@ -89,11 +89,17 @@ function render(state) {
       h('.app-info-count', `links: ${graph.links.length}`),
       renderGraph(graph),
       h('button', {
-        onClick: () => global.server.refreshShortDelay()
-      }, 'restart all (5-10s)'),
+        onclick: () => {
+          console.log('refreshShortDelay')
+          global.server.refreshShortDelay()
+        },
+      }, 'restart all (5-10s delay)'),
       h('button', {
-        onClick: () => global.server.refreshLongDelay()
-      }, 'restart all (2-10m)'),
+        onclick: () => {
+          console.log('refreshLongDelay')
+          global.server.refreshLongDelay()
+        },
+      }, 'restart all (2-10m delay)'),
     ])
 
   )
