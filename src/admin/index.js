@@ -11,30 +11,14 @@ module.exports = startApp
 function startApp(opts = {}) {
   const { store } = opts
 
-  const updateDom = setupDom({ container: document.body })
-
+  // view state
+  let selectedNode = undefined
   let currentGraph = {
     nodes: [],
     links: [],
   }
 
-  const simulation = setupSimulation(currentGraph)
-
-  // setup rerender hooks
-  simulation.on('tick', rerender)
-  store.subscribe(rerender)
-  store.subscribe((state) => {
-    // merge state
-    const clientData = state.clients
-    const newGraph = buildGraph(clientData)
-    currentGraph = mergeGraph(currentGraph, newGraph)
-    // reset simulation
-    setupSimulationForces(simulation, currentGraph)
-    // trigger redraw
-    rerender()
-  })
-
-  let selectedNode = undefined
+  // view actions
   const actions = {
     // ui state
     selectNode: (nodeId) => {
@@ -57,6 +41,27 @@ function startApp(opts = {}) {
       global.server.refreshLongDelay()
     },
   }
+
+  // setup dom + render
+  const updateDom = setupDom({ container: document.body })
+  rerender()
+
+  // setup force simulation
+  const simulation = setupSimulation(currentGraph)
+
+  // setup rerender hooks
+  simulation.on('tick', rerender)
+  store.subscribe(rerender)
+  store.subscribe((state) => {
+    // merge state
+    const clientData = state.clients
+    const newGraph = buildGraph(clientData)
+    currentGraph = mergeGraph(currentGraph, newGraph)
+    // reset simulation
+    setupSimulationForces(simulation, currentGraph)
+    // trigger redraw
+    rerender()
+  })
 
   async function sendToClient (nodeId, method, args) {
     console.log(`START sending to "${nodeId}" "${method}" ${args}`)
@@ -92,39 +97,51 @@ function render(state, actions) {
 
       appStyle(),
 
-      h('section', [
-        h('.app-info-count', `nodes: ${graph.nodes.length}`),
-        h('.app-info-count', `links: ${graph.links.length}`),
-      ]),
-
-      h('section', [
-        renderGraph(state, actions),
-      ]),
-
-      h('section', [
-        h('h2', 'node controls'),
-        h('.app-selected-node', [
-          `selected: ${selectedNode || 'none'}`,
+      h('section.flexbox-container', {
+        // style: {
+        //   display: 'flex',
+        //   alignItems: 'center',
+        // }
+      }, [
+        h('div.main', {
+          // style: {
+          //   flex: 1,
+          // }
+        }, [
+          h('div', [
+            h('.app-info-count', `nodes: ${graph.nodes.length}`),
+            h('.app-info-count', `links: ${graph.links.length}`),
+          ]),
+          renderGraph(state, actions),
         ]),
-        h('button', {
-          disabled: !selectedNode,
-          onclick: () => actions.restartNode(selectedNode),
-        }, 'restart'),
-        h('button', {
-          disabled: !selectedNode,
-          onclick: () => actions.pingNode(selectedNode),
-        }, 'ping'),
-      ]),
 
-      h('section', [
-        h('h2', 'global controls'),
-        h('button', {
-          onclick: () => actions.restartAllShortDelay()
-        }, 'restart all (5-10s delay)'),
-        h('button', {
-          onclick: () => actions.restartAllLongDelay()
-        }, 'restart all (2-10m delay)'),
-      ]),
+        h('div.sidebar', {
+          // style: {
+          //   flex: 1,
+          // }
+        }, [
+          h('h2', 'node controls'),
+          h('.app-selected-node', [
+            `selected: ${selectedNode || 'none'}`,
+          ]),
+          h('button', {
+            disabled: !selectedNode,
+            onclick: () => actions.restartNode(selectedNode),
+          }, 'restart'),
+          h('button', {
+            disabled: !selectedNode,
+            onclick: () => actions.pingNode(selectedNode),
+          }, 'ping'),
+
+          h('h2', 'global controls'),
+          h('button', {
+            onclick: () => actions.restartAllShortDelay()
+          }, 'restart all (5-10s delay)'),
+          h('button', {
+            onclick: () => actions.restartAllLongDelay()
+          }, 'restart all (2-10m delay)'),
+        ]),
+      ])
 
     ])
 
@@ -164,6 +181,37 @@ function createGraphIndex(graph) {
 function appStyle() {
   return h('style', [
     `
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    .app-container {
+      height: 100%;
+    }
+
+    .flexbox-container {
+    	display: flex;
+    	width: 100%;
+      height: 100%;
+    }
+
+    .sidebar {
+    	order: 1;
+    	flex: 1;
+    	background-color: #dedede;
+      flex-basis: auto;
+      padding: 0 12px;
+      min-height: 666px;
+    }
+
+    .main {
+    	order: 1;
+    	flex: 5;
+      padding: .5rem;
+    }
+
     .links line {
       stroke: #999;
       stroke-opacity: 0.6;
@@ -172,21 +220,6 @@ function appStyle() {
     .nodes circle {
       stroke: #fff;
       stroke-width: 1.5px;
-    }
-
-    button.refresh {
-      width: 120px;
-      height: 30px;
-      background-color: #4CAF50;
-      color: white;
-      border-radius: 3px;
-      outline: none;
-      border: 0;
-      cursor: pointer;
-    }
-
-    button.refresh:hover {
-      background-color: green;
     }
 
     .legend {
