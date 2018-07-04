@@ -141270,14 +141270,10 @@ function startApp(opts = {}) {
     // network state
     // single node
     restartNode: async (nodeId) => {
-      console.log(`START sending "refreshShortDelay" to ${nodeId}`)
-      const result = await global.server.sendToClient(nodeId, 'refresh', [])
-      console.log(`END sending "refreshShortDelay" to ${nodeId}: ${result}`)
+      await sendToClient(nodeId, 'refresh', [])
     },
     pingNode: async (nodeId) => {
-      console.log(`START sending "ping" to ${nodeId}`)
-      const result = await global.server.sendToClient(nodeId, 'ping', [])
-      console.log(`END sending "ping" to ${nodeId}: ${result}`)
+      await sendToClient(nodeId, 'ping', [])
     },
     // broadcast
     restartAllShortDelay: () => {
@@ -141286,6 +141282,15 @@ function startApp(opts = {}) {
     restartAllLongDelay: () => {
       global.server.refreshLongDelay()
     },
+  }
+
+  async function sendToClient (nodeId, method, args) {
+    console.log(`START sending to "${nodeId}" "${method}" ${args}`)
+    const start = Date.now()
+    const result = await global.server.sendToClient(nodeId, method, args)
+    const end = Date.now()
+    const duration = end - start
+    console.log(`END sending to "${nodeId}" "${method}" ${args} - ${result} ${duration}ms`)
   }
 
   function rerender() {
