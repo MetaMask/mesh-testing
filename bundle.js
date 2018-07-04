@@ -126,7 +126,7 @@ async function start(){
   async function setupAdmin () {
     // connect to telemetry
     console.log(`MetaMask Mesh Testing - connecting with adminCode: ${adminCode}`)
-    const serverConnection = connectToTelemetryServer(adminCode)
+    const serverConnection = connectToTelemetryServerViaWs(adminCode)
     global.serverConnection = serverConnection
 
     // setup admin ui app
@@ -148,12 +148,6 @@ async function start(){
     const networkState = await server.getNetworkState()
     store.updateState(networkState)
 
-    // ping server to trigger pushes
-    while (true) {
-      await server.ping()
-      await timeout(networkStateSubmitInterval)
-    }
-
     // in admin mode, we dont boot libp2p node
   }
 
@@ -167,7 +161,7 @@ async function start(){
     console.log('MetaMask Mesh Testing - libp2p node started')
 
     // connect to telemetry server
-    const serverConnection = connectToTelemetryServer()
+    const serverConnection = connectToTelemetryServerViaPost()
     global.serverConnection = serverConnection
     // return
     let server = await znode(serverConnection, clientRpc)
@@ -186,7 +180,7 @@ async function start(){
     restart(hour)
   }
 
-  function connectToTelemetryServer(adminCode) {
+  function connectToTelemetryServerViaPost(adminCode) {
     const devMode = (!opts.prod && location.hostname === 'localhost')
     // const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
     // const ws = websocket(`${host}/${adminCode}`)
@@ -198,6 +192,14 @@ async function start(){
     const clientStream = createHttpClientStream({ uri })
     clientStream.on('error', console.error)
     return clientStream
+  }
+
+  function connectToTelemetryServerViaWs(adminCode) {
+    const devMode = (!opts.prod && location.hostname === 'localhost')
+    const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
+    const ws = websocket(`${host}/${adminCode}`)
+    ws.on('error', console.error)
+    return ws
   }
 }
 
@@ -141161,8 +141163,9 @@ const s = require('virtual-dom/virtual-hyperscript/svg')
 
 module.exports = renderGraph
 
-function renderGraph(state) {
-  const { nodes, links } = state
+function renderGraph(state, actions) {
+  const { graph } = state
+  const { nodes, links } = graph
 
   return (
 
@@ -141170,21 +141173,24 @@ function renderGraph(state) {
       width: 960,
       height: 600,
     }, [
-      s('g', { class: 'links' }, links.map(renderLink)),
-      s('g', { class: 'nodes' }, nodes.map(renderNode)),
+      s('g', { class: 'links' }, links.map((link) => renderLink(link, state, actions))),
+      s('g', { class: 'nodes' }, nodes.map((node) => renderNode(node, state, actions))),
     ])
 
   )
 }
 
-function renderNode(node) {
+function renderNode(node, state, actions) {
+  const { selectedNode } = state
+  const isSelected = selectedNode === node.id
   return (
 
     s('circle', {
-      r: '5',
+      r: isSelected ? 10 : 5,
       fill: node.color,
       cx: node.x,
       cy: node.y,
+      onclick: () => actions.selectNode(node.id)
     }, [
       s('title', `${node.id}`),
     ])
@@ -141192,7 +141198,7 @@ function renderNode(node) {
   )
 }
 
-function renderLink(link) {
+function renderLink(link, state, actions) {
   const { source, target } = link
   return (
 
@@ -141237,7 +141243,6 @@ function startApp(opts = {}) {
   simulation.on('tick', rerender)
   store.subscribe(rerender)
   store.subscribe((state) => {
-    console.log('store did update', state)
     // merge state
     const clientData = state.clients
     const newGraph = buildGraph(clientData)
@@ -141248,18 +141253,96 @@ function startApp(opts = {}) {
     rerender()
   })
 
+  let selectedNode = undefined
+  const actions = {
+    // ui state
+    selectNode: (nodeId) => {
+      selectedNode = nodeId
+      rerender()
+    },
+    // network state
+    // single node
+    restartNode: async (nodeId) => {
+      console.log(`START sending "refreshShortDelay" to ${nodeId}`)
+      const result = await global.server.sendToClient(nodeId, 'refreshShortDelay', [])
+      console.log(`END sending "refreshShortDelay" to ${nodeId}: ${result}`)
+    },
+    pingNode: async (nodeId) => {
+      console.log(`START sending "ping" to ${nodeId}`)
+      const result = await global.server.sendToClient(nodeId, 'ping', [])
+      console.log(`END sending "ping" to ${nodeId}: ${result}`)
+    },
+    // broadcast
+    restartAllShortDelay: () => {
+      global.server.refreshShortDelay()
+    },
+    restartAllLongDelay: () => {
+      global.server.refreshLongDelay()
+    },
+  }
+
   function rerender() {
     const state = getState()
-    updateDom(render(state))
+    updateDom(render(state, actions))
   }
 
   // mix in local graph over store state
   function getState() {
     return Object.assign({},
       store.getState(),
-      { graph: currentGraph },
+      {
+        selectedNode,
+        graph: currentGraph,
+      },
     )
   }
+}
+
+function render(state, actions) {
+  const { graph, selectedNode } = state
+  return (
+
+    h('.app-container', [
+
+      appStyle(),
+
+      h('section', [
+        h('.app-info-count', `nodes: ${graph.nodes.length}`),
+        h('.app-info-count', `links: ${graph.links.length}`),
+      ]),
+
+      h('section', [
+        renderGraph(state, actions),
+      ]),
+
+      h('section', [
+        h('h2', 'node controls'),
+        h('.app-selected-node', [
+          `selected: ${selectedNode || 'none'}`,
+        ]),
+        h('button', {
+          disabled: !selectedNode,
+          onclick: () => actions.restartNode(selectedNode),
+        }, 'restart'),
+        h('button', {
+          disabled: !selectedNode,
+          onclick: () => actions.pingNode(selectedNode),
+        }, 'ping'),
+      ]),
+
+      h('section', [
+        h('h2', 'global controls'),
+        h('button', {
+          onclick: () => actions.restartAllShortDelay()
+        }, 'restart all (5-10s delay)'),
+        h('button', {
+          onclick: () => actions.restartAllLongDelay()
+        }, 'restart all (2-10m delay)'),
+      ]),
+
+    ])
+
+  )
 }
 
 function mergeGraph(oldGraph, newGraph) {
@@ -141290,32 +141373,6 @@ function createGraphIndex(graph) {
     graphIndex.links[link.id] = link
   })
   return graphIndex
-}
-
-function render(state) {
-  const { graph } = state
-  return (
-
-    h('.app-container', [
-      appStyle(),
-      h('.app-info-count', `nodes: ${graph.nodes.length}`),
-      h('.app-info-count', `links: ${graph.links.length}`),
-      renderGraph(graph),
-      h('button', {
-        onclick: () => {
-          console.log('refreshShortDelay')
-          global.server.refreshShortDelay()
-        },
-      }, 'restart all (5-10s delay)'),
-      h('button', {
-        onclick: () => {
-          console.log('refreshLongDelay')
-          global.server.refreshLongDelay()
-        },
-      }, 'restart all (2-10m delay)'),
-    ])
-
-  )
 }
 
 function appStyle() {
