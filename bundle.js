@@ -36,230 +36,7 @@ function createNode (callback) {
 
 module.exports = createNode
 
-},{"./node":4,"peer-info":494}],2:[function(require,module,exports){
-// const graph = buildGraph(data)
-// drawGraph(graph)
-
-const d3 = require('d3')
-
-module.exports = {
-  setupDom,
-  buildGraph,
-  drawGraph,
-}
-
-function setupDom({ container, action }) {
-  // svg styles
-  const style = document.createElement('style')
-  style.textContent = (
-    `
-    .links line {
-      stroke: #999;
-      stroke-opacity: 0.6;
-    }
-
-    .nodes circle {
-      stroke: #fff;
-      stroke-width: 1.5px;
-    }
-
-    button.refresh {
-      width: 120px;
-      height: 30px;
-      background-color: #4CAF50;
-      color: white;
-      border-radius: 3px;
-      outline: none;
-      border: 0;
-      cursor: pointer;
-    }
-
-    button.refresh:hover {
-      background-color: green;
-    }
-
-    .legend {
-      font-family: "Arial", sans-serif;
-      font-size: 11px;
-    }
-    `
-  )
-  document.head.appendChild(style)
-
-  // // svg canvas
-  // const svg = document.createElement('svg')
-  // container.appendChild(svg)
-  // svg.setAttribute('width', 960)
-  // svg.setAttribute('height', 600)
-
-  // action button
-  const button = document.createElement('button')
-  button.innerText = 'Refresh Graph'
-  button.setAttribute("class", "refresh")
-  button.addEventListener('click', action)
-  container.appendChild(button)
-}
-
-function buildGraph(data) {
-  const GOOD = '#1f77b4'
-  const BAD = '#aec7e8'
-  const MISSING = '#ff7f0e'
-
-  const graph = { nodes: [], links: [] }
-
-  // first add kitsunet nodes
-  Object.keys(data).forEach((clientId) => {
-    const peerData = data[clientId].peers
-    const badResponse = (typeof peerData !== 'object')
-    graph.nodes.push({ id: clientId, color: badResponse ? BAD : GOOD })
-  })
-
-  // then links
-  Object.keys(data).forEach((clientId) => {
-    const peerData = data[clientId].peers
-    if (typeof peerData !== 'object') return
-    Object.keys(peerData).forEach((peerId) => {
-      // if connected to a missing node, create missing node
-      const alreadyExists = !!graph.nodes.find(item => item.id === peerId)
-      if (!alreadyExists) {
-        graph.nodes.push({ id: peerId, color: MISSING })
-      }
-      // if peer rtt is timeout, dont draw link
-      const rtt = peerData[peerId]
-      // if (typeof rtt === 'string') return
-      const timeout = rtt === 'timeout'
-      // const linkValue = Math.pow((10 - Math.log(rtt)), 2)
-      const linkValue = timeout ? 0.1 : 2
-      graph.links.push({ source: clientId, target: peerId, value: linkValue })
-    })
-  })
-
-  return graph
-}
-
-function drawGraph(graph) {
-
-  // var svg = d3.select("svg"),
-  //     width = +svg.attr("width"),
-  //     height = +svg.attr("height");
-
-
-  var width = 960
-  var height = 600
-  var svg = d3.select("body").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-
-  // var color = d3.scaleOrdinal(d3.schemeCategory20);
-
-  var simulation = d3.forceSimulation()
-      .force("link", d3.forceLink().id(function(d) { return d.id; }))
-      .force("charge", d3.forceManyBody())
-      .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("x", d3.forceX(width / 2).strength(.05))
-      .force("y", d3.forceY(height / 2).strength(.05))
-
-  var link = svg.append("g")
-      .attr("class", "links")
-    .selectAll("line")
-    .data(graph.links)
-    .enter().append("line")
-      .attr("stroke-width", function(d) { return Math.sqrt(d.value); });
-
-  var node = svg.append("g")
-      .attr("class", "nodes")
-    .selectAll("circle")
-    .data(graph.nodes)
-    .enter().append("circle")
-      .attr("r", 5)
-      .attr("fill", function(d) { return d.color })
-      .call(d3.drag()
-          .on("start", dragstarted)
-          .on("drag", dragged)
-          .on("end", dragended));
-
-  node.append("title")
-      .text(function(d) { return d.id; });
-
-  simulation
-      .nodes(graph.nodes)
-      .on("tick", ticked);
-
-  simulation.force("link")
-      .links(graph.links);
-
-  addLegend();
-
-  function ticked() {
-    link
-        .attr("x1", function(d) { return d.source.x; })
-        .attr("y1", function(d) { return d.source.y; })
-        .attr("x2", function(d) { return d.target.x; })
-        .attr("y2", function(d) { return d.target.y; });
-
-    node
-        .attr("cx", function(d) { return d.x; })
-        .attr("cy", function(d) { return d.y; });
-  }
-
-  function dragstarted(d) {
-    if (!d3.event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
-  }
-
-  function dragged(d) {
-    d.fx = d3.event.x;
-    d.fy = d3.event.y;
-  }
-
-  function dragended(d) {
-    if (!d3.event.active) simulation.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
-  }
-
-  function addLegend() {
-    var legendData = d3.scaleOrdinal()
-      .domain(["GOOD - connected to Command N Control (CNC) node", "BAD - bad response", "MISSING - not connected to CNC but known to peers via libp2p"])
-      .range([ '#1f77b4', '#aec7e8', '#ff7f0e' ]);
-
-    var svg = d3.select("svg");
-
-    var legend = svg.append("g")
-      .attr("class", "legend")
-      .attr("transform", "translate(20,20)")
-
-    var legendRect = legend
-      .selectAll('g')
-      .data(legendData.domain());
-
-    var legendRectE = legendRect.enter()
-      .append("g")
-      .attr("transform", function(d,i){
-        return 'translate(0, ' + (i * 20) + ')';
-      });
-
-    legendRectE
-      .append('path')
-      .attr("d", d3.symbol().type(d3.symbolCircle))
-      .style("fill", function (d,i) {
-          return legendData(i);
-      });
-
-    legendRectE
-      .append("text")
-      .attr("x", 10)
-      .attr("y", 5)
-      .text(function (d) {
-          return d;
-      });
-
-  } // end addLegend()
-
-}
-
-},{"d3":128}],3:[function(require,module,exports){
+},{"./node":3,"peer-info":573}],2:[function(require,module,exports){
 (function (global){
 const websocket = require('websocket-stream')
 const znode = require('znode')
@@ -270,14 +47,10 @@ const endOfStream = require('end-of-stream')
 const parallel = require('async/parallel')
 const reflect = require('async/reflect')
 const createHttpClientStream = require('http-poll-stream/src/client')
-
-const {
-  setupDom,
-  buildGraph,
-  drawGraph,
-} = require('./graph')
+const ObservableStore = require('obs-store')
 
 const createLibp2pNode = require('./createNode')
+const startAdminApp = require('./src/admin/index')
 
 const sec = 1000
 const min = 60 * sec
@@ -360,12 +133,14 @@ async function start(){
     global.server = server
     console.log('MetaMask Mesh Testing - connected!')
 
-    // setup network graph
-    setupDom({
-      container: document.body,
-      action: updateNetworkStateAndGraph,
-    })
-    await updateNetworkStateAndGraph()
+    const store = new ObservableStore()
+    startAdminApp({ store })
+
+    while (true) {
+      const clientData = await updateNetworkStateAndGraph()
+      store.updateState({ clientData })
+      await timeout(8000)
+    }
 
     // in admin mode, dont boot libp2p node
   }
@@ -401,15 +176,10 @@ async function start(){
 
   async function updateNetworkStateAndGraph () {
     // get state
-    console.log('MetaMask Mesh Testing - getting network state')
+    console.log('MetaMask Mesh Testing - fetching network state')
     const state = await server.getNetworkState()
-    console.log('MetaMask Mesh Testing - updating graph')
-    const graph = buildGraph(state.clients)
-    // clear graph
-    const svg = document.querySelector('svg')
-    if (svg) svg.remove()
-    // draw graph
-    drawGraph(graph)
+    console.log(state)
+    return state.clients
   }
 
   function connectToTelemetryServer(adminCode) {
@@ -598,7 +368,7 @@ function timeout(duration, value) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./createNode":1,"./graph":2,"async/parallel":46,"async/reflect":48,"end-of-stream":144,"http-poll-stream/src/client":149,"pify":497,"pull-stream-to-stream":532,"qs":577,"websocket-stream":659,"znode":664}],4:[function(require,module,exports){
+},{"./createNode":1,"./src/admin/index":777,"async/parallel":45,"async/reflect":47,"end-of-stream":144,"http-poll-stream/src/client":151,"obs-store":545,"pify":576,"pull-stream-to-stream":611,"qs":656,"websocket-stream":768,"znode":774}],3:[function(require,module,exports){
 'use strict'
 
 const WS = require('libp2p-websockets')
@@ -662,7 +432,7 @@ class Node extends Libp2p {
 
 module.exports = Node
 
-},{"async/series":49,"libp2p":310,"libp2p-mplex":227,"libp2p-railing":238,"libp2p-rendezvous":241,"libp2p-secio":277,"libp2p-webrtc-circuit":300,"libp2p-websockets":302}],5:[function(require,module,exports){
+},{"async/series":48,"libp2p":393,"libp2p-mplex":230,"libp2p-railing":257,"libp2p-rendezvous":260,"libp2p-secio":304,"libp2p-webrtc-circuit":367,"libp2p-websockets":374}],4:[function(require,module,exports){
 'use strict';
 
 const asn1 = exports;
@@ -675,7 +445,7 @@ asn1.constants = require('./asn1/constants');
 asn1.decoders = require('./asn1/decoders');
 asn1.encoders = require('./asn1/encoders');
 
-},{"./asn1/api":6,"./asn1/base":8,"./asn1/constants":12,"./asn1/decoders":14,"./asn1/encoders":17,"bn.js":63}],6:[function(require,module,exports){
+},{"./asn1/api":5,"./asn1/base":7,"./asn1/constants":11,"./asn1/decoders":13,"./asn1/encoders":16,"bn.js":62}],5:[function(require,module,exports){
 'use strict';
 
 const asn1 = require('../asn1');
@@ -740,7 +510,7 @@ Entity.prototype.encode = function encode(data, enc, /* internal */ reporter) {
   return this._getEncoder(enc).encode(data, reporter);
 };
 
-},{"../asn1":5,"inherits":154,"vm":657}],7:[function(require,module,exports){
+},{"../asn1":4,"inherits":158,"vm":766}],6:[function(require,module,exports){
 'use strict';
 
 const inherits = require('inherits');
@@ -860,7 +630,7 @@ EncoderBuffer.prototype.join = function join(out, offset) {
   return out;
 };
 
-},{"../base":8,"buffer":84,"inherits":154}],8:[function(require,module,exports){
+},{"../base":7,"buffer":84,"inherits":158}],7:[function(require,module,exports){
 'use strict';
 
 const base = exports;
@@ -870,7 +640,7 @@ base.DecoderBuffer = require('./buffer').DecoderBuffer;
 base.EncoderBuffer = require('./buffer').EncoderBuffer;
 base.Node = require('./node');
 
-},{"./buffer":7,"./node":9,"./reporter":10}],9:[function(require,module,exports){
+},{"./buffer":6,"./node":8,"./reporter":9}],8:[function(require,module,exports){
 'use strict';
 
 const Reporter = require('../base').Reporter;
@@ -1509,7 +1279,7 @@ Node.prototype._isPrintstr = function isPrintstr(str) {
   return /^[A-Za-z0-9 '()+,-./:=?]*$/.test(str);
 };
 
-},{"../base":8,"minimalistic-assert":391}],10:[function(require,module,exports){
+},{"../base":7,"minimalistic-assert":469}],9:[function(require,module,exports){
 'use strict';
 
 const inherits = require('inherits');
@@ -1634,7 +1404,7 @@ ReporterError.prototype.rethrow = function rethrow(msg) {
   return this;
 };
 
-},{"inherits":154}],11:[function(require,module,exports){
+},{"inherits":158}],10:[function(require,module,exports){
 'use strict';
 
 const constants = require('../constants');
@@ -1680,7 +1450,7 @@ exports.tag = {
 };
 exports.tagByName = constants._reverse(exports.tag);
 
-},{"../constants":12}],12:[function(require,module,exports){
+},{"../constants":11}],11:[function(require,module,exports){
 'use strict';
 
 const constants = exports;
@@ -1703,7 +1473,7 @@ constants._reverse = function reverse(map) {
 
 constants.der = require('./der');
 
-},{"./der":11}],13:[function(require,module,exports){
+},{"./der":10}],12:[function(require,module,exports){
 'use strict';
 
 const inherits = require('inherits');
@@ -2039,7 +1809,7 @@ function derDecodeLen(buf, primitive, fail) {
   return len;
 }
 
-},{"../../asn1":5,"inherits":154}],14:[function(require,module,exports){
+},{"../../asn1":4,"inherits":158}],13:[function(require,module,exports){
 'use strict';
 
 const decoders = exports;
@@ -2047,7 +1817,7 @@ const decoders = exports;
 decoders.der = require('./der');
 decoders.pem = require('./pem');
 
-},{"./der":13,"./pem":15}],15:[function(require,module,exports){
+},{"./der":12,"./pem":14}],14:[function(require,module,exports){
 'use strict';
 
 const inherits = require('inherits');
@@ -2100,7 +1870,7 @@ PEMDecoder.prototype.decode = function decode(data, options) {
   return DERDecoder.prototype.decode.call(this, input, options);
 };
 
-},{"./der":13,"buffer":84,"inherits":154}],16:[function(require,module,exports){
+},{"./der":12,"buffer":84,"inherits":158}],15:[function(require,module,exports){
 'use strict';
 
 const inherits = require('inherits');
@@ -2399,7 +2169,7 @@ function encodeTag(tag, primitive, cls, reporter) {
   return res;
 }
 
-},{"../../asn1":5,"buffer":84,"inherits":154}],17:[function(require,module,exports){
+},{"../../asn1":4,"buffer":84,"inherits":158}],16:[function(require,module,exports){
 'use strict';
 
 const encoders = exports;
@@ -2407,7 +2177,7 @@ const encoders = exports;
 encoders.der = require('./der');
 encoders.pem = require('./pem');
 
-},{"./der":16,"./pem":18}],18:[function(require,module,exports){
+},{"./der":15,"./pem":17}],17:[function(require,module,exports){
 'use strict';
 
 const inherits = require('inherits');
@@ -2432,7 +2202,7 @@ PEMEncoder.prototype.encode = function encode(data, options) {
   return out.join('\n');
 };
 
-},{"./der":16,"inherits":154}],19:[function(require,module,exports){
+},{"./der":15,"inherits":158}],18:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -2926,7 +2696,7 @@ var objectKeys = Object.keys || function (obj) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"util/":652}],20:[function(require,module,exports){
+},{"util/":732}],19:[function(require,module,exports){
 (function (process){
 // Generated by CoffeeScript 1.10.0
 var Found, Q, aka, akas, aliases, async, consoleFn, events, j, len, makeEmitter, orig, processArrayOrObject, throat,
@@ -3590,7 +3360,7 @@ for (orig in aliases) {
 }
 
 }).call(this,require('_process'))
-},{"_process":499,"events":145,"q":575,"throat":634}],21:[function(require,module,exports){
+},{"_process":578,"events":146,"q":654,"throat":714}],20:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -3701,7 +3471,7 @@ function rethrow(error) {
     throw error;
 }
 module.exports = exports['default'];
-},{"./internal/initialParams":34,"./internal/setImmediate":41,"lodash/isObject":377}],22:[function(require,module,exports){
+},{"./internal/initialParams":33,"./internal/setImmediate":40,"lodash/isObject":460}],21:[function(require,module,exports){
 (function (process,global,setImmediate){
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -9314,7 +9084,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 })));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
-},{"_process":499,"timers":644}],23:[function(require,module,exports){
+},{"_process":578,"timers":724}],22:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9397,7 +9167,7 @@ function eachLimit(coll, iteratee, callback) {
   (0, _eachOf2.default)(coll, (0, _withoutIndex2.default)((0, _wrapAsync2.default)(iteratee)), callback);
 }
 module.exports = exports['default'];
-},{"./eachOf":24,"./internal/withoutIndex":43,"./internal/wrapAsync":44}],24:[function(require,module,exports){
+},{"./eachOf":23,"./internal/withoutIndex":42,"./internal/wrapAsync":43}],23:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9509,7 +9279,7 @@ var eachOfGeneric = (0, _doLimit2.default)(_eachOfLimit2.default, Infinity);
  * });
  */
 module.exports = exports['default'];
-},{"./eachOfLimit":25,"./internal/breakLoop":28,"./internal/doLimit":30,"./internal/once":37,"./internal/onlyOnce":38,"./internal/wrapAsync":44,"lodash/isArrayLike":373,"lodash/noop":382}],25:[function(require,module,exports){
+},{"./eachOfLimit":24,"./internal/breakLoop":27,"./internal/doLimit":29,"./internal/once":36,"./internal/onlyOnce":37,"./internal/wrapAsync":43,"lodash/isArrayLike":456,"lodash/noop":465}],24:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9551,7 +9321,7 @@ function eachOfLimit(coll, limit, iteratee, callback) {
   (0, _eachOfLimit3.default)(limit)(coll, (0, _wrapAsync2.default)(iteratee), callback);
 }
 module.exports = exports['default'];
-},{"./internal/eachOfLimit":32,"./internal/wrapAsync":44}],26:[function(require,module,exports){
+},{"./internal/eachOfLimit":31,"./internal/wrapAsync":43}],25:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9587,7 +9357,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  */
 exports.default = (0, _doLimit2.default)(_eachOfLimit2.default, 1);
 module.exports = exports['default'];
-},{"./eachOfLimit":25,"./internal/doLimit":30}],27:[function(require,module,exports){
+},{"./eachOfLimit":24,"./internal/doLimit":29}],26:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -9676,7 +9446,7 @@ DLL.prototype.remove = function (testFn) {
     return this;
 };
 module.exports = exports["default"];
-},{}],28:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -9686,7 +9456,7 @@ Object.defineProperty(exports, "__esModule", {
 // See #1064, #1293
 exports.default = {};
 module.exports = exports["default"];
-},{}],29:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9731,7 +9501,7 @@ function _createTester(check, getResult) {
     };
 }
 module.exports = exports['default'];
-},{"./breakLoop":28,"lodash/noop":382}],30:[function(require,module,exports){
+},{"./breakLoop":27,"lodash/noop":465}],29:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -9744,7 +9514,7 @@ function doLimit(fn, limit) {
     };
 }
 module.exports = exports["default"];
-},{}],31:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9768,7 +9538,7 @@ function doParallel(fn) {
     };
 }
 module.exports = exports['default'];
-},{"../eachOf":24,"./wrapAsync":44}],32:[function(require,module,exports){
+},{"../eachOf":23,"./wrapAsync":43}],31:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9843,7 +9613,7 @@ function _eachOfLimit(limit) {
     };
 }
 module.exports = exports['default'];
-},{"./breakLoop":28,"./iterator":35,"./once":37,"./onlyOnce":38,"lodash/noop":382}],33:[function(require,module,exports){
+},{"./breakLoop":27,"./iterator":34,"./once":36,"./onlyOnce":37,"lodash/noop":465}],32:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9857,7 +9627,7 @@ exports.default = function (coll) {
 var iteratorSymbol = typeof Symbol === 'function' && Symbol.iterator;
 
 module.exports = exports['default'];
-},{}],34:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9879,7 +9649,7 @@ var _slice2 = _interopRequireDefault(_slice);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 module.exports = exports['default'];
-},{"./slice":42}],35:[function(require,module,exports){
+},{"./slice":41}],34:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9938,7 +9708,7 @@ function iterator(coll) {
     return iterator ? createES2015Iterator(iterator) : createObjectIterator(coll);
 }
 module.exports = exports['default'];
-},{"./getIterator":33,"lodash/isArrayLike":373,"lodash/keys":380}],36:[function(require,module,exports){
+},{"./getIterator":32,"lodash/isArrayLike":456,"lodash/keys":463}],35:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9974,7 +9744,7 @@ function _asyncMap(eachfn, arr, iteratee, callback) {
     });
 }
 module.exports = exports['default'];
-},{"./wrapAsync":44,"lodash/noop":382}],37:[function(require,module,exports){
+},{"./wrapAsync":43,"lodash/noop":465}],36:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -9990,7 +9760,7 @@ function once(fn) {
     };
 }
 module.exports = exports["default"];
-},{}],38:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10006,7 +9776,7 @@ function onlyOnce(fn) {
     };
 }
 module.exports = exports["default"];
-},{}],39:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10049,7 +9819,7 @@ function _parallel(eachfn, tasks, callback) {
     });
 }
 module.exports = exports['default'];
-},{"./slice":42,"./wrapAsync":44,"lodash/isArrayLike":373,"lodash/noop":382}],40:[function(require,module,exports){
+},{"./slice":41,"./wrapAsync":43,"lodash/isArrayLike":456,"lodash/noop":465}],39:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10254,7 +10024,7 @@ function queue(worker, concurrency, payload) {
     return q;
 }
 module.exports = exports['default'];
-},{"./DoublyLinkedList":27,"./onlyOnce":38,"./setImmediate":41,"./wrapAsync":44,"lodash/_baseIndexOf":333,"lodash/isArray":372,"lodash/noop":382}],41:[function(require,module,exports){
+},{"./DoublyLinkedList":26,"./onlyOnce":37,"./setImmediate":40,"./wrapAsync":43,"lodash/_baseIndexOf":416,"lodash/isArray":455,"lodash/noop":465}],40:[function(require,module,exports){
 (function (process,setImmediate){
 'use strict';
 
@@ -10299,7 +10069,7 @@ if (hasSetImmediate) {
 
 exports.default = wrap(_defer);
 }).call(this,require('_process'),require("timers").setImmediate)
-},{"./slice":42,"_process":499,"timers":644}],42:[function(require,module,exports){
+},{"./slice":41,"_process":578,"timers":724}],41:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10316,7 +10086,7 @@ function slice(arrayLike, start) {
     return newArr;
 }
 module.exports = exports["default"];
-},{}],43:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10329,7 +10099,7 @@ function _withoutIndex(iteratee) {
     };
 }
 module.exports = exports["default"];
-},{}],44:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10355,7 +10125,7 @@ function wrapAsync(asyncFn) {
 
 exports.default = wrapAsync;
 exports.isAsync = isAsync;
-},{"../asyncify":21}],45:[function(require,module,exports){
+},{"../asyncify":20}],44:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10410,7 +10180,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  */
 exports.default = (0, _doParallel2.default)(_map2.default);
 module.exports = exports['default'];
-},{"./internal/doParallel":31,"./internal/map":36}],46:[function(require,module,exports){
+},{"./internal/doParallel":30,"./internal/map":35}],45:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10501,7 +10271,7 @@ function parallelLimit(tasks, callback) {
   (0, _parallel2.default)(_eachOf2.default, tasks, callback);
 }
 module.exports = exports['default'];
-},{"./eachOf":24,"./internal/parallel":39}],47:[function(require,module,exports){
+},{"./eachOf":23,"./internal/parallel":38}],46:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10632,7 +10402,7 @@ module.exports = exports['default'];
  *     console.log('finished processing bar');
  * });
  */
-},{"./internal/queue":40,"./internal/wrapAsync":44}],48:[function(require,module,exports){
+},{"./internal/queue":39,"./internal/wrapAsync":43}],47:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10714,7 +10484,7 @@ function reflect(fn) {
     });
 }
 module.exports = exports['default'];
-},{"./internal/initialParams":34,"./internal/slice":42,"./internal/wrapAsync":44}],49:[function(require,module,exports){
+},{"./internal/initialParams":33,"./internal/slice":41,"./internal/wrapAsync":43}],48:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10800,7 +10570,7 @@ function series(tasks, callback) {
   (0, _parallel2.default)(_eachOfSeries2.default, tasks, callback);
 }
 module.exports = exports['default'];
-},{"./eachOfSeries":26,"./internal/parallel":39}],50:[function(require,module,exports){
+},{"./eachOfSeries":25,"./internal/parallel":38}],49:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10846,7 +10616,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  */
 exports.default = _setImmediate2.default;
 module.exports = exports['default'];
-},{"./internal/setImmediate":41}],51:[function(require,module,exports){
+},{"./internal/setImmediate":40}],50:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10899,7 +10669,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  */
 exports.default = (0, _doParallel2.default)((0, _createTester2.default)(Boolean, _identity2.default));
 module.exports = exports['default'];
-},{"./internal/createTester":29,"./internal/doParallel":31,"lodash/identity":370}],52:[function(require,module,exports){
+},{"./internal/createTester":28,"./internal/doParallel":30,"lodash/identity":453}],51:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10989,7 +10759,7 @@ function timeout(asyncFn, milliseconds, info) {
     });
 }
 module.exports = exports['default'];
-},{"./internal/initialParams":34,"./internal/wrapAsync":44}],53:[function(require,module,exports){
+},{"./internal/initialParams":33,"./internal/wrapAsync":43}],52:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -11103,7 +10873,7 @@ module.exports = exports['default'];
  *     callback(null, 'done');
  * }
  */
-},{"./internal/once":37,"./internal/onlyOnce":38,"./internal/slice":42,"./internal/wrapAsync":44,"lodash/isArray":372,"lodash/noop":382}],54:[function(require,module,exports){
+},{"./internal/once":36,"./internal/onlyOnce":37,"./internal/slice":41,"./internal/wrapAsync":43,"lodash/isArray":455,"lodash/noop":465}],53:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -11176,7 +10946,7 @@ function whilst(test, iteratee, callback) {
     _iteratee(next);
 }
 module.exports = exports['default'];
-},{"./internal/onlyOnce":38,"./internal/slice":42,"./internal/wrapAsync":44,"lodash/noop":382}],55:[function(require,module,exports){
+},{"./internal/onlyOnce":37,"./internal/slice":41,"./internal/wrapAsync":43,"lodash/noop":465}],54:[function(require,module,exports){
 // base-x encoding
 // Forked from https://github.com/cryptocoinjs/bs58
 // Originally written by Mike Hearn for BitcoinJ
@@ -11270,7 +11040,7 @@ module.exports = function base (ALPHABET) {
   }
 }
 
-},{"safe-buffer":601}],56:[function(require,module,exports){
+},{"safe-buffer":681}],55:[function(require,module,exports){
 /*
  *  big.js v5.1.2
  *  A small, fast, easy-to-use library for arbitrary-precision decimal arithmetic.
@@ -12211,7 +11981,7 @@ module.exports = function base (ALPHABET) {
   }
 })(this);
 
-},{}],57:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 // Reference https://github.com/bitcoin/bips/blob/master/bip-0066.mediawiki
 // Format: 0x30 [total-length] 0x02 [R-length] [R] 0x02 [S-length] [S]
 // NOTE: SIGHASH byte ignored AND restricted, truncate before use
@@ -12326,7 +12096,7 @@ module.exports = {
   encode: encode
 }
 
-},{"safe-buffer":601}],58:[function(require,module,exports){
+},{"safe-buffer":681}],57:[function(require,module,exports){
 var DuplexStream = require('readable-stream/duplex')
   , util         = require('util')
   , Buffer       = require('safe-buffer').Buffer
@@ -12609,7 +12379,7 @@ BufferList.prototype.destroy = function destroy () {
 
 module.exports = BufferList
 
-},{"readable-stream/duplex":586,"safe-buffer":601,"util":652}],59:[function(require,module,exports){
+},{"readable-stream/duplex":666,"safe-buffer":681,"util":732}],58:[function(require,module,exports){
 // Blake2B in pure Javascript
 // Adapted from the reference implementation in RFC7693
 // Ported to Javascript by DC - https://github.com/dcposch
@@ -12884,7 +12654,7 @@ module.exports = {
   blake2bFinal: blake2bFinal
 }
 
-},{"./util":62}],60:[function(require,module,exports){
+},{"./util":61}],59:[function(require,module,exports){
 // BLAKE2s hash function in pure Javascript
 // Adapted from the reference implementation in RFC7693
 // Ported to Javascript by DC - https://github.com/dcposch
@@ -13076,7 +12846,7 @@ module.exports = {
   blake2sFinal: blake2sFinal
 }
 
-},{"./util":62}],61:[function(require,module,exports){
+},{"./util":61}],60:[function(require,module,exports){
 var b2b = require('./blake2b')
 var b2s = require('./blake2s')
 
@@ -13093,7 +12863,7 @@ module.exports = {
   blake2sFinal: b2s.blake2sFinal
 }
 
-},{"./blake2b":59,"./blake2s":60}],62:[function(require,module,exports){
+},{"./blake2b":58,"./blake2s":59}],61:[function(require,module,exports){
 (function (Buffer){
 var ERROR_MSG_INPUT = 'Input must be an string, Buffer or Uint8Array'
 
@@ -13178,7 +12948,7 @@ module.exports = {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":84}],63:[function(require,module,exports){
+},{"buffer":84}],62:[function(require,module,exports){
 (function (module, exports) {
   'use strict';
 
@@ -16607,7 +16377,115 @@ module.exports = {
   };
 })(typeof module === 'undefined' || module, this);
 
-},{"buffer":64}],64:[function(require,module,exports){
+},{"buffer":63}],63:[function(require,module,exports){
+
+},{}],64:[function(require,module,exports){
+/*!
+ * Cross-Browser Split 1.1.1
+ * Copyright 2007-2012 Steven Levithan <stevenlevithan.com>
+ * Available under the MIT License
+ * ECMAScript compliant, uniform cross-browser split method
+ */
+
+/**
+ * Splits a string into an array of strings using a regex or string separator. Matches of the
+ * separator are not included in the result array. However, if `separator` is a regex that contains
+ * capturing groups, backreferences are spliced into the result each time `separator` is matched.
+ * Fixes browser bugs compared to the native `String.prototype.split` and can be used reliably
+ * cross-browser.
+ * @param {String} str String to split.
+ * @param {RegExp|String} separator Regex or string to use for separating the string.
+ * @param {Number} [limit] Maximum number of items to include in the result array.
+ * @returns {Array} Array of substrings.
+ * @example
+ *
+ * // Basic use
+ * split('a b c d', ' ');
+ * // -> ['a', 'b', 'c', 'd']
+ *
+ * // With limit
+ * split('a b c d', ' ', 2);
+ * // -> ['a', 'b']
+ *
+ * // Backreferences in result array
+ * split('..word1 word2..', /([a-z]+)(\d+)/i);
+ * // -> ['..', 'word', '1', ' ', 'word', '2', '..']
+ */
+module.exports = (function split(undef) {
+
+  var nativeSplit = String.prototype.split,
+    compliantExecNpcg = /()??/.exec("")[1] === undef,
+    // NPCG: nonparticipating capturing group
+    self;
+
+  self = function(str, separator, limit) {
+    // If `separator` is not a regex, use `nativeSplit`
+    if (Object.prototype.toString.call(separator) !== "[object RegExp]") {
+      return nativeSplit.call(str, separator, limit);
+    }
+    var output = [],
+      flags = (separator.ignoreCase ? "i" : "") + (separator.multiline ? "m" : "") + (separator.extended ? "x" : "") + // Proposed for ES6
+      (separator.sticky ? "y" : ""),
+      // Firefox 3+
+      lastLastIndex = 0,
+      // Make `global` and avoid `lastIndex` issues by working with a copy
+      separator = new RegExp(separator.source, flags + "g"),
+      separator2, match, lastIndex, lastLength;
+    str += ""; // Type-convert
+    if (!compliantExecNpcg) {
+      // Doesn't need flags gy, but they don't hurt
+      separator2 = new RegExp("^" + separator.source + "$(?!\\s)", flags);
+    }
+    /* Values for `limit`, per the spec:
+     * If undefined: 4294967295 // Math.pow(2, 32) - 1
+     * If 0, Infinity, or NaN: 0
+     * If positive number: limit = Math.floor(limit); if (limit > 4294967295) limit -= 4294967296;
+     * If negative number: 4294967296 - Math.floor(Math.abs(limit))
+     * If other: Type-convert, then use the above rules
+     */
+    limit = limit === undef ? -1 >>> 0 : // Math.pow(2, 32) - 1
+    limit >>> 0; // ToUint32(limit)
+    while (match = separator.exec(str)) {
+      // `separator.lastIndex` is not reliable cross-browser
+      lastIndex = match.index + match[0].length;
+      if (lastIndex > lastLastIndex) {
+        output.push(str.slice(lastLastIndex, match.index));
+        // Fix browsers whose `exec` methods don't consistently return `undefined` for
+        // nonparticipating capturing groups
+        if (!compliantExecNpcg && match.length > 1) {
+          match[0].replace(separator2, function() {
+            for (var i = 1; i < arguments.length - 2; i++) {
+              if (arguments[i] === undef) {
+                match[i] = undef;
+              }
+            }
+          });
+        }
+        if (match.length > 1 && match.index < str.length) {
+          Array.prototype.push.apply(output, match.slice(1));
+        }
+        lastLength = match[0].length;
+        lastLastIndex = lastIndex;
+        if (output.length >= limit) {
+          break;
+        }
+      }
+      if (separator.lastIndex === match.index) {
+        separator.lastIndex++; // Avoid an infinite loop
+      }
+    }
+    if (lastLastIndex === str.length) {
+      if (lastLength || !separator.test("")) {
+        output.push("");
+      }
+    } else {
+      output.push(str.slice(lastLastIndex));
+    }
+    return output.length > limit ? output.slice(0, limit) : output;
+  };
+
+  return self;
+})();
 
 },{}],65:[function(require,module,exports){
 // based on the aes implimentation in triple sec
@@ -16839,7 +16717,7 @@ AES.prototype.scrub = function () {
 
 module.exports.AES = AES
 
-},{"safe-buffer":601}],66:[function(require,module,exports){
+},{"safe-buffer":681}],66:[function(require,module,exports){
 var aes = require('./aes')
 var Buffer = require('safe-buffer').Buffer
 var Transform = require('cipher-base')
@@ -16958,7 +16836,7 @@ StreamCipher.prototype.setAAD = function setAAD (buf) {
 
 module.exports = StreamCipher
 
-},{"./aes":65,"./ghash":70,"./incr32":71,"buffer-xor":89,"cipher-base":91,"inherits":154,"safe-buffer":601}],67:[function(require,module,exports){
+},{"./aes":65,"./ghash":70,"./incr32":71,"buffer-xor":89,"cipher-base":91,"inherits":158,"safe-buffer":681}],67:[function(require,module,exports){
 var ciphers = require('./encrypter')
 var deciphers = require('./decrypter')
 var modes = require('./modes/list.json')
@@ -17099,7 +16977,7 @@ function createDecipher (suite, password) {
 exports.createDecipher = createDecipher
 exports.createDecipheriv = createDecipheriv
 
-},{"./aes":65,"./authCipher":66,"./modes":78,"./streamCipher":81,"cipher-base":91,"evp_bytestokey":146,"inherits":154,"safe-buffer":601}],69:[function(require,module,exports){
+},{"./aes":65,"./authCipher":66,"./modes":78,"./streamCipher":81,"cipher-base":91,"evp_bytestokey":147,"inherits":158,"safe-buffer":681}],69:[function(require,module,exports){
 var MODES = require('./modes')
 var AuthCipher = require('./authCipher')
 var Buffer = require('safe-buffer').Buffer
@@ -17215,7 +17093,7 @@ function createCipher (suite, password) {
 exports.createCipheriv = createCipheriv
 exports.createCipher = createCipher
 
-},{"./aes":65,"./authCipher":66,"./modes":78,"./streamCipher":81,"cipher-base":91,"evp_bytestokey":146,"inherits":154,"safe-buffer":601}],70:[function(require,module,exports){
+},{"./aes":65,"./authCipher":66,"./modes":78,"./streamCipher":81,"cipher-base":91,"evp_bytestokey":147,"inherits":158,"safe-buffer":681}],70:[function(require,module,exports){
 var Buffer = require('safe-buffer').Buffer
 var ZEROES = Buffer.alloc(16, 0)
 
@@ -17306,7 +17184,7 @@ GHASH.prototype.final = function (abl, bl) {
 
 module.exports = GHASH
 
-},{"safe-buffer":601}],71:[function(require,module,exports){
+},{"safe-buffer":681}],71:[function(require,module,exports){
 function incr32 (iv) {
   var len = iv.length
   var item
@@ -17377,7 +17255,7 @@ exports.encrypt = function (self, data, decrypt) {
   return out
 }
 
-},{"buffer-xor":89,"safe-buffer":601}],74:[function(require,module,exports){
+},{"buffer-xor":89,"safe-buffer":681}],74:[function(require,module,exports){
 var Buffer = require('safe-buffer').Buffer
 
 function encryptByte (self, byteParam, decrypt) {
@@ -17421,7 +17299,7 @@ exports.encrypt = function (self, chunk, decrypt) {
   return out
 }
 
-},{"safe-buffer":601}],75:[function(require,module,exports){
+},{"safe-buffer":681}],75:[function(require,module,exports){
 var Buffer = require('safe-buffer').Buffer
 
 function encryptByte (self, byteParam, decrypt) {
@@ -17448,7 +17326,7 @@ exports.encrypt = function (self, chunk, decrypt) {
   return out
 }
 
-},{"safe-buffer":601}],76:[function(require,module,exports){
+},{"safe-buffer":681}],76:[function(require,module,exports){
 var xor = require('buffer-xor')
 var Buffer = require('safe-buffer').Buffer
 var incr32 = require('../incr32')
@@ -17480,7 +17358,7 @@ exports.encrypt = function (self, chunk) {
   return xor(chunk, pad)
 }
 
-},{"../incr32":71,"buffer-xor":89,"safe-buffer":601}],77:[function(require,module,exports){
+},{"../incr32":71,"buffer-xor":89,"safe-buffer":681}],77:[function(require,module,exports){
 exports.encrypt = function (self, block) {
   return self._cipher.encryptBlock(block)
 }
@@ -17751,9 +17629,9 @@ StreamCipher.prototype._final = function () {
 
 module.exports = StreamCipher
 
-},{"./aes":65,"cipher-base":91,"inherits":154,"safe-buffer":601}],82:[function(require,module,exports){
-arguments[4][64][0].apply(exports,arguments)
-},{"dup":64}],83:[function(require,module,exports){
+},{"./aes":65,"cipher-base":91,"inherits":158,"safe-buffer":681}],82:[function(require,module,exports){
+arguments[4][63][0].apply(exports,arguments)
+},{"dup":63}],83:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -19644,7 +19522,7 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":83,"ieee754":152}],85:[function(require,module,exports){
+},{"base64-js":83,"ieee754":154}],85:[function(require,module,exports){
 (function (global){
 /*! https://mths.be/punycode v1.4.1 by @mathias */
 ;(function(root) {
@@ -20187,7 +20065,7 @@ var ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
 module.exports = basex(ALPHABET)
 
-},{"base-x":55}],87:[function(require,module,exports){
+},{"base-x":54}],87:[function(require,module,exports){
 (function (Buffer){
 function allocUnsafe (size) {
   if (typeof size !== 'number') {
@@ -20462,7 +20340,7 @@ CipherBase.prototype._toString = function (value, enc, fin) {
 
 module.exports = CipherBase
 
-},{"inherits":154,"safe-buffer":601,"stream":625,"string_decoder":632}],92:[function(require,module,exports){
+},{"inherits":158,"safe-buffer":681,"stream":705,"string_decoder":712}],92:[function(require,module,exports){
 'use strict';
 
 function withIs(Class, { className, symbolName }) {
@@ -20641,7 +20519,7 @@ function objectToString(o) {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":168}],94:[function(require,module,exports){
+},{"../../is-buffer/index.js":172}],94:[function(require,module,exports){
 'use strict'
 var inherits = require('inherits')
 var MD5 = require('md5.js')
@@ -20673,14 +20551,14 @@ module.exports = function createHash (alg) {
   return new Hash(sha(alg))
 }
 
-},{"cipher-base":91,"inherits":154,"md5.js":390,"ripemd160":600,"sha.js":616}],95:[function(require,module,exports){
+},{"cipher-base":91,"inherits":158,"md5.js":468,"ripemd160":680,"sha.js":696}],95:[function(require,module,exports){
 var MD5 = require('md5.js')
 
 module.exports = function (buffer) {
   return new MD5().update(buffer).digest()
 }
 
-},{"md5.js":390}],96:[function(require,module,exports){
+},{"md5.js":468}],96:[function(require,module,exports){
 'use strict'
 var inherits = require('inherits')
 var Legacy = require('./legacy')
@@ -20744,7 +20622,7 @@ module.exports = function createHmac (alg, key) {
   return new Hmac(alg, key)
 }
 
-},{"./legacy":97,"cipher-base":91,"create-hash/md5":95,"inherits":154,"ripemd160":600,"safe-buffer":601,"sha.js":616}],97:[function(require,module,exports){
+},{"./legacy":97,"cipher-base":91,"create-hash/md5":95,"inherits":158,"ripemd160":680,"safe-buffer":681,"sha.js":696}],97:[function(require,module,exports){
 'use strict'
 var inherits = require('inherits')
 var Buffer = require('safe-buffer').Buffer
@@ -20792,7 +20670,7 @@ Hmac.prototype._final = function () {
 }
 module.exports = Hmac
 
-},{"cipher-base":91,"inherits":154,"safe-buffer":601}],98:[function(require,module,exports){
+},{"cipher-base":91,"inherits":158,"safe-buffer":681}],98:[function(require,module,exports){
 // https://d3js.org/d3-array/ Version 1.2.1. Copyright 2017 Mike Bostock.
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -30962,7 +30840,7 @@ exports.xml = xml;
 exports.csv = csv;
 exports.tsv = tsv;
 
-},{"d3-collection":102,"d3-dispatch":104,"d3-dsv":106,"xmlhttprequest":662}],119:[function(require,module,exports){
+},{"d3-collection":102,"d3-dispatch":104,"d3-dsv":106,"xmlhttprequest":772}],119:[function(require,module,exports){
 // https://d3js.org/d3-scale/ Version 1.0.7. Copyright 2017 Mike Bostock.
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array'), require('d3-collection'), require('d3-interpolate'), require('d3-format'), require('d3-time'), require('d3-time-format'), require('d3-color')) :
@@ -38605,7 +38483,7 @@ function localstorage() {
 }
 
 }).call(this,require('_process'))
-},{"./debug":130,"_process":499}],130:[function(require,module,exports){
+},{"./debug":130,"_process":578}],130:[function(require,module,exports){
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -38809,7 +38687,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":393}],131:[function(require,module,exports){
+},{"ms":471}],131:[function(require,module,exports){
 (function (global){
 module.exports = false;
 
@@ -39085,7 +38963,7 @@ function forEach (xs, f) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_readable":138,"./_stream_writable":140,"_process":499,"core-util-is":93,"inherits":154}],137:[function(require,module,exports){
+},{"./_stream_readable":138,"./_stream_writable":140,"_process":578,"core-util-is":93,"inherits":158}],137:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -39133,7 +39011,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./_stream_transform":139,"core-util-is":93,"inherits":154}],138:[function(require,module,exports){
+},{"./_stream_transform":139,"core-util-is":93,"inherits":158}],138:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -40088,7 +39966,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":136,"_process":499,"buffer":84,"core-util-is":93,"events":145,"inherits":154,"isarray":135,"stream":625,"string_decoder/":142,"util":64}],139:[function(require,module,exports){
+},{"./_stream_duplex":136,"_process":578,"buffer":84,"core-util-is":93,"events":146,"inherits":158,"isarray":135,"stream":705,"string_decoder/":142,"util":63}],139:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -40299,7 +40177,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":136,"core-util-is":93,"inherits":154}],140:[function(require,module,exports){
+},{"./_stream_duplex":136,"core-util-is":93,"inherits":158}],140:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -40780,7 +40658,7 @@ function endWritable(stream, state, cb) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":136,"_process":499,"buffer":84,"core-util-is":93,"inherits":154,"stream":625}],141:[function(require,module,exports){
+},{"./_stream_duplex":136,"_process":578,"buffer":84,"core-util-is":93,"inherits":158,"stream":705}],141:[function(require,module,exports){
 (function (process){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = require('stream');
@@ -40794,7 +40672,7 @@ if (!process.browser && process.env.READABLE_STREAM === 'disable') {
 }
 
 }).call(this,require('_process'))
-},{"./lib/_stream_duplex.js":136,"./lib/_stream_passthrough.js":137,"./lib/_stream_readable.js":138,"./lib/_stream_transform.js":139,"./lib/_stream_writable.js":140,"_process":499,"stream":625}],142:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":136,"./lib/_stream_passthrough.js":137,"./lib/_stream_readable.js":138,"./lib/_stream_transform.js":139,"./lib/_stream_writable.js":140,"_process":578,"stream":705}],142:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -41256,7 +41134,7 @@ Duplexify.prototype.end = function(data, enc, cb) {
 module.exports = Duplexify
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"_process":499,"buffer":84,"end-of-stream":144,"inherits":154,"readable-stream":596,"stream-shift":630}],144:[function(require,module,exports){
+},{"_process":578,"buffer":84,"end-of-stream":144,"inherits":158,"readable-stream":676,"stream-shift":710}],144:[function(require,module,exports){
 var once = require('once');
 
 var noop = function() {};
@@ -41345,7 +41223,29 @@ var eos = function(stream, opts, callback) {
 
 module.exports = eos;
 
-},{"once":471}],145:[function(require,module,exports){
+},{"once":546}],145:[function(require,module,exports){
+'use strict';
+
+var OneVersionConstraint = require('individual/one-version');
+
+var MY_VERSION = '7';
+OneVersionConstraint('ev-store', MY_VERSION);
+
+var hashKey = '__EV_STORE_KEY@' + MY_VERSION;
+
+module.exports = EvStore;
+
+function EvStore(elem) {
+    var hash = elem[hashKey];
+
+    if (!hash) {
+        hash = elem[hashKey] = {};
+    }
+
+    return hash;
+}
+
+},{"individual/one-version":157}],146:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -41870,7 +41770,7 @@ function functionBindPolyfill(context) {
   };
 }
 
-},{}],146:[function(require,module,exports){
+},{}],147:[function(require,module,exports){
 var Buffer = require('safe-buffer').Buffer
 var MD5 = require('md5.js')
 
@@ -41917,7 +41817,7 @@ function EVP_BytesToKey (password, salt, keyBits, ivLen) {
 
 module.exports = EVP_BytesToKey
 
-},{"md5.js":390,"safe-buffer":601}],147:[function(require,module,exports){
+},{"md5.js":468,"safe-buffer":681}],148:[function(require,module,exports){
 // originally pulled out of simple-peer
 
 module.exports = function getBrowserRTC () {
@@ -41934,7 +41834,28 @@ module.exports = function getBrowserRTC () {
   return wrtc
 }
 
-},{}],148:[function(require,module,exports){
+},{}],149:[function(require,module,exports){
+(function (global){
+var topLevel = typeof global !== 'undefined' ? global :
+    typeof window !== 'undefined' ? window : {}
+var minDoc = require('min-document');
+
+var doccy;
+
+if (typeof document !== 'undefined') {
+    doccy = document;
+} else {
+    doccy = topLevel['__GLOBAL_DOCUMENT_CACHE@4'];
+
+    if (!doccy) {
+        doccy = topLevel['__GLOBAL_DOCUMENT_CACHE@4'] = minDoc;
+    }
+}
+
+module.exports = doccy;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"min-document":63}],150:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var Transform = require('stream').Transform
@@ -42031,7 +41952,7 @@ HashBase.prototype._digest = function () {
 
 module.exports = HashBase
 
-},{"inherits":154,"safe-buffer":601,"stream":625}],149:[function(require,module,exports){
+},{"inherits":158,"safe-buffer":681,"stream":705}],151:[function(require,module,exports){
 const duplexify = require('duplexify')
 const ThroughStream = require('readable-stream').PassThrough
 const pify = require('pify')
@@ -42071,7 +41992,7 @@ function createHttpClientStream(opts) {
   return primaryStream
 }
 
-},{"async-q":20,"duplexify":143,"hyperquest":151,"pify":497,"pump":574,"readable-stream":596,"substream-on-active":633}],150:[function(require,module,exports){
+},{"async-q":19,"duplexify":143,"hyperquest":153,"pify":576,"pump":653,"readable-stream":676,"substream-on-active":713}],152:[function(require,module,exports){
 var http = require('http')
 var url = require('url')
 
@@ -42104,7 +42025,7 @@ function validateParams (params) {
   return params
 }
 
-},{"http":626,"url":647}],151:[function(require,module,exports){
+},{"http":706,"url":727}],153:[function(require,module,exports){
 (function (process){
 var url = require('url');
 var http = require('http');
@@ -42261,7 +42182,7 @@ Req.prototype.setLocation = function (uri) {
 };
 
 }).call(this,require('_process'))
-},{"_process":499,"buffer-from":88,"duplexer2":134,"http":626,"https":150,"through2":642,"url":647}],152:[function(require,module,exports){
+},{"_process":578,"buffer-from":88,"duplexer2":134,"http":706,"https":152,"through2":722,"url":727}],154:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = (nBytes * 8) - mLen - 1
@@ -42347,7 +42268,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],153:[function(require,module,exports){
+},{}],155:[function(require,module,exports){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
  *
@@ -48149,7 +48070,54 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],154:[function(require,module,exports){
+},{}],156:[function(require,module,exports){
+(function (global){
+'use strict';
+
+/*global window, global*/
+
+var root = typeof window !== 'undefined' ?
+    window : typeof global !== 'undefined' ?
+    global : {};
+
+module.exports = Individual;
+
+function Individual(key, value) {
+    if (key in root) {
+        return root[key];
+    }
+
+    root[key] = value;
+
+    return value;
+}
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],157:[function(require,module,exports){
+'use strict';
+
+var Individual = require('./index.js');
+
+module.exports = OneVersion;
+
+function OneVersion(moduleName, version, defaultValue) {
+    var key = '__INDIVIDUAL_ONE_VERSION_' + moduleName;
+    var enforceKey = key + '_ENFORCE_SINGLETON';
+
+    var versionValue = Individual(enforceKey, version);
+
+    if (versionValue !== version) {
+        throw new Error('Can only have one copy of ' +
+            moduleName + '.\n' +
+            'You already have version ' + versionValue +
+            ' installed.\n' +
+            'This means you cannot install version ' + version);
+    }
+
+    return Individual(key, defaultValue);
+}
+
+},{"./index.js":156}],158:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -48174,7 +48142,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],155:[function(require,module,exports){
+},{}],159:[function(require,module,exports){
 'use strict'
 
 const defer = require('pull-defer/duplex')
@@ -48236,12 +48204,12 @@ module.exports = class Connection {
   }
 }
 
-},{"pull-defer/duplex":517}],156:[function(require,module,exports){
+},{"pull-defer/duplex":596}],160:[function(require,module,exports){
 'use strict'
 
 exports.Connection = require('./connection')
 
-},{"./connection":155}],157:[function(require,module,exports){
+},{"./connection":159}],161:[function(require,module,exports){
 'use strict';
 
 exports.Address4 = require('./lib/ipv4.js');
@@ -48251,7 +48219,7 @@ exports.v6 = {
   helpers: require('./lib/v6/helpers.js')
 };
 
-},{"./lib/ipv4.js":159,"./lib/ipv6.js":160,"./lib/v6/helpers.js":164}],158:[function(require,module,exports){
+},{"./lib/ipv4.js":163,"./lib/ipv6.js":164,"./lib/v6/helpers.js":168}],162:[function(require,module,exports){
 'use strict';
 
 // A wrapper function that returns false if the address is not valid; used to
@@ -48292,7 +48260,7 @@ exports.isCorrect = function (defaultBits) {
   });
 };
 
-},{}],159:[function(require,module,exports){
+},{}],163:[function(require,module,exports){
 'use strict';
 
 var BigInteger = require('jsbn').BigInteger;
@@ -48562,7 +48530,7 @@ Address4.prototype.binaryZeroPad = function () {
 
 module.exports = Address4;
 
-},{"./common.js":158,"./v4/constants.js":161,"jsbn":172,"lodash.padstart":321,"lodash.repeat":322,"sprintf-js":624}],160:[function(require,module,exports){
+},{"./common.js":162,"./v4/constants.js":165,"jsbn":177,"lodash.padstart":404,"lodash.repeat":405,"sprintf-js":704}],164:[function(require,module,exports){
 'use strict';
 
 var BigInteger = require('jsbn').BigInteger;
@@ -49490,7 +49458,7 @@ Address6.fromUnsignedByteArray = function (bytes) {
 
 module.exports = Address6;
 
-},{"./ipv4.js":159,"./v4/constants.js":161,"./v6/attributes.js":162,"./v6/constants.js":163,"./v6/html.js":165,"./v6/regular-expressions.js":166,"jsbn":172,"lodash.find":315,"lodash.max":319,"lodash.merge":320,"lodash.padstart":321,"lodash.repeat":322,"sprintf-js":624}],161:[function(require,module,exports){
+},{"./ipv4.js":163,"./v4/constants.js":165,"./v6/attributes.js":166,"./v6/constants.js":167,"./v6/html.js":169,"./v6/regular-expressions.js":170,"jsbn":177,"lodash.find":398,"lodash.max":402,"lodash.merge":403,"lodash.padstart":404,"lodash.repeat":405,"sprintf-js":704}],165:[function(require,module,exports){
 exports.BITS = 32;
 exports.GROUPS = 4;
 
@@ -49498,7 +49466,7 @@ exports.RE_ADDRESS = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0
 
 exports.RE_SUBNET_STRING = /\/\d{1,2}$/;
 
-},{}],162:[function(require,module,exports){
+},{}],166:[function(require,module,exports){
 'use strict';
 
 var common = require('../common.js');
@@ -49606,7 +49574,7 @@ exports.isLoopback = common.falseIfInvalid(function () {
   return this.getType() === 'Loopback';
 });
 
-},{"../common.js":158,"./constants.js":163}],163:[function(require,module,exports){
+},{"../common.js":162,"./constants.js":167}],167:[function(require,module,exports){
 exports.BITS = 128;
 exports.GROUPS = 8;
 
@@ -49687,7 +49655,7 @@ exports.RE_ZONE_STRING = /%.*$/;
 exports.RE_URL = new RegExp(/^\[{0,1}([0-9a-f:]+)\]{0,1}/);
 exports.RE_URL_WITH_PORT = new RegExp(/\[([0-9a-f:]+)\]:([0-9]{1,5})/);
 
-},{}],164:[function(require,module,exports){
+},{}],168:[function(require,module,exports){
 'use strict';
 
 var sprintf = require('sprintf-js').sprintf;
@@ -49753,7 +49721,7 @@ exports.simpleGroup = function (addressString, offset) {
   }).join(':');
 };
 
-},{"sprintf-js":624}],165:[function(require,module,exports){
+},{"sprintf-js":704}],169:[function(require,module,exports){
 'use strict';
 
 var constants4 = require('../v4/constants.js');
@@ -49862,7 +49830,7 @@ exports.group = function () {
   return output.join(':');
 };
 
-},{"../v4/constants.js":161,"./helpers.js":164,"sprintf-js":624}],166:[function(require,module,exports){
+},{"../v4/constants.js":165,"./helpers.js":168,"sprintf-js":704}],170:[function(require,module,exports){
 'use strict';
 
 var sprintf = require('sprintf-js').sprintf;
@@ -50016,7 +49984,7 @@ exports.regularExpression = function (optionalSubstring) {
   return new RegExp(this.regularExpressionString(optionalSubstring), 'i');
 };
 
-},{"./constants.js":163,"sprintf-js":624}],167:[function(require,module,exports){
+},{"./constants.js":167,"sprintf-js":704}],171:[function(require,module,exports){
 'use strict';
 
 var ip = exports;
@@ -50434,7 +50402,7 @@ ip.fromLong = function(ipl) {
       (ipl & 255) );
 };
 
-},{"buffer":84,"os":472}],168:[function(require,module,exports){
+},{"buffer":84,"os":547}],172:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -50457,20 +50425,27 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],169:[function(require,module,exports){
+},{}],173:[function(require,module,exports){
+"use strict";
+
+module.exports = function isObject(x) {
+	return typeof x === "object" && x !== null;
+};
+
+},{}],174:[function(require,module,exports){
 module.exports = isPromise;
 
 function isPromise(obj) {
   return obj && typeof obj.then === 'function';
 }
-},{}],170:[function(require,module,exports){
+},{}],175:[function(require,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],171:[function(require,module,exports){
+},{}],176:[function(require,module,exports){
 (function (process,global){
 /**
  * [js-sha3]{@link https://github.com/emn178/js-sha3}
@@ -51129,7 +51104,7 @@ module.exports = Array.isArray || function (arr) {
 })();
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":499}],172:[function(require,module,exports){
+},{"_process":578}],177:[function(require,module,exports){
 (function(){
 
     // Copyright (c) 2005  Tom Wu
@@ -52492,7 +52467,7 @@ module.exports = Array.isArray || function (arr) {
 
 }).call(this);
 
-},{}],173:[function(require,module,exports){
+},{}],178:[function(require,module,exports){
 var varint = require('varint')
 var stream = require('readable-stream')
 var util = require('util')
@@ -52591,7 +52566,7 @@ Decoder.prototype.destroy = function (err) {
 
 module.exports = Decoder
 
-},{"buffer-alloc-unsafe":87,"readable-stream":596,"util":652,"varint":655}],174:[function(require,module,exports){
+},{"buffer-alloc-unsafe":87,"readable-stream":676,"util":732,"varint":735}],179:[function(require,module,exports){
 var varint = require('varint')
 var stream = require('readable-stream')
 var util = require('util')
@@ -52634,11 +52609,1545 @@ Encoder.prototype.destroy = function (err) {
 
 module.exports = Encoder
 
-},{"buffer-alloc-unsafe":87,"readable-stream":596,"util":652,"varint":655}],175:[function(require,module,exports){
+},{"buffer-alloc-unsafe":87,"readable-stream":676,"util":732,"varint":735}],180:[function(require,module,exports){
 exports.encode = require('./encode')
 exports.decode = require('./decode')
 
-},{"./decode":173,"./encode":174}],176:[function(require,module,exports){
+},{"./decode":178,"./encode":179}],181:[function(require,module,exports){
+'use strict'
+
+const secp256k1 = require('secp256k1')
+const multihashing = require('multihashing-async')
+const setImmediate = require('async/setImmediate')
+
+const HASH_ALGORITHM = 'sha2-256'
+
+module.exports = (randomBytes) => {
+  const privateKeyLength = 32
+
+  function generateKey (callback) {
+    const done = (err, res) => setImmediate(() => callback(err, res))
+
+    let privateKey
+    do {
+      privateKey = randomBytes(32)
+    } while (!secp256k1.privateKeyVerify(privateKey))
+
+    done(null, privateKey)
+  }
+
+  function hashAndSign (key, msg, callback) {
+    const done = (err, res) => setImmediate(() => callback(err, res))
+
+    multihashing.digest(msg, HASH_ALGORITHM, (err, digest) => {
+      if (err) { return done(err) }
+
+      try {
+        const sig = secp256k1.sign(digest, key)
+        const sigDER = secp256k1.signatureExport(sig.signature)
+        return done(null, sigDER)
+      } catch (err) { done(err) }
+    })
+  }
+
+  function hashAndVerify (key, sig, msg, callback) {
+    const done = (err, res) => setImmediate(() => callback(err, res))
+
+    multihashing.digest(msg, HASH_ALGORITHM, (err, digest) => {
+      if (err) { return done(err) }
+      try {
+        sig = secp256k1.signatureImport(sig)
+        const valid = secp256k1.verify(digest, sig, key)
+        return done(null, valid)
+      } catch (err) { done(err) }
+    })
+  }
+
+  function compressPublicKey (key) {
+    if (!secp256k1.publicKeyVerify(key)) {
+      throw new Error('Invalid public key')
+    }
+    return secp256k1.publicKeyConvert(key, true)
+  }
+
+  function decompressPublicKey (key) {
+    return secp256k1.publicKeyConvert(key, false)
+  }
+
+  function validatePrivateKey (key) {
+    if (!secp256k1.privateKeyVerify(key)) {
+      throw new Error('Invalid private key')
+    }
+  }
+
+  function validatePublicKey (key) {
+    if (!secp256k1.publicKeyVerify(key)) {
+      throw new Error('Invalid public key')
+    }
+  }
+
+  function computePublicKey (privateKey) {
+    validatePrivateKey(privateKey)
+    return secp256k1.publicKeyCreate(privateKey)
+  }
+
+  return {
+    generateKey: generateKey,
+    privateKeyLength: privateKeyLength,
+    hashAndSign: hashAndSign,
+    hashAndVerify: hashAndVerify,
+    compressPublicKey: compressPublicKey,
+    decompressPublicKey: decompressPublicKey,
+    validatePrivateKey: validatePrivateKey,
+    validatePublicKey: validatePublicKey,
+    computePublicKey: computePublicKey
+  }
+}
+
+},{"async/setImmediate":49,"multihashing-async":484,"secp256k1":682}],182:[function(require,module,exports){
+'use strict'
+
+const multihashing = require('multihashing-async')
+
+module.exports = (keysProtobuf, randomBytes, crypto) => {
+  crypto = crypto || require('./crypto')(randomBytes)
+
+  class Secp256k1PublicKey {
+    constructor (key) {
+      crypto.validatePublicKey(key)
+      this._key = key
+    }
+
+    verify (data, sig, callback) {
+      ensure(callback)
+      crypto.hashAndVerify(this._key, sig, data, callback)
+    }
+
+    marshal () {
+      return crypto.compressPublicKey(this._key)
+    }
+
+    get bytes () {
+      return keysProtobuf.PublicKey.encode({
+        Type: keysProtobuf.KeyType.Secp256k1,
+        Data: this.marshal()
+      })
+    }
+
+    equals (key) {
+      return this.bytes.equals(key.bytes)
+    }
+
+    hash (callback) {
+      ensure(callback)
+      multihashing(this.bytes, 'sha2-256', callback)
+    }
+  }
+
+  class Secp256k1PrivateKey {
+    constructor (key, publicKey) {
+      this._key = key
+      this._publicKey = publicKey || crypto.computePublicKey(key)
+      crypto.validatePrivateKey(this._key)
+      crypto.validatePublicKey(this._publicKey)
+    }
+
+    sign (message, callback) {
+      ensure(callback)
+      crypto.hashAndSign(this._key, message, callback)
+    }
+
+    get public () {
+      return new Secp256k1PublicKey(this._publicKey)
+    }
+
+    marshal () {
+      return this._key
+    }
+
+    get bytes () {
+      return keysProtobuf.PrivateKey.encode({
+        Type: keysProtobuf.KeyType.Secp256k1,
+        Data: this.marshal()
+      })
+    }
+
+    equals (key) {
+      return this.bytes.equals(key.bytes)
+    }
+
+    hash (callback) {
+      ensure(callback)
+      multihashing(this.bytes, 'sha2-256', callback)
+    }
+  }
+
+  function unmarshalSecp256k1PrivateKey (bytes, callback) {
+    callback(null, new Secp256k1PrivateKey(bytes), null)
+  }
+
+  function unmarshalSecp256k1PublicKey (bytes) {
+    return new Secp256k1PublicKey(bytes)
+  }
+
+  function generateKeyPair (_bits, callback) {
+    if (callback === undefined && typeof _bits === 'function') {
+      callback = _bits
+    }
+
+    ensure(callback)
+
+    crypto.generateKey((err, privateKeyBytes) => {
+      if (err) { return callback(err) }
+
+      let privkey
+      try {
+        privkey = new Secp256k1PrivateKey(privateKeyBytes)
+      } catch (err) { return callback(err) }
+
+      callback(null, privkey)
+    })
+  }
+
+  function ensure (callback) {
+    if (typeof callback !== 'function') {
+      throw new Error('callback is required')
+    }
+  }
+
+  return {
+    Secp256k1PublicKey,
+    Secp256k1PrivateKey,
+    unmarshalSecp256k1PrivateKey,
+    unmarshalSecp256k1PublicKey,
+    generateKeyPair
+  }
+}
+
+},{"./crypto":181,"multihashing-async":484}],183:[function(require,module,exports){
+'use strict'
+
+const crypto = require('browserify-aes')
+
+module.exports = {
+  createCipheriv: crypto.createCipheriv,
+  createDecipheriv: crypto.createDecipheriv
+}
+
+},{"browserify-aes":67}],184:[function(require,module,exports){
+'use strict'
+
+const ciphers = require('./ciphers')
+
+const CIPHER_MODES = {
+  16: 'aes-128-ctr',
+  32: 'aes-256-ctr'
+}
+
+exports.create = function (key, iv, callback) {
+  const mode = CIPHER_MODES[key.length]
+  if (!mode) {
+    return callback(new Error('Invalid key length'))
+  }
+
+  const cipher = ciphers.createCipheriv(mode, key, iv)
+  const decipher = ciphers.createDecipheriv(mode, key, iv)
+
+  const res = {
+    encrypt (data, cb) {
+      cb(null, cipher.update(data))
+    },
+
+    decrypt (data, cb) {
+      cb(null, decipher.update(data))
+    }
+  }
+
+  callback(null, res)
+}
+
+},{"./ciphers":183}],185:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const nodeify = require('../nodeify')
+
+const crypto = require('../webcrypto.js')()
+const lengths = require('./lengths')
+
+const hashTypes = {
+  SHA1: 'SHA-1',
+  SHA256: 'SHA-256',
+  SHA512: 'SHA-512'
+}
+
+const sign = (key, data, cb) => {
+  nodeify(crypto.subtle.sign({name: 'HMAC'}, key, data)
+    .then((raw) => Buffer.from(raw)), cb)
+}
+
+exports.create = function (hashType, secret, callback) {
+  const hash = hashTypes[hashType]
+
+  nodeify(crypto.subtle.importKey(
+    'raw',
+    secret,
+    {
+      name: 'HMAC',
+      hash: {name: hash}
+    },
+    false,
+    ['sign']
+  ).then((key) => {
+    return {
+      digest (data, cb) {
+        sign(key, data, cb)
+      },
+      length: lengths[hashType]
+    }
+  }), callback)
+}
+
+}).call(this,require("buffer").Buffer)
+},{"../nodeify":198,"../webcrypto.js":202,"./lengths":186,"buffer":84}],186:[function(require,module,exports){
+'use strict'
+
+module.exports = {
+  SHA1: 20,
+  SHA256: 32,
+  SHA512: 64
+}
+
+},{}],187:[function(require,module,exports){
+'use strict'
+
+const hmac = require('./hmac')
+const aes = require('./aes')
+const keys = require('./keys')
+
+exports = module.exports
+
+exports.aes = aes
+exports.hmac = hmac
+exports.keys = keys
+exports.randomBytes = require('./random-bytes')
+exports.pbkdf2 = require('./pbkdf2')
+
+},{"./aes":184,"./hmac":185,"./keys":192,"./pbkdf2":199,"./random-bytes":200}],188:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const webcrypto = require('../webcrypto.js')()
+const nodeify = require('../nodeify')
+const BN = require('asn1.js').bignum
+
+const util = require('../util')
+const toBase64 = util.toBase64
+const toBn = util.toBn
+
+const bits = {
+  'P-256': 256,
+  'P-384': 384,
+  'P-521': 521
+}
+
+exports.generateEphmeralKeyPair = function (curve, callback) {
+  nodeify(webcrypto.subtle.generateKey(
+    {
+      name: 'ECDH',
+      namedCurve: curve
+    },
+    true,
+    ['deriveBits']
+  ).then((pair) => {
+    // forcePrivate is used for testing only
+    const genSharedKey = (theirPub, forcePrivate, cb) => {
+      if (typeof forcePrivate === 'function') {
+        cb = forcePrivate
+        forcePrivate = undefined
+      }
+
+      let privateKey
+
+      if (forcePrivate) {
+        privateKey = webcrypto.subtle.importKey(
+          'jwk',
+          unmarshalPrivateKey(curve, forcePrivate),
+          {
+            name: 'ECDH',
+            namedCurve: curve
+          },
+          false,
+          ['deriveBits']
+        )
+      } else {
+        privateKey = Promise.resolve(pair.privateKey)
+      }
+
+      const keys = Promise.all([
+        webcrypto.subtle.importKey(
+          'jwk',
+          unmarshalPublicKey(curve, theirPub),
+          {
+            name: 'ECDH',
+            namedCurve: curve
+          },
+          false,
+          []
+        ),
+        privateKey
+      ])
+
+      nodeify(keys.then((keys) => webcrypto.subtle.deriveBits(
+        {
+          name: 'ECDH',
+          namedCurve: curve,
+          public: keys[0]
+        },
+        keys[1],
+        bits[curve]
+      )).then((bits) => Buffer.from(bits)), cb)
+    }
+
+    return webcrypto.subtle.exportKey('jwk', pair.publicKey)
+      .then((publicKey) => {
+        return {
+          key: marshalPublicKey(publicKey),
+          genSharedKey
+        }
+      })
+  }), callback)
+}
+
+const curveLengths = {
+  'P-256': 32,
+  'P-384': 48,
+  'P-521': 66
+}
+
+// Marshal converts a jwk encodec ECDH public key into the
+// form specified in section 4.3.6 of ANSI X9.62. (This is the format
+// go-ipfs uses)
+function marshalPublicKey (jwk) {
+  const byteLen = curveLengths[jwk.crv]
+
+  return Buffer.concat([
+    Buffer.from([4]), // uncompressed point
+    toBn(jwk.x).toArrayLike(Buffer, 'be', byteLen),
+    toBn(jwk.y).toArrayLike(Buffer, 'be', byteLen)
+  ], 1 + byteLen * 2)
+}
+
+// Unmarshal converts a point, serialized by Marshal, into an jwk encoded key
+function unmarshalPublicKey (curve, key) {
+  const byteLen = curveLengths[curve]
+
+  if (!key.slice(0, 1).equals(Buffer.from([4]))) {
+    throw new Error('Invalid key format')
+  }
+  const x = new BN(key.slice(1, byteLen + 1))
+  const y = new BN(key.slice(1 + byteLen))
+
+  return {
+    kty: 'EC',
+    crv: curve,
+    x: toBase64(x, byteLen),
+    y: toBase64(y, byteLen),
+    ext: true
+  }
+}
+
+function unmarshalPrivateKey (curve, key) {
+  const result = unmarshalPublicKey(curve, key.public)
+  result.d = toBase64(new BN(key.private))
+  return result
+}
+
+}).call(this,require("buffer").Buffer)
+},{"../nodeify":198,"../util":201,"../webcrypto.js":202,"asn1.js":4,"buffer":84}],189:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const multihashing = require('multihashing-async')
+const protobuf = require('protons')
+const bs58 = require('bs58')
+
+const crypto = require('./ed25519')
+const pbm = protobuf(require('./keys.proto'))
+
+class Ed25519PublicKey {
+  constructor (key) {
+    this._key = ensureKey(key, crypto.publicKeyLength)
+  }
+
+  verify (data, sig, callback) {
+    ensure(callback)
+    crypto.hashAndVerify(this._key, sig, data, callback)
+  }
+
+  marshal () {
+    return Buffer.from(this._key)
+  }
+
+  get bytes () {
+    return pbm.PublicKey.encode({
+      Type: pbm.KeyType.Ed25519,
+      Data: this.marshal()
+    })
+  }
+
+  equals (key) {
+    return this.bytes.equals(key.bytes)
+  }
+
+  hash (callback) {
+    ensure(callback)
+    multihashing(this.bytes, 'sha2-256', callback)
+  }
+}
+
+class Ed25519PrivateKey {
+  // key       - 64 byte Uint8Array or Buffer containing private key
+  // publicKey - 32 byte Uint8Array or Buffer containing public key
+  constructor (key, publicKey) {
+    this._key = ensureKey(key, crypto.privateKeyLength)
+    this._publicKey = ensureKey(publicKey, crypto.publicKeyLength)
+  }
+
+  sign (message, callback) {
+    ensure(callback)
+    crypto.hashAndSign(this._key, message, callback)
+  }
+
+  get public () {
+    if (!this._publicKey) {
+      throw new Error('public key not provided')
+    }
+
+    return new Ed25519PublicKey(this._publicKey)
+  }
+
+  marshal () {
+    return Buffer.concat([Buffer.from(this._key), Buffer.from(this._publicKey)])
+  }
+
+  get bytes () {
+    return pbm.PrivateKey.encode({
+      Type: pbm.KeyType.Ed25519,
+      Data: this.marshal()
+    })
+  }
+
+  equals (key) {
+    return this.bytes.equals(key.bytes)
+  }
+
+  hash (callback) {
+    ensure(callback)
+    multihashing(this.bytes, 'sha2-256', callback)
+  }
+
+  /**
+   * Gets the ID of the key.
+   *
+   * The key id is the base58 encoding of the SHA-256 multihash of its public key.
+   * The public key is a protobuf encoding containing a type and the DER encoding
+   * of the PKCS SubjectPublicKeyInfo.
+   *
+   * @param {function(Error, id)} callback
+   * @returns {undefined}
+   */
+  id (callback) {
+    this.public.hash((err, hash) => {
+      if (err) {
+        return callback(err)
+      }
+      callback(null, bs58.encode(hash))
+    })
+  }
+}
+
+function unmarshalEd25519PrivateKey (bytes, callback) {
+  try {
+    bytes = ensureKey(bytes, crypto.privateKeyLength + crypto.publicKeyLength)
+  } catch (err) {
+    return callback(err)
+  }
+  const privateKeyBytes = bytes.slice(0, crypto.privateKeyLength)
+  const publicKeyBytes = bytes.slice(crypto.privateKeyLength, bytes.length)
+  callback(null, new Ed25519PrivateKey(privateKeyBytes, publicKeyBytes))
+}
+
+function unmarshalEd25519PublicKey (bytes) {
+  bytes = ensureKey(bytes, crypto.publicKeyLength)
+  return new Ed25519PublicKey(bytes)
+}
+
+function generateKeyPair (_bits, cb) {
+  if (cb === undefined && typeof _bits === 'function') {
+    cb = _bits
+  }
+
+  crypto.generateKey((err, keys) => {
+    if (err) {
+      return cb(err)
+    }
+    let privkey
+    try {
+      privkey = new Ed25519PrivateKey(keys.secretKey, keys.publicKey)
+    } catch (err) {
+      cb(err)
+      return
+    }
+
+    cb(null, privkey)
+  })
+}
+
+function generateKeyPairFromSeed (seed, _bits, cb) {
+  if (cb === undefined && typeof _bits === 'function') {
+    cb = _bits
+  }
+
+  crypto.generateKeyFromSeed(seed, (err, keys) => {
+    if (err) {
+      return cb(err)
+    }
+    let privkey
+    try {
+      privkey = new Ed25519PrivateKey(keys.secretKey, keys.publicKey)
+    } catch (err) {
+      cb(err)
+      return
+    }
+
+    cb(null, privkey)
+  })
+}
+
+function ensure (cb) {
+  if (typeof cb !== 'function') {
+    throw new Error('callback is required')
+  }
+}
+
+function ensureKey (key, length) {
+  if (Buffer.isBuffer(key)) {
+    key = new Uint8Array(key)
+  }
+  if (!(key instanceof Uint8Array) || key.length !== length) {
+    throw new Error('Key must be a Uint8Array or Buffer of length ' + length)
+  }
+  return key
+}
+
+module.exports = {
+  Ed25519PublicKey,
+  Ed25519PrivateKey,
+  unmarshalEd25519PrivateKey,
+  unmarshalEd25519PublicKey,
+  generateKeyPair,
+  generateKeyPairFromSeed
+}
+
+}).call(this,require("buffer").Buffer)
+},{"./ed25519":190,"./keys.proto":194,"bs58":86,"buffer":84,"multihashing-async":484,"protons":592}],190:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const nacl = require('tweetnacl')
+const setImmediate = require('async/setImmediate')
+
+exports.publicKeyLength = nacl.sign.publicKeyLength
+exports.privateKeyLength = nacl.sign.secretKeyLength
+
+exports.generateKey = function (callback) {
+  setImmediate(() => {
+    let result
+    try {
+      result = nacl.sign.keyPair()
+    } catch (err) {
+      return callback(err)
+    }
+    callback(null, result)
+  })
+}
+
+// seed should be a 32 byte uint8array
+exports.generateKeyFromSeed = function (seed, callback) {
+  setImmediate(() => {
+    let result
+    try {
+      result = nacl.sign.keyPair.fromSeed(seed)
+    } catch (err) {
+      return callback(err)
+    }
+    callback(null, result)
+  })
+}
+
+exports.hashAndSign = function (key, msg, callback) {
+  setImmediate(() => {
+    callback(null, Buffer.from(nacl.sign.detached(msg, key)))
+  })
+}
+
+exports.hashAndVerify = function (key, sig, msg, callback) {
+  setImmediate(() => {
+    let result
+    try {
+      result = nacl.sign.detached.verify(msg, sig, key)
+    } catch (err) {
+      return callback(err)
+    }
+
+    callback(null, result)
+  })
+}
+
+}).call(this,require("buffer").Buffer)
+},{"async/setImmediate":49,"buffer":84,"tweetnacl":726}],191:[function(require,module,exports){
+'use strict'
+
+const ecdh = require('./ecdh')
+
+// Generates an ephemeral public key and returns a function that will compute
+// the shared secret key.
+//
+// Focuses only on ECDH now, but can be made more general in the future.
+module.exports = (curve, callback) => {
+  ecdh.generateEphmeralKeyPair(curve, callback)
+}
+
+},{"./ecdh":188}],192:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const protobuf = require('protons')
+const keysPBM = protobuf(require('./keys.proto'))
+const forge = require('node-forge')
+
+exports = module.exports
+
+const supportedKeys = {
+  rsa: require('./rsa-class'),
+  ed25519: require('./ed25519-class'),
+  secp256k1: require('libp2p-crypto-secp256k1')(keysPBM, require('../random-bytes'))
+}
+
+exports.supportedKeys = supportedKeys
+exports.keysPBM = keysPBM
+
+function isValidKeyType (keyType) {
+  const key = supportedKeys[keyType.toLowerCase()]
+  return key !== undefined
+}
+
+exports.keyStretcher = require('./key-stretcher')
+exports.generateEphemeralKeyPair = require('./ephemeral-keys')
+
+// Generates a keypair of the given type and bitsize
+exports.generateKeyPair = (type, bits, cb) => {
+  let key = supportedKeys[type.toLowerCase()]
+
+  if (!key) {
+    return cb(new Error('invalid or unsupported key type'))
+  }
+
+  key.generateKeyPair(bits, cb)
+}
+
+// Generates a keypair of the given type and bitsize
+// seed is a 32 byte uint8array
+exports.generateKeyPairFromSeed = (type, seed, bits, cb) => {
+  let key = supportedKeys[type.toLowerCase()]
+  if (!key) {
+    return cb(new Error('invalid or unsupported key type'))
+  }
+  if (type.toLowerCase() !== 'ed25519') {
+    return cb(new Error('Seed key derivation is unimplemented for RSA or secp256k1'))
+  }
+  key.generateKeyPairFromSeed(seed, bits, cb)
+}
+
+// Converts a protobuf serialized public key into its
+// representative object
+exports.unmarshalPublicKey = (buf) => {
+  const decoded = keysPBM.PublicKey.decode(buf)
+  const data = decoded.Data
+
+  switch (decoded.Type) {
+    case keysPBM.KeyType.RSA:
+      return supportedKeys.rsa.unmarshalRsaPublicKey(data)
+    case keysPBM.KeyType.Ed25519:
+      return supportedKeys.ed25519.unmarshalEd25519PublicKey(data)
+    case keysPBM.KeyType.Secp256k1:
+      if (supportedKeys.secp256k1) {
+        return supportedKeys.secp256k1.unmarshalSecp256k1PublicKey(data)
+      } else {
+        throw new Error('secp256k1 support requires libp2p-crypto-secp256k1 package')
+      }
+    default:
+      throw new Error('invalid or unsupported key type')
+  }
+}
+
+// Converts a public key object into a protobuf serialized public key
+exports.marshalPublicKey = (key, type) => {
+  type = (type || 'rsa').toLowerCase()
+  if (!isValidKeyType(type)) {
+    throw new Error('invalid or unsupported key type')
+  }
+
+  return key.bytes
+}
+
+// Converts a protobuf serialized private key into its
+// representative object
+exports.unmarshalPrivateKey = (buf, callback) => {
+  let decoded
+  try {
+    decoded = keysPBM.PrivateKey.decode(buf)
+  } catch (err) {
+    return callback(err)
+  }
+
+  const data = decoded.Data
+
+  switch (decoded.Type) {
+    case keysPBM.KeyType.RSA:
+      return supportedKeys.rsa.unmarshalRsaPrivateKey(data, callback)
+    case keysPBM.KeyType.Ed25519:
+      return supportedKeys.ed25519.unmarshalEd25519PrivateKey(data, callback)
+    case keysPBM.KeyType.Secp256k1:
+      if (supportedKeys.secp256k1) {
+        return supportedKeys.secp256k1.unmarshalSecp256k1PrivateKey(data, callback)
+      } else {
+        return callback(new Error('secp256k1 support requires libp2p-crypto-secp256k1 package'))
+      }
+    default:
+      callback(new Error('invalid or unsupported key type'))
+  }
+}
+
+// Converts a private key object into a protobuf serialized private key
+exports.marshalPrivateKey = (key, type) => {
+  type = (type || 'rsa').toLowerCase()
+  if (!isValidKeyType(type)) {
+    throw new Error('invalid or unsupported key type')
+  }
+
+  return key.bytes
+}
+
+exports.import = (pem, password, callback) => {
+  try {
+    const key = forge.pki.decryptRsaPrivateKey(pem, password)
+    if (key === null) {
+      throw new Error('Cannot read the key, most likely the password is wrong or not a RSA key')
+    }
+    let der = forge.asn1.toDer(forge.pki.privateKeyToAsn1(key))
+    der = Buffer.from(der.getBytes(), 'binary')
+    return supportedKeys.rsa.unmarshalRsaPrivateKey(der, callback)
+  } catch (err) {
+    callback(err)
+  }
+}
+
+}).call(this,require("buffer").Buffer)
+},{"../random-bytes":200,"./ed25519-class":189,"./ephemeral-keys":191,"./key-stretcher":193,"./keys.proto":194,"./rsa-class":196,"buffer":84,"libp2p-crypto-secp256k1":182,"node-forge":511,"protons":592}],193:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const whilst = require('async/whilst')
+const hmac = require('../hmac')
+
+const cipherMap = {
+  'AES-128': {
+    ivSize: 16,
+    keySize: 16
+  },
+  'AES-256': {
+    ivSize: 16,
+    keySize: 32
+  },
+  Blowfish: {
+    ivSize: 8,
+    cipherKeySize: 32
+  }
+}
+
+// Generates a set of keys for each party by stretching the shared key.
+// (myIV, theirIV, myCipherKey, theirCipherKey, myMACKey, theirMACKey)
+module.exports = (cipherType, hash, secret, callback) => {
+  const cipher = cipherMap[cipherType]
+
+  if (!cipher) {
+    return callback(new Error('unkown cipherType passed'))
+  }
+
+  if (!hash) {
+    return callback(new Error('unkown hashType passed'))
+  }
+
+  const cipherKeySize = cipher.keySize
+  const ivSize = cipher.ivSize
+  const hmacKeySize = 20
+  const seed = Buffer.from('key expansion')
+  const resultLength = 2 * (ivSize + cipherKeySize + hmacKeySize)
+
+  hmac.create(hash, secret, (err, m) => {
+    if (err) {
+      return callback(err)
+    }
+
+    m.digest(seed, (err, a) => {
+      if (err) {
+        return callback(err)
+      }
+
+      let result = []
+      let j = 0
+
+      whilst(
+        () => j < resultLength,
+        stretch,
+        finish
+      )
+
+      function stretch (cb) {
+        m.digest(Buffer.concat([a, seed]), (err, b) => {
+          if (err) {
+            return cb(err)
+          }
+
+          let todo = b.length
+
+          if (j + todo > resultLength) {
+            todo = resultLength - j
+          }
+
+          result.push(b)
+
+          j += todo
+
+          m.digest(a, (err, _a) => {
+            if (err) {
+              return cb(err)
+            }
+            a = _a
+            cb()
+          })
+        })
+      }
+
+      function finish (err) {
+        if (err) {
+          return callback(err)
+        }
+
+        const half = resultLength / 2
+        const resultBuffer = Buffer.concat(result)
+        const r1 = resultBuffer.slice(0, half)
+        const r2 = resultBuffer.slice(half, resultLength)
+
+        const createKey = (res) => ({
+          iv: res.slice(0, ivSize),
+          cipherKey: res.slice(ivSize, ivSize + cipherKeySize),
+          macKey: res.slice(ivSize + cipherKeySize)
+        })
+
+        callback(null, {
+          k1: createKey(r1),
+          k2: createKey(r2)
+        })
+      }
+    })
+  })
+}
+
+}).call(this,require("buffer").Buffer)
+},{"../hmac":185,"async/whilst":53,"buffer":84}],194:[function(require,module,exports){
+'use strict'
+
+module.exports = `enum KeyType {
+  RSA = 0;
+  Ed25519 = 1;
+  Secp256k1 = 2;
+}
+message PublicKey {
+  required KeyType Type = 1;
+  required bytes Data = 2;
+}
+message PrivateKey {
+  required KeyType Type = 1;
+  required bytes Data = 2;
+}`
+},{}],195:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const nodeify = require('../nodeify')
+
+const webcrypto = require('../webcrypto.js')()
+
+exports.utils = require('./rsa-utils')
+
+exports.generateKey = function (bits, callback) {
+  nodeify(webcrypto.subtle.generateKey(
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      modulusLength: bits,
+      publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+      hash: {name: 'SHA-256'}
+    },
+    true,
+    ['sign', 'verify']
+  )
+    .then(exportKey)
+    .then((keys) => ({
+      privateKey: keys[0],
+      publicKey: keys[1]
+    })), callback)
+}
+
+// Takes a jwk key
+exports.unmarshalPrivateKey = function (key, callback) {
+  const privateKey = webcrypto.subtle.importKey(
+    'jwk',
+    key,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: {name: 'SHA-256'}
+    },
+    true,
+    ['sign']
+  )
+
+  nodeify(Promise.all([
+    privateKey,
+    derivePublicFromPrivate(key)
+  ]).then((keys) => exportKey({
+    privateKey: keys[0],
+    publicKey: keys[1]
+  })).then((keys) => ({
+    privateKey: keys[0],
+    publicKey: keys[1]
+  })), callback)
+}
+
+exports.getRandomValues = function (arr) {
+  return Buffer.from(webcrypto.getRandomValues(arr))
+}
+
+exports.hashAndSign = function (key, msg, callback) {
+  nodeify(webcrypto.subtle.importKey(
+    'jwk',
+    key,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: {name: 'SHA-256'}
+    },
+    false,
+    ['sign']
+  ).then((privateKey) => {
+    return webcrypto.subtle.sign(
+      {name: 'RSASSA-PKCS1-v1_5'},
+      privateKey,
+      Uint8Array.from(msg)
+    )
+  }).then((sig) => Buffer.from(sig)), callback)
+}
+
+exports.hashAndVerify = function (key, sig, msg, callback) {
+  nodeify(webcrypto.subtle.importKey(
+    'jwk',
+    key,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: {name: 'SHA-256'}
+    },
+    false,
+    ['verify']
+  ).then((publicKey) => {
+    return webcrypto.subtle.verify(
+      {name: 'RSASSA-PKCS1-v1_5'},
+      publicKey,
+      sig,
+      msg
+    )
+  }), callback)
+}
+
+function exportKey (pair) {
+  return Promise.all([
+    webcrypto.subtle.exportKey('jwk', pair.privateKey),
+    webcrypto.subtle.exportKey('jwk', pair.publicKey)
+  ])
+}
+
+function derivePublicFromPrivate (jwKey) {
+  return webcrypto.subtle.importKey(
+    'jwk',
+    {
+      kty: jwKey.kty,
+      n: jwKey.n,
+      e: jwKey.e
+    },
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: {name: 'SHA-256'}
+    },
+    true,
+    ['verify']
+  )
+}
+
+}).call(this,require("buffer").Buffer)
+},{"../nodeify":198,"../webcrypto.js":202,"./rsa-utils":197,"buffer":84}],196:[function(require,module,exports){
+'use strict'
+
+const multihashing = require('multihashing-async')
+const protobuf = require('protons')
+const bs58 = require('bs58')
+
+const crypto = require('./rsa')
+const pbm = protobuf(require('./keys.proto'))
+const forge = require('node-forge')
+const setImmediate = require('async/setImmediate')
+
+class RsaPublicKey {
+  constructor (key) {
+    this._key = key
+  }
+
+  verify (data, sig, callback) {
+    ensure(callback)
+    crypto.hashAndVerify(this._key, sig, data, callback)
+  }
+
+  marshal () {
+    return crypto.utils.jwkToPkix(this._key)
+  }
+
+  get bytes () {
+    return pbm.PublicKey.encode({
+      Type: pbm.KeyType.RSA,
+      Data: this.marshal()
+    })
+  }
+
+  encrypt (bytes) {
+    return this._key.encrypt(bytes, 'RSAES-PKCS1-V1_5')
+  }
+
+  equals (key) {
+    return this.bytes.equals(key.bytes)
+  }
+
+  hash (callback) {
+    ensure(callback)
+    multihashing(this.bytes, 'sha2-256', callback)
+  }
+}
+
+class RsaPrivateKey {
+  // key       - Object of the jwk format
+  // publicKey - Buffer of the spki format
+  constructor (key, publicKey) {
+    this._key = key
+    this._publicKey = publicKey
+  }
+
+  genSecret () {
+    return crypto.getRandomValues(new Uint8Array(16))
+  }
+
+  sign (message, callback) {
+    ensure(callback)
+    crypto.hashAndSign(this._key, message, callback)
+  }
+
+  get public () {
+    if (!this._publicKey) {
+      throw new Error('public key not provided')
+    }
+
+    return new RsaPublicKey(this._publicKey)
+  }
+
+  decrypt (msg, callback) {
+    crypto.decrypt(this._key, msg, callback)
+  }
+
+  marshal () {
+    return crypto.utils.jwkToPkcs1(this._key)
+  }
+
+  get bytes () {
+    return pbm.PrivateKey.encode({
+      Type: pbm.KeyType.RSA,
+      Data: this.marshal()
+    })
+  }
+
+  equals (key) {
+    return this.bytes.equals(key.bytes)
+  }
+
+  hash (callback) {
+    ensure(callback)
+    multihashing(this.bytes, 'sha2-256', callback)
+  }
+
+  /**
+   * Gets the ID of the key.
+   *
+   * The key id is the base58 encoding of the SHA-256 multihash of its public key.
+   * The public key is a protobuf encoding containing a type and the DER encoding
+   * of the PKCS SubjectPublicKeyInfo.
+   *
+   * @param {function(Error, id)} callback
+   * @returns {undefined}
+   */
+  id (callback) {
+    this.public.hash((err, hash) => {
+      if (err) {
+        return callback(err)
+      }
+      callback(null, bs58.encode(hash))
+    })
+  }
+
+  /**
+   * Exports the key into a password protected PEM format
+   *
+   * @param {string} [format] - Defaults to 'pkcs-8'.
+   * @param {string} password - The password to read the encrypted PEM
+   * @param {function(Error, KeyInfo)} callback
+   * @returns {undefined}
+   */
+  export (format, password, callback) {
+    if (typeof password === 'function') {
+      callback = password
+      password = format
+      format = 'pkcs-8'
+    }
+
+    ensure(callback)
+
+    setImmediate(() => {
+      let err = null
+      let pem = null
+      try {
+        const buffer = new forge.util.ByteBuffer(this.marshal())
+        const asn1 = forge.asn1.fromDer(buffer)
+        const privateKey = forge.pki.privateKeyFromAsn1(asn1)
+
+        if (format === 'pkcs-8') {
+          const options = {
+            algorithm: 'aes256',
+            count: 10000,
+            saltSize: 128 / 8,
+            prfAlgorithm: 'sha512'
+          }
+          pem = forge.pki.encryptRsaPrivateKey(privateKey, password, options)
+        } else {
+          err = new Error(`Unknown export format '${format}'`)
+        }
+      } catch (_err) {
+        err = _err
+      }
+
+      callback(err, pem)
+    })
+  }
+}
+
+function unmarshalRsaPrivateKey (bytes, callback) {
+  const jwk = crypto.utils.pkcs1ToJwk(bytes)
+
+  crypto.unmarshalPrivateKey(jwk, (err, keys) => {
+    if (err) {
+      return callback(err)
+    }
+
+    callback(null, new RsaPrivateKey(keys.privateKey, keys.publicKey))
+  })
+}
+
+function unmarshalRsaPublicKey (bytes) {
+  const jwk = crypto.utils.pkixToJwk(bytes)
+
+  return new RsaPublicKey(jwk)
+}
+
+function fromJwk (jwk, callback) {
+  crypto.unmarshalPrivateKey(jwk, (err, keys) => {
+    if (err) {
+      return callback(err)
+    }
+
+    callback(null, new RsaPrivateKey(keys.privateKey, keys.publicKey))
+  })
+}
+
+function generateKeyPair (bits, callback) {
+  crypto.generateKey(bits, (err, keys) => {
+    if (err) {
+      return callback(err)
+    }
+
+    callback(null, new RsaPrivateKey(keys.privateKey, keys.publicKey))
+  })
+}
+
+function ensure (callback) {
+  if (typeof callback !== 'function') {
+    throw new Error('callback is required')
+  }
+}
+
+module.exports = {
+  RsaPublicKey,
+  RsaPrivateKey,
+  unmarshalRsaPublicKey,
+  unmarshalRsaPrivateKey,
+  generateKeyPair,
+  fromJwk
+}
+
+},{"./keys.proto":194,"./rsa":195,"async/setImmediate":49,"bs58":86,"multihashing-async":484,"node-forge":511,"protons":592}],197:[function(require,module,exports){
+'use strict'
+
+const asn1 = require('asn1.js')
+
+const util = require('./../util')
+const toBase64 = util.toBase64
+const toBn = util.toBn
+
+const RSAPrivateKey = asn1.define('RSAPrivateKey', function () {
+  this.seq().obj(
+    this.key('version').int(),
+    this.key('modulus').int(),
+    this.key('publicExponent').int(),
+    this.key('privateExponent').int(),
+    this.key('prime1').int(),
+    this.key('prime2').int(),
+    this.key('exponent1').int(),
+    this.key('exponent2').int(),
+    this.key('coefficient').int()
+  )
+})
+
+const AlgorithmIdentifier = asn1.define('AlgorithmIdentifier', function () {
+  this.seq().obj(
+    this.key('algorithm').objid({
+      '1.2.840.113549.1.1.1': 'rsa'
+    }),
+    this.key('none').optional().null_(),
+    this.key('curve').optional().objid(),
+    this.key('params').optional().seq().obj(
+      this.key('p').int(),
+      this.key('q').int(),
+      this.key('g').int()
+    )
+  )
+})
+
+const PublicKey = asn1.define('RSAPublicKey', function () {
+  this.seq().obj(
+    this.key('algorithm').use(AlgorithmIdentifier),
+    this.key('subjectPublicKey').bitstr()
+  )
+})
+
+const RSAPublicKey = asn1.define('RSAPublicKey', function () {
+  this.seq().obj(
+    this.key('modulus').int(),
+    this.key('publicExponent').int()
+  )
+})
+
+// Convert a PKCS#1 in ASN1 DER format to a JWK key
+exports.pkcs1ToJwk = function (bytes) {
+  const asn1 = RSAPrivateKey.decode(bytes, 'der')
+
+  return {
+    kty: 'RSA',
+    n: toBase64(asn1.modulus),
+    e: toBase64(asn1.publicExponent),
+    d: toBase64(asn1.privateExponent),
+    p: toBase64(asn1.prime1),
+    q: toBase64(asn1.prime2),
+    dp: toBase64(asn1.exponent1),
+    dq: toBase64(asn1.exponent2),
+    qi: toBase64(asn1.coefficient),
+    alg: 'RS256',
+    kid: '2011-04-29'
+  }
+}
+
+// Convert a JWK key into PKCS#1 in ASN1 DER format
+exports.jwkToPkcs1 = function (jwk) {
+  return RSAPrivateKey.encode({
+    version: 0,
+    modulus: toBn(jwk.n),
+    publicExponent: toBn(jwk.e),
+    privateExponent: toBn(jwk.d),
+    prime1: toBn(jwk.p),
+    prime2: toBn(jwk.q),
+    exponent1: toBn(jwk.dp),
+    exponent2: toBn(jwk.dq),
+    coefficient: toBn(jwk.qi)
+  }, 'der')
+}
+
+// Convert a PKCIX in ASN1 DER format to a JWK key
+exports.pkixToJwk = function (bytes) {
+  const ndata = PublicKey.decode(bytes, 'der')
+  const asn1 = RSAPublicKey.decode(ndata.subjectPublicKey.data, 'der')
+
+  return {
+    kty: 'RSA',
+    n: toBase64(asn1.modulus),
+    e: toBase64(asn1.publicExponent),
+    alg: 'RS256',
+    kid: '2011-04-29'
+  }
+}
+
+// Convert a JWK key to PKCIX in ASN1 DER format
+exports.jwkToPkix = function (jwk) {
+  return PublicKey.encode({
+    algorithm: {
+      algorithm: 'rsa',
+      none: null
+    },
+    subjectPublicKey: {
+      data: RSAPublicKey.encode({
+        modulus: toBn(jwk.n),
+        publicExponent: toBn(jwk.e)
+      }, 'der')
+    }
+  }, 'der')
+}
+
+},{"./../util":201,"asn1.js":4}],198:[function(require,module,exports){
+'use strict'
+
+// Based on npmjs.com/nodeify but without additional `nextTick` calls
+// to keep the overhead low
+module.exports = function nodeify (promise, cb) {
+  return promise.then((res) => {
+    cb(null, res)
+  }, (err) => {
+    cb(err)
+  })
+}
+
+},{}],199:[function(require,module,exports){
+'use strict'
+
+const forge = require('node-forge')
+
+/**
+ * Maps an IPFS hash name to its node-forge equivalent.
+ *
+ * See https://github.com/multiformats/multihash/blob/master/hashtable.csv
+ *
+ * @private
+ */
+const hashName = {
+  sha1: 'sha1',
+  'sha2-256': 'sha256',
+  'sha2-512': 'sha512'
+}
+
+/**
+ * Computes the Password-Based Key Derivation Function 2.
+ *
+ * @param {string} password
+ * @param {string} salt
+ * @param {number} iterations
+ * @param {number} keySize (in bytes)
+ * @param {string} hash - The hash name ('sha1', 'sha2-512, ...)
+ * @returns {string} - A new password
+ */
+function pbkdf2 (password, salt, iterations, keySize, hash) {
+  const hasher = hashName[hash]
+  if (!hasher) {
+    throw new Error(`Hash '${hash}' is unknown or not supported`)
+  }
+  const dek = forge.pkcs5.pbkdf2(
+    password,
+    salt,
+    iterations,
+    keySize,
+    hasher)
+  return forge.util.encode64(dek)
+}
+
+module.exports = pbkdf2
+
+},{"node-forge":511}],200:[function(require,module,exports){
+'use strict'
+
+const rsa = require('./keys/rsa')
+
+function randomBytes (number) {
+  if (!number || typeof number !== 'number') {
+    throw new Error('first argument must be a Number bigger than 0')
+  }
+
+  return rsa.getRandomValues(new Uint8Array(number))
+}
+
+module.exports = randomBytes
+
+},{"./keys/rsa":195}],201:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const BN = require('asn1.js').bignum
+
+// Convert a BN.js instance to a base64 encoded string without padding
+// Adapted from https://tools.ietf.org/html/draft-ietf-jose-json-web-signature-41#appendix-C
+exports.toBase64 = function toBase64 (bn, len) {
+  // if len is defined then the bytes are leading-0 padded to the length
+  let s = bn.toArrayLike(Buffer, 'be', len).toString('base64')
+
+  return s
+    .replace(/(=*)$/, '') // Remove any trailing '='s
+    .replace(/\+/g, '-') // 62nd char of encoding
+    .replace(/\//g, '_') // 63rd char of encoding
+}
+
+// Convert a base64 encoded string to a BN.js instance
+exports.toBn = function toBn (str) {
+  return new BN(Buffer.from(str, 'base64'))
+}
+
+}).call(this,require("buffer").Buffer)
+},{"asn1.js":4,"buffer":84}],202:[function(require,module,exports){
+/* global self */
+
+'use strict'
+
+module.exports = () => {
+  // This is only a shim for interfaces, not for functionality
+  if (typeof self !== 'undefined') {
+    require('webcrypto-shim')(self)
+
+    if (self.crypto) {
+      return self.crypto
+    }
+  }
+
+  throw new Error('Please use an environment with crypto support')
+}
+
+},{"webcrypto-shim":767}],203:[function(require,module,exports){
 (function (process){
 /**
  * This is the web browser implementation of `debug()`.
@@ -52837,7 +54346,7 @@ function localstorage() {
 }
 
 }).call(this,require('_process'))
-},{"./debug":177,"_process":499}],177:[function(require,module,exports){
+},{"./debug":204,"_process":578}],204:[function(require,module,exports){
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -53064,2631 +54573,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":393}],178:[function(require,module,exports){
-'use strict'
-
-const mafmt = require('mafmt')
-const multiaddr = require('multiaddr')
-
-const CircuitDialer = require('./circuit/dialer')
-const utilsFactory = require('./circuit/utils')
-
-const debug = require('debug')
-const log = debug('libp2p:circuit:transportdialer')
-log.err = debug('libp2p:circuit:error:transportdialer')
-
-const createListener = require('./listener')
-
-class Circuit {
-  static get tag () {
-    return 'Circuit'
-  }
-
-  /**
-   * Creates an instance of Dialer.
-   *
-   * @param {Swarm} swarm - the swarm
-   * @param {any} options - config options
-   *
-   * @memberOf Dialer
-   */
-  constructor (swarm, options) {
-    this.options = options || {}
-
-    this.swarm = swarm
-    this.dialer = null
-    this.utils = utilsFactory(swarm)
-    this.peerInfo = this.swarm._peerInfo
-    this.relays = this.filter(this.peerInfo.multiaddrs.toArray())
-
-    // if no explicit relays, add a default relay addr
-    if (this.relays.length === 0) {
-      this.peerInfo
-        .multiaddrs
-        .add(`/p2p-circuit/ipfs/${this.peerInfo.id.toB58String()}`)
-    }
-
-    this.dialer = new CircuitDialer(swarm, options)
-
-    this.swarm.on('peer-mux-established', this.dialer.canHop.bind(this.dialer))
-    this.swarm.on('peer-mux-closed', (peerInfo) => {
-      this.dialer.relayPeers.delete(peerInfo.id.toB58String())
-    })
-  }
-
-  /**
-   * Dial the relays in the Addresses.Swarm config
-   *
-   * @param {Array} relays
-   * @return {void}
-   */
-  _dialSwarmRelays () {
-    // if we have relay addresses in swarm config, then dial those relays
-    this.relays.forEach((relay) => {
-      let relaySegments = relay
-        .toString()
-        .split('/p2p-circuit')
-        .filter(segment => segment.length)
-
-      relaySegments.forEach((relaySegment) => {
-        this.dialer._dialRelay(this.utils.peerInfoFromMa(multiaddr(relaySegment)))
-      })
-    })
-  }
-
-  /**
-   * Dial a peer over a relay
-   *
-   * @param {multiaddr} ma - the multiaddr of the peer to dial
-   * @param {Object} options - dial options
-   * @param {Function} cb - a callback called once dialed
-   * @returns {Connection} - the connection
-   *
-   * @memberOf Dialer
-   */
-  dial (ma, options, cb) {
-    return this.dialer.dial(ma, options, cb)
-  }
-
-  /**
-   * Create a listener
-   *
-   * @param {any} options
-   * @param {Function} handler
-   * @return {listener}
-   */
-  createListener (options, handler) {
-    if (typeof options === 'function') {
-      handler = options
-      options = this.options || {}
-    }
-
-    const listener = createListener(this.swarm, options, handler)
-    listener.on('listen', this._dialSwarmRelays.bind(this))
-    return listener
-  }
-
-  /**
-   * Filter check for all multiaddresses
-   * that this transport can dial on
-   *
-   * @param {any} multiaddrs
-   * @returns {Array<multiaddr>}
-   *
-   * @memberOf Dialer
-   */
-  filter (multiaddrs) {
-    if (!Array.isArray(multiaddrs)) {
-      multiaddrs = [multiaddrs]
-    }
-    return multiaddrs.filter((ma) => {
-      return mafmt.Circuit.matches(ma)
-    })
-  }
-}
-
-module.exports = Circuit
-
-},{"./circuit/dialer":179,"./circuit/utils":183,"./listener":185,"debug":176,"mafmt":389,"multiaddr":403}],179:[function(require,module,exports){
-(function (setImmediate){
-'use strict'
-
-const Connection = require('interface-connection').Connection
-const isFunction = require('lodash.isfunction')
-const multiaddr = require('multiaddr')
-const once = require('once')
-const waterfall = require('async/waterfall')
-const utilsFactory = require('./utils')
-const StreamHandler = require('./stream-handler')
-const PeerId = require('peer-id')
-
-const debug = require('debug')
-const log = debug('libp2p:circuit:dialer')
-log.err = debug('libp2p:circuit:error:dialer')
-
-const multicodec = require('../multicodec')
-const proto = require('../protocol')
-
-class Dialer {
-  /**
-   * Creates an instance of Dialer.
-   * @param {Swarm} swarm - the swarm
-   * @param {any} options - config options
-   *
-   * @memberOf Dialer
-   */
-  constructor (swarm, options) {
-    this.swarm = swarm
-    this.relayPeers = new Map()
-    this.options = options
-    this.utils = utilsFactory(swarm)
-  }
-
-  /**
-   * Dial a peer over a relay
-   *
-   * @param {multiaddr} ma - the multiaddr of the peer to dial
-   * @param {Function} cb - a callback called once dialed
-   * @returns {Connection} - the connection
-   *
-   * @memberOf Dialer
-   */
-  dial (ma, cb) {
-    cb = cb || (() => {})
-    const strMa = ma.toString()
-    if (!strMa.includes('/p2p-circuit')) {
-      log.err('invalid circuit address')
-      return cb(new Error('invalid circuit address'))
-    }
-
-    const addr = strMa.split('p2p-circuit') // extract relay address if any
-    const relay = addr[0] === '/' ? null : multiaddr(addr[0])
-    const peer = multiaddr(addr[1] || addr[0])
-
-    const dstConn = new Connection()
-    setImmediate(this._dialPeer.bind(this), peer, relay, (err, conn) => {
-      if (err) {
-        log.err(err)
-        return cb(err)
-      }
-
-      dstConn.setInnerConn(conn)
-      cb(null, dstConn)
-    })
-
-    return dstConn
-  }
-
-  /**
-   * Does the peer support the HOP protocol
-   *
-   * @param {PeerInfo} peer
-   * @param {Function} cb
-   * @returns {*}
-   */
-  canHop (peer, cb) {
-    cb = once(cb || (() => {}))
-
-    if (!this.relayPeers.get(this.utils.getB58String(peer))) {
-      let streamHandler
-      waterfall([
-        (wCb) => this._dialRelay(peer, wCb),
-        (sh, wCb) => {
-          streamHandler = sh
-          wCb()
-        },
-        (wCb) => streamHandler.write(proto.CircuitRelay.encode({
-          type: proto.CircuitRelay.Type.CAN_HOP
-        }), wCb),
-        (wCb) => streamHandler.read(wCb),
-        (msg, wCb) => {
-          const response = proto.CircuitRelay.decode(msg)
-
-          if (response.code !== proto.CircuitRelay.Status.SUCCESS) {
-            return log(`HOP not supported, skipping - ${this.utils.getB58String(peer)}`)
-          }
-
-          log(`HOP supported adding as relay - ${this.utils.getB58String(peer)}`)
-          this.relayPeers.set(this.utils.getB58String(peer), peer)
-          wCb(null)
-        }
-      ], cb)
-    }
-
-    return cb(null)
-  }
-
-  /**
-   * Dial the destination peer over a relay
-   *
-   * @param {multiaddr} dstMa
-   * @param {Connection|PeerInfo} relay
-   * @param {Function} cb
-   * @return {Function|void}
-   * @private
-   */
-  _dialPeer (dstMa, relay, cb) {
-    if (isFunction(relay)) {
-      cb = relay
-      relay = null
-    }
-
-    if (!cb) {
-      cb = () => {}
-    }
-
-    dstMa = multiaddr(dstMa)
-    // if no relay provided, dial on all available relays until one succeeds
-    if (!relay) {
-      const relays = Array.from(this.relayPeers.values())
-      let next = (nextRelay) => {
-        if (!nextRelay) {
-          let err = `no relay peers were found or all relays failed to dial`
-          log.err(err)
-          return cb(err)
-        }
-
-        return this._negotiateRelay(nextRelay, dstMa, (err, conn) => {
-          if (err) {
-            log.err(err)
-            return next(relays.shift())
-          }
-          cb(null, conn)
-        })
-      }
-      next(relays.shift())
-    } else {
-      return this._negotiateRelay(relay, dstMa, (err, conn) => {
-        if (err) {
-          log.err(`An error has occurred negotiating the relay connection`, err)
-          return cb(err)
-        }
-
-        return cb(null, conn)
-      })
-    }
-  }
-
-  /**
-   * Negotiate the relay connection
-   *
-   * @param {Multiaddr|PeerInfo|Connection} relay - the Connection or PeerInfo of the relay
-   * @param {multiaddr} dstMa - the multiaddr of the peer to relay the connection for
-   * @param {Function} callback - a callback which gets the negotiated relay connection
-   * @returns {void}
-   * @private
-   *
-   * @memberOf Dialer
-   */
-  _negotiateRelay (relay, dstMa, callback) {
-    dstMa = multiaddr(dstMa)
-
-    const srcMas = this.swarm._peerInfo.multiaddrs.toArray()
-    let streamHandler
-    waterfall([
-      (cb) => {
-        if (relay instanceof Connection) {
-          return cb(null, new StreamHandler(relay))
-        }
-        return this._dialRelay(this.utils.peerInfoFromMa(relay), cb)
-      },
-      (sh, cb) => {
-        streamHandler = sh
-        cb(null)
-      },
-      (cb) => {
-        log(`negotiating relay for peer ${dstMa.getPeerId()}`)
-        streamHandler.write(
-          proto.CircuitRelay.encode({
-            type: proto.CircuitRelay.Type.HOP,
-            srcPeer: {
-              id: this.swarm._peerInfo.id.id,
-              addrs: srcMas.map((addr) => addr.buffer)
-            },
-            dstPeer: {
-              id: PeerId.createFromB58String(dstMa.getPeerId()).id,
-              addrs: [dstMa.buffer]
-            }
-          }), cb)
-      },
-      (cb) => streamHandler.read(cb),
-      (msg, cb) => {
-        const message = proto.CircuitRelay.decode(msg)
-        if (message.type !== proto.CircuitRelay.Type.STATUS) {
-          return cb(new Error(`Got invalid message type - ` +
-            `expected ${proto.CircuitRelay.Type.STATUS} got ${message.type}`))
-        }
-
-        if (message.code !== proto.CircuitRelay.Status.SUCCESS) {
-          return cb(new Error(`Got ${message.code} error code trying to dial over relay`))
-        }
-
-        cb(null, new Connection(streamHandler.rest()))
-      }
-    ], callback)
-  }
-
-  /**
-   * Dial a relay peer by its PeerInfo
-   *
-   * @param {PeerInfo} peer - the PeerInfo of the relay peer
-   * @param {Function} cb - a callback with the connection to the relay peer
-   * @returns {Function|void}
-   * @private
-   */
-  _dialRelay (peer, cb) {
-    cb = once(cb || (() => {}))
-
-    this.swarm.dial(peer, multicodec.relay, once((err, conn) => {
-      if (err) {
-        log.err(err)
-        return cb(err)
-      }
-      cb(null, new StreamHandler(conn))
-    }))
-  }
-}
-
-module.exports = Dialer
-
-}).call(this,require("timers").setImmediate)
-},{"../multicodec":186,"../protocol":187,"./stream-handler":182,"./utils":183,"async/waterfall":53,"debug":176,"interface-connection":156,"lodash.isfunction":317,"multiaddr":403,"once":471,"peer-id":493,"timers":644}],180:[function(require,module,exports){
-(function (setImmediate){
-'use strict'
-
-require('setimmediate')
-require('safe-buffer')
-
-const pull = require('pull-stream')
-const debug = require('debug')
-const PeerInfo = require('peer-info')
-const PeerId = require('peer-id')
-const EE = require('events').EventEmitter
-const once = require('once')
-const utilsFactory = require('./utils')
-const StreamHandler = require('./stream-handler')
-const assignInWith = require('lodash/assignInWith')
-const proto = require('../protocol')
-const multiaddr = require('multiaddr')
-
-const multicodec = require('./../multicodec')
-
-const log = debug('libp2p:swarm:circuit:relay')
-log.err = debug('libp2p:swarm:circuit:error:relay')
-
-class Hop extends EE {
-  /**
-   * Construct a Circuit object
-   *
-   * This class will handle incoming circuit connections and
-   * either start a relay or hand the relayed connection to
-   * the swarm
-   *
-   * @param {Swarm} swarm
-   * @param {Object} options
-   */
-  constructor (swarm, options) {
-    super()
-    this.swarm = swarm
-    this.peerInfo = this.swarm._peerInfo
-    this.utils = utilsFactory(swarm)
-    this.config = assignInWith(
-      {
-        active: false,
-        enabled: false
-      },
-      options,
-      (orig, src) => typeof src === 'undefined' ? false : src)
-
-    this.active = this.config.active
-  }
-
-  /**
-   * Handle the relay message
-   *
-   * @param {CircuitRelay} message
-   * @param {StreamHandler} streamHandler
-   * @returns {*}
-   */
-  handle (message, streamHandler) {
-    if (!this.config.enabled) {
-      return this.utils.writeResponse(streamHandler, proto.CircuitRelay.Status.HOP_CANT_SPEAK_RELAY)
-    }
-
-    // check if message is `CAN_HOP`
-    if (message.type === proto.CircuitRelay.Type.CAN_HOP) {
-      return this.utils.writeResponse(streamHandler, proto.CircuitRelay.Status.SUCCESS)
-    }
-
-    // This is a relay request - validate and create a circuit
-    const srcPeerId = PeerId.createFromBytes(message.dstPeer.id)
-    if (srcPeerId.toB58String() === this.peerInfo.id.toB58String()) {
-      return this.utils.writeResponse(streamHandler, proto.CircuitRelay.Status.HOP_CANT_RELAY_TO_SELF)
-    }
-
-    const dstPeerId = PeerId.createFromBytes(message.dstPeer.id).toB58String()
-    if (!message.dstPeer.addrs.length) {
-      // TODO: use encapsulate here
-      const addr = multiaddr(`/p2p-circuit/ipfs/${dstPeerId}`).buffer
-      message.dstPeer.addrs.push(addr)
-    }
-
-    this.utils.validateAddrs(message, streamHandler, proto.CircuitRelay.Type.HOP, (err) => {
-      if (err) {
-        return log(err)
-      }
-
-      let dstPeer
-      try {
-        dstPeer = this.swarm._peerBook.get(dstPeerId)
-        if (!dstPeer.isConnected() && !this.active) {
-          throw new Error('No Connection to peer')
-        }
-      } catch (err) {
-        if (!this.active) {
-          log.err(err)
-          setImmediate(() => this.emit('circuit:error', err))
-          return this.utils.writeResponse(streamHandler, proto.CircuitRelay.Status.HOP_NO_CONN_TO_DST)
-        }
-      }
-
-      return this._circuit(streamHandler.rest(), message, (err) => {
-        if (err) {
-          log.err(err)
-          setImmediate(() => this.emit('circuit:error', err))
-        }
-        setImmediate(() => this.emit('circuit:success'))
-      })
-    })
-  }
-
-  /**
-   * Attempt to make a circuit from A <-> R <-> B where R is this relay
-   *
-   * @param {Connection} conn - the source connection
-   * @param {CircuitRelay} message - the message with the src and dst entries
-   * @param {Function} cb - callback to signal success or failure
-   * @returns {void}
-   * @private
-   */
-  _circuit (conn, message, cb) {
-    this._dialPeer(message.dstPeer, (err, dstConn) => {
-      const srcStreamHandler = new StreamHandler(conn)
-      if (err) {
-        this.utils.writeResponse(srcStreamHandler, proto.CircuitRelay.Status.HOP_CANT_DIAL_DST)
-        pull(pull.empty(), srcStreamHandler.rest())
-        log.err(err)
-        return cb(err)
-      }
-
-      return this.utils.writeResponse(srcStreamHandler, proto.CircuitRelay.Status.SUCCESS, (err) => {
-        if (err) {
-          log.err(err)
-          return cb(err)
-        }
-
-        const streamHandler = new StreamHandler(dstConn)
-        const stopMsg = Object.assign({}, message, {
-          type: proto.CircuitRelay.Type.STOP // change the message type
-        })
-        streamHandler.write(proto.CircuitRelay.encode(stopMsg), (err) => {
-          if (err) {
-            const errStreamHandler = new StreamHandler(conn)
-            this.utils.writeResponse(errStreamHandler, proto.CircuitRelay.Status.HOP_CANT_OPEN_DST_STREAM)
-            pull(pull.empty(), errStreamHandler.rest())
-
-            log.err(err)
-            return cb(err)
-          }
-
-          streamHandler.read((err, msg) => {
-            if (err) {
-              log.err(err)
-              return cb(err)
-            }
-
-            const message = proto.CircuitRelay.decode(msg)
-            const srcConn = srcStreamHandler.rest()
-            if (message.code === proto.CircuitRelay.Status.SUCCESS) {
-              // circuit the src and dst streams
-              pull(
-                srcConn,
-                streamHandler.rest(),
-                srcConn
-              )
-
-              cb()
-            } else {
-              // close/end the source stream if there was an error
-              pull(
-                pull.empty(),
-                srcConn
-              )
-            }
-          })
-        })
-      })
-    })
-  }
-
-  /**
-   * Dial the dest peer and create a circuit
-   *
-   * @param {Multiaddr} dstPeer
-   * @param {Function} callback
-   * @returns {Function|void}
-   * @private
-   */
-  _dialPeer (dstPeer, callback) {
-    const peerInfo = new PeerInfo(PeerId.createFromBytes(dstPeer.id))
-    dstPeer.addrs.forEach((a) => peerInfo.multiaddrs.add(a))
-    this.swarm.dial(peerInfo, multicodec.relay, once((err, conn) => {
-      if (err) {
-        log.err(err)
-        return callback(err)
-      }
-
-      callback(null, conn)
-    }))
-  }
-}
-
-module.exports = Hop
-
-}).call(this,require("timers").setImmediate)
-},{"../protocol":187,"./../multicodec":186,"./stream-handler":182,"./utils":183,"debug":176,"events":145,"lodash/assignInWith":367,"multiaddr":403,"once":471,"peer-id":493,"peer-info":494,"pull-stream":533,"safe-buffer":601,"setimmediate":614,"timers":644}],181:[function(require,module,exports){
-'use strict'
-
-const setImmediate = require('async/setImmediate')
-
-const EE = require('events').EventEmitter
-const Connection = require('interface-connection').Connection
-const utilsFactory = require('./utils')
-const PeerInfo = require('peer-info')
-const PeerId = require('peer-id')
-const proto = require('../protocol')
-const series = require('async/series')
-
-const debug = require('debug')
-
-const log = debug('libp2p:circuit:stop')
-log.err = debug('libp2p:circuit:error:stop')
-
-class Stop extends EE {
-  constructor (swarm) {
-    super()
-    this.swarm = swarm
-    this.utils = utilsFactory(swarm)
-  }
-
-  handle (message, streamHandler, callback) {
-    callback = callback || (() => {})
-
-    series([
-      (cb) => this.utils.validateAddrs(message, streamHandler, proto.CircuitRelay.Type.STOP, cb),
-      (cb) => this.utils.writeResponse(streamHandler, proto.CircuitRelay.Status.Success, cb)
-    ], (err) => {
-      if (err) {
-        callback() // we don't return the error here, since multistream select don't expect one
-        return log(err)
-      }
-
-      const peerInfo = new PeerInfo(peerIdFromId(message.srcPeer.id))
-      message.srcPeer.addrs.forEach((addr) => peerInfo.multiaddrs.add(addr))
-      const newConn = new Connection(streamHandler.rest())
-      newConn.setPeerInfo(peerInfo)
-      setImmediate(() => this.emit('connection', newConn))
-      callback(newConn)
-    })
-  }
-}
-
-module.exports = Stop
-
-function peerIdFromId (id) {
-  if (typeof id === 'string') {
-    return PeerId.createFromB58String(id)
-  }
-
-  return PeerId.createFromBytes(id)
-}
-
-},{"../protocol":187,"./utils":183,"async/series":49,"async/setImmediate":50,"debug":176,"events":145,"interface-connection":156,"peer-id":493,"peer-info":494}],182:[function(require,module,exports){
-'use strict'
-
-const pull = require('pull-stream')
-const lp = require('pull-length-prefixed')
-const handshake = require('pull-handshake')
-
-const debug = require('debug')
-const log = debug('libp2p:circuit:stream-handler')
-log.err = debug('libp2p:circuit:error:stream-handler')
-
-class StreamHandler {
-  /**
-   * Create a stream handler for connection
-   *
-   * @param {Connection} conn - connection to read/write
-   * @param {Function|undefined} cb - handshake callback called on error
-   * @param {Number} timeout - handshake timeout
-   * @param {Number} maxLength - max bytes length of message
-   */
-  constructor (conn, cb, timeout, maxLength) {
-    this.conn = conn
-    this.stream = null
-    this.shake = null
-    this.timeout = cb || 1000 * 60
-    this.maxLength = maxLength || 4096
-
-    if (typeof cb === 'function') {
-      this.timeout = timeout || 1000 * 60
-    }
-
-    this.stream = handshake({timeout: this.timeout}, cb)
-    this.shake = this.stream.handshake
-
-    pull(this.stream, conn, this.stream)
-  }
-
-  isValid () {
-    return this.conn && this.shake && this.stream
-  }
-
-  /**
-   * Read and decode message
-   *
-   * @param {Function} cb
-   * @returns {void|Function}
-   */
-  read (cb) {
-    if (!this.isValid()) {
-      cb(new Error(`handler is not in a valid state`))
-    }
-
-    lp.decodeFromReader(this.shake, {maxLength: this.maxLength}, (err, msg) => {
-      if (err) {
-        log.err(err)
-        // this.shake.abort(err)
-        return cb(err)
-      }
-
-      return cb(null, msg)
-    })
-  }
-
-  /**
-   * Encode and write array of buffers
-   *
-   * @param {Buffer[]} msg
-   * @param {Function} [cb]
-   * @returns {Function}
-   */
-  write (msg, cb) {
-    cb = cb || (() => {})
-
-    if (!this.isValid()) {
-      cb(new Error(`handler is not in a valid state`))
-    }
-
-    pull(
-      pull.values([msg]),
-      lp.encode(),
-      pull.collect((err, encoded) => {
-        if (err) {
-          log.err(err)
-          this.shake.abort(err)
-          return cb(err)
-        }
-
-        encoded.forEach((e) => this.shake.write(e))
-        cb()
-      })
-    )
-  }
-
-  /**
-   * Get the raw Connection
-   *
-   * @returns {null|Connection|*}
-   */
-  getRawConn () {
-    return this.conn
-  }
-
-  /**
-   * Return the handshake rest stream and invalidate handler
-   *
-   * @return {*|{source, sink}}
-   */
-  rest () {
-    const rest = this.shake.rest()
-
-    this.conn = null
-    this.stream = null
-    this.shake = null
-    return rest
-  }
-}
-
-module.exports = StreamHandler
-
-},{"debug":176,"pull-handshake":522,"pull-length-prefixed":525,"pull-stream":533}],183:[function(require,module,exports){
-'use strict'
-
-const multiaddr = require('multiaddr')
-const PeerInfo = require('peer-info')
-const PeerId = require('peer-id')
-const proto = require('../protocol')
-
-module.exports = function (swarm) {
-  /**
-   * Get b58 string from multiaddr or peerinfo
-   *
-   * @param {Multiaddr|PeerInfo} peer
-   * @return {*}
-   */
-  function getB58String (peer) {
-    let b58Id = null
-    if (multiaddr.isMultiaddr(peer)) {
-      const relayMa = multiaddr(peer)
-      b58Id = relayMa.getPeerId()
-    } else if (PeerInfo.isPeerInfo(peer)) {
-      b58Id = peer.id.toB58String()
-    }
-
-    return b58Id
-  }
-
-  /**
-   * Helper to make a peer info from a multiaddrs
-   *
-   * @param {Multiaddr|PeerInfo|PeerId} ma
-   * @param {Swarm} swarm
-   * @return {PeerInfo}
-   * @private
-   */
-  // TODO: this is ripped off of libp2p, should probably be a generally available util function
-  function peerInfoFromMa (peer) {
-    let p
-    // PeerInfo
-    if (PeerInfo.isPeerInfo(peer)) {
-      p = peer
-      // Multiaddr instance (not string)
-    } else if (multiaddr.isMultiaddr(peer)) {
-      const peerIdB58Str = peer.getPeerId()
-      try {
-        p = swarm._peerBook.get(peerIdB58Str)
-      } catch (err) {
-        p = new PeerInfo(PeerId.createFromB58String(peerIdB58Str))
-      }
-      p.multiaddrs.add(peer)
-      // PeerId
-    } else if (PeerId.isPeerId(peer)) {
-      const peerIdB58Str = peer.toB58String()
-      p = swarm._peerBook.has(peerIdB58Str) ? swarm._peerBook.get(peerIdB58Str) : peer
-    }
-
-    return p
-  }
-
-  /**
-   * Checks if peer has an existing connection
-   *
-   * @param {String} peerId
-   * @param {Swarm} swarm
-   * @return {Boolean}
-   */
-  function isPeerConnected (peerId) {
-    return swarm.muxedConns[peerId] || swarm.conns[peerId]
-  }
-
-  /**
-   * Write a response
-   *
-   * @param {StreamHandler} streamHandler
-   * @param {CircuitRelay.Status} status
-   * @param {Function} cb
-   * @returns {*}
-   */
-  function writeResponse (streamHandler, status, cb) {
-    cb = cb || (() => {})
-    streamHandler.write(proto.CircuitRelay.encode({
-      type: proto.CircuitRelay.Type.STATUS,
-      code: status
-    }))
-    return cb()
-  }
-
-  /**
-   * Validate incomming HOP/STOP message
-   *
-   * @param {CircuitRelay} msg
-   * @param {StreamHandler} streamHandler
-   * @param {CircuitRelay.Type} type
-   * @returns {*}
-   * @param {Function} cb
-   */
-  function validateAddrs (msg, streamHandler, type, cb) {
-    try {
-      msg.dstPeer.addrs.forEach((addr) => {
-        return multiaddr(addr)
-      })
-    } catch (err) {
-      writeResponse(streamHandler, type === proto.CircuitRelay.Type.HOP
-        ? proto.CircuitRelay.Status.HOP_DST_MULTIADDR_INVALID
-        : proto.CircuitRelay.Status.STOP_DST_MULTIADDR_INVALID)
-      return cb(err)
-    }
-
-    try {
-      msg.srcPeer.addrs.forEach((addr) => {
-        return multiaddr(addr)
-      })
-    } catch (err) {
-      writeResponse(streamHandler, type === proto.CircuitRelay.Type.HOP
-        ? proto.CircuitRelay.Status.HOP_SRC_MULTIADDR_INVALID
-        : proto.CircuitRelay.Status.STOP_SRC_MULTIADDR_INVALID)
-      return cb(err)
-    }
-
-    return cb(null)
-  }
-
-  return {
-    getB58String: getB58String,
-    peerInfoFromMa: peerInfoFromMa,
-    isPeerConnected: isPeerConnected,
-    validateAddrs: validateAddrs,
-    writeResponse: writeResponse
-  }
-}
-
-},{"../protocol":187,"multiaddr":403,"peer-id":493,"peer-info":494}],184:[function(require,module,exports){
-'use strict'
-
-module.exports = require('./circuit')
-
-},{"./circuit":178}],185:[function(require,module,exports){
-'use strict'
-
-const setImmediate = require('async/setImmediate')
-
-const multicodec = require('./multicodec')
-const EE = require('events').EventEmitter
-const multiaddr = require('multiaddr')
-const mafmt = require('mafmt')
-const Stop = require('./circuit/stop')
-const Hop = require('./circuit/hop')
-const proto = require('./protocol')
-const utilsFactory = require('./circuit/utils')
-
-const StreamHandler = require('./circuit/stream-handler')
-
-const debug = require('debug')
-
-const log = debug('libp2p:circuit:listener')
-log.err = debug('libp2p:circuit:error:listener')
-
-module.exports = (swarm, options, connHandler) => {
-  const listener = new EE()
-  const utils = utilsFactory(swarm)
-
-  listener.stopHandler = new Stop(swarm)
-  listener.hopHandler = new Hop(swarm, options.hop)
-
-  /**
-   * Add swarm handler and listen for incoming connections
-   *
-   * @param {Multiaddr} ma
-   * @param {Function} callback
-   * @return {void}
-   */
-  listener.listen = (ma, callback) => {
-    callback = callback || (() => {})
-
-    swarm.handle(multicodec.relay, (relayProto, conn) => {
-      const streamHandler = new StreamHandler(conn)
-
-      streamHandler.read((err, msg) => {
-        if (err) {
-          log.err(err)
-          return
-        }
-
-        let request = null
-        try {
-          request = proto.CircuitRelay.decode(msg)
-        } catch (err) {
-          return utils.writeResponse(streamHandler, proto.CircuitRelay.Status.MALFORMED_MESSAGE)
-        }
-
-        switch (request.type) {
-          case proto.CircuitRelay.Type.CAN_HOP:
-          case proto.CircuitRelay.Type.HOP: {
-            return listener.hopHandler.handle(request, streamHandler)
-          }
-
-          case proto.CircuitRelay.Type.STOP: {
-            return listener.stopHandler.handle(request, streamHandler, connHandler)
-          }
-
-          default: {
-            return utils.writeResponse(streamHandler, proto.CircuitRelay.Status.INVALID_MSG_TYPE)
-          }
-        }
-      })
-    })
-
-    setImmediate(() => listener.emit('listen'))
-    callback()
-  }
-
-  /**
-   * Remove swarm listener
-   *
-   * @param {Function} cb
-   * @return {void}
-   */
-  listener.close = (cb) => {
-    swarm.unhandle(multicodec.stop)
-    setImmediate(() => listener.emit('close'))
-    cb()
-  }
-
-  /**
-   * Get fixed up multiaddrs
-   *
-   * NOTE: This method will grab the peers multiaddrs and expand them such that:
-   *
-   * a) If it's an existing /p2p-circuit address for a specific relay i.e.
-   *    `/ip4/0.0.0.0/tcp/0/ipfs/QmRelay/p2p-circuit` this method will expand the
-   *    address to `/ip4/0.0.0.0/tcp/0/ipfs/QmRelay/p2p-circuit/ipfs/QmPeer` where
-   *    `QmPeer` is this peers id
-   * b) If it's not a /p2p-circuit address, it will encapsulate the address as a /p2p-circuit
-   *    addr, such when dialing over a relay with this address, it will create the circuit using
-   *    the encapsulated transport address. This is useful when for example, a peer should only
-   *    be dialed over TCP rather than any other transport
-   *
-   * @param {Function} callback
-   * @return {void}
-   */
-  listener.getAddrs = (callback) => {
-    let addrs = swarm._peerInfo.multiaddrs.toArray()
-
-    // get all the explicit relay addrs excluding self
-    let p2pAddrs = addrs.filter((addr) => {
-      return mafmt.Circuit.matches(addr) &&
-        !addr.toString().includes(swarm._peerInfo.id.toB58String())
-    })
-
-    // use the explicit relays instead of any relay
-    if (p2pAddrs.length) {
-      addrs = p2pAddrs
-    }
-
-    let listenAddrs = []
-    addrs.forEach((addr) => {
-      const peerMa = `/p2p-circuit/ipfs/${swarm._peerInfo.id.toB58String()}`
-      if (addr.toString() === peerMa) {
-        listenAddrs.push(multiaddr(peerMa))
-        return
-      }
-
-      if (!mafmt.Circuit.matches(addr)) {
-        if (addr.getPeerId()) {
-          // by default we're reachable over any relay
-          listenAddrs.push(multiaddr(`/p2p-circuit`).encapsulate(addr))
-        } else {
-          listenAddrs.push(multiaddr(`/p2p-circuit`).encapsulate(`${addr}/ipfs/${swarm._peerInfo.id.toB58String()}`))
-        }
-      } else {
-        listenAddrs.push(addr.encapsulate(`/ipfs/${swarm._peerInfo.id.toB58String()}`))
-      }
-    })
-
-    callback(null, listenAddrs)
-  }
-
-  return listener
-}
-
-},{"./circuit/hop":180,"./circuit/stop":181,"./circuit/stream-handler":182,"./circuit/utils":183,"./multicodec":186,"./protocol":187,"async/setImmediate":50,"debug":176,"events":145,"mafmt":389,"multiaddr":403}],186:[function(require,module,exports){
-'use strict'
-
-module.exports = {
-  relay: '/libp2p/circuit/relay/0.1.0'
-}
-
-},{}],187:[function(require,module,exports){
-'use strict'
-
-const protobuf = require('protons')
-module.exports = protobuf(require('./proto.js'))
-
-},{"./proto.js":188,"protons":513}],188:[function(require,module,exports){
-'use strict'
-module.exports = `
-message CircuitRelay {
-
-  enum Status {
-    SUCCESS                    = 100;
-    HOP_SRC_ADDR_TOO_LONG      = 220;
-    HOP_DST_ADDR_TOO_LONG      = 221;
-    HOP_SRC_MULTIADDR_INVALID  = 250;
-    HOP_DST_MULTIADDR_INVALID  = 251;
-    HOP_NO_CONN_TO_DST         = 260;
-    HOP_CANT_DIAL_DST          = 261;
-    HOP_CANT_OPEN_DST_STREAM   = 262;
-    HOP_CANT_SPEAK_RELAY       = 270;
-    HOP_CANT_RELAY_TO_SELF     = 280;
-    STOP_SRC_ADDR_TOO_LONG     = 320;
-    STOP_DST_ADDR_TOO_LONG     = 321;
-    STOP_SRC_MULTIADDR_INVALID = 350;
-    STOP_DST_MULTIADDR_INVALID = 351;
-    STOP_RELAY_REFUSED         = 390;
-    MALFORMED_MESSAGE          = 400;
-  }
-
-  enum Type { // RPC identifier, either HOP, STOP or STATUS
-    HOP = 1;
-    STOP = 2;
-    STATUS = 3;
-    CAN_HOP = 4;
-  }
-
-  message Peer {
-    required bytes id = 1;    // peer id
-    repeated bytes addrs = 2; // peer's known addresses
-  }
-
-  optional Type type = 1;     // Type of the message
-
-  optional Peer srcPeer = 2;  // srcPeer and dstPeer are used when Type is HOP or STATUS
-  optional Peer dstPeer = 3;
-
-  optional Status code = 4;   // Status code, used when Type is STATUS
-}
-`
-
-},{}],189:[function(require,module,exports){
-'use strict'
-
-const secp256k1 = require('secp256k1')
-const multihashing = require('multihashing-async')
-const setImmediate = require('async/setImmediate')
-
-const HASH_ALGORITHM = 'sha2-256'
-
-module.exports = (randomBytes) => {
-  const privateKeyLength = 32
-
-  function generateKey (callback) {
-    const done = (err, res) => setImmediate(() => callback(err, res))
-
-    let privateKey
-    do {
-      privateKey = randomBytes(32)
-    } while (!secp256k1.privateKeyVerify(privateKey))
-
-    done(null, privateKey)
-  }
-
-  function hashAndSign (key, msg, callback) {
-    const done = (err, res) => setImmediate(() => callback(err, res))
-
-    multihashing.digest(msg, HASH_ALGORITHM, (err, digest) => {
-      if (err) { return done(err) }
-
-      try {
-        const sig = secp256k1.sign(digest, key)
-        const sigDER = secp256k1.signatureExport(sig.signature)
-        return done(null, sigDER)
-      } catch (err) { done(err) }
-    })
-  }
-
-  function hashAndVerify (key, sig, msg, callback) {
-    const done = (err, res) => setImmediate(() => callback(err, res))
-
-    multihashing.digest(msg, HASH_ALGORITHM, (err, digest) => {
-      if (err) { return done(err) }
-      try {
-        sig = secp256k1.signatureImport(sig)
-        const valid = secp256k1.verify(digest, sig, key)
-        return done(null, valid)
-      } catch (err) { done(err) }
-    })
-  }
-
-  function compressPublicKey (key) {
-    if (!secp256k1.publicKeyVerify(key)) {
-      throw new Error('Invalid public key')
-    }
-    return secp256k1.publicKeyConvert(key, true)
-  }
-
-  function decompressPublicKey (key) {
-    return secp256k1.publicKeyConvert(key, false)
-  }
-
-  function validatePrivateKey (key) {
-    if (!secp256k1.privateKeyVerify(key)) {
-      throw new Error('Invalid private key')
-    }
-  }
-
-  function validatePublicKey (key) {
-    if (!secp256k1.publicKeyVerify(key)) {
-      throw new Error('Invalid public key')
-    }
-  }
-
-  function computePublicKey (privateKey) {
-    validatePrivateKey(privateKey)
-    return secp256k1.publicKeyCreate(privateKey)
-  }
-
-  return {
-    generateKey: generateKey,
-    privateKeyLength: privateKeyLength,
-    hashAndSign: hashAndSign,
-    hashAndVerify: hashAndVerify,
-    compressPublicKey: compressPublicKey,
-    decompressPublicKey: decompressPublicKey,
-    validatePrivateKey: validatePrivateKey,
-    validatePublicKey: validatePublicKey,
-    computePublicKey: computePublicKey
-  }
-}
-
-},{"async/setImmediate":50,"multihashing-async":410,"secp256k1":602}],190:[function(require,module,exports){
-'use strict'
-
-const multihashing = require('multihashing-async')
-
-module.exports = (keysProtobuf, randomBytes, crypto) => {
-  crypto = crypto || require('./crypto')(randomBytes)
-
-  class Secp256k1PublicKey {
-    constructor (key) {
-      crypto.validatePublicKey(key)
-      this._key = key
-    }
-
-    verify (data, sig, callback) {
-      ensure(callback)
-      crypto.hashAndVerify(this._key, sig, data, callback)
-    }
-
-    marshal () {
-      return crypto.compressPublicKey(this._key)
-    }
-
-    get bytes () {
-      return keysProtobuf.PublicKey.encode({
-        Type: keysProtobuf.KeyType.Secp256k1,
-        Data: this.marshal()
-      })
-    }
-
-    equals (key) {
-      return this.bytes.equals(key.bytes)
-    }
-
-    hash (callback) {
-      ensure(callback)
-      multihashing(this.bytes, 'sha2-256', callback)
-    }
-  }
-
-  class Secp256k1PrivateKey {
-    constructor (key, publicKey) {
-      this._key = key
-      this._publicKey = publicKey || crypto.computePublicKey(key)
-      crypto.validatePrivateKey(this._key)
-      crypto.validatePublicKey(this._publicKey)
-    }
-
-    sign (message, callback) {
-      ensure(callback)
-      crypto.hashAndSign(this._key, message, callback)
-    }
-
-    get public () {
-      return new Secp256k1PublicKey(this._publicKey)
-    }
-
-    marshal () {
-      return this._key
-    }
-
-    get bytes () {
-      return keysProtobuf.PrivateKey.encode({
-        Type: keysProtobuf.KeyType.Secp256k1,
-        Data: this.marshal()
-      })
-    }
-
-    equals (key) {
-      return this.bytes.equals(key.bytes)
-    }
-
-    hash (callback) {
-      ensure(callback)
-      multihashing(this.bytes, 'sha2-256', callback)
-    }
-  }
-
-  function unmarshalSecp256k1PrivateKey (bytes, callback) {
-    callback(null, new Secp256k1PrivateKey(bytes), null)
-  }
-
-  function unmarshalSecp256k1PublicKey (bytes) {
-    return new Secp256k1PublicKey(bytes)
-  }
-
-  function generateKeyPair (_bits, callback) {
-    if (callback === undefined && typeof _bits === 'function') {
-      callback = _bits
-    }
-
-    ensure(callback)
-
-    crypto.generateKey((err, privateKeyBytes) => {
-      if (err) { return callback(err) }
-
-      let privkey
-      try {
-        privkey = new Secp256k1PrivateKey(privateKeyBytes)
-      } catch (err) { return callback(err) }
-
-      callback(null, privkey)
-    })
-  }
-
-  function ensure (callback) {
-    if (typeof callback !== 'function') {
-      throw new Error('callback is required')
-    }
-  }
-
-  return {
-    Secp256k1PublicKey,
-    Secp256k1PrivateKey,
-    unmarshalSecp256k1PrivateKey,
-    unmarshalSecp256k1PublicKey,
-    generateKeyPair
-  }
-}
-
-},{"./crypto":189,"multihashing-async":410}],191:[function(require,module,exports){
-'use strict'
-
-const crypto = require('browserify-aes')
-
-module.exports = {
-  createCipheriv: crypto.createCipheriv,
-  createDecipheriv: crypto.createDecipheriv
-}
-
-},{"browserify-aes":67}],192:[function(require,module,exports){
-'use strict'
-
-const ciphers = require('./ciphers')
-
-const CIPHER_MODES = {
-  16: 'aes-128-ctr',
-  32: 'aes-256-ctr'
-}
-
-exports.create = function (key, iv, callback) {
-  const mode = CIPHER_MODES[key.length]
-  if (!mode) {
-    return callback(new Error('Invalid key length'))
-  }
-
-  const cipher = ciphers.createCipheriv(mode, key, iv)
-  const decipher = ciphers.createDecipheriv(mode, key, iv)
-
-  const res = {
-    encrypt (data, cb) {
-      cb(null, cipher.update(data))
-    },
-
-    decrypt (data, cb) {
-      cb(null, decipher.update(data))
-    }
-  }
-
-  callback(null, res)
-}
-
-},{"./ciphers":191}],193:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const nodeify = require('../nodeify')
-
-const crypto = require('../webcrypto.js')()
-const lengths = require('./lengths')
-
-const hashTypes = {
-  SHA1: 'SHA-1',
-  SHA256: 'SHA-256',
-  SHA512: 'SHA-512'
-}
-
-const sign = (key, data, cb) => {
-  nodeify(crypto.subtle.sign({name: 'HMAC'}, key, data)
-    .then((raw) => Buffer.from(raw)), cb)
-}
-
-exports.create = function (hashType, secret, callback) {
-  const hash = hashTypes[hashType]
-
-  nodeify(crypto.subtle.importKey(
-    'raw',
-    secret,
-    {
-      name: 'HMAC',
-      hash: {name: hash}
-    },
-    false,
-    ['sign']
-  ).then((key) => {
-    return {
-      digest (data, cb) {
-        sign(key, data, cb)
-      },
-      length: lengths[hashType]
-    }
-  }), callback)
-}
-
-}).call(this,require("buffer").Buffer)
-},{"../nodeify":206,"../webcrypto.js":210,"./lengths":194,"buffer":84}],194:[function(require,module,exports){
-'use strict'
-
-module.exports = {
-  SHA1: 20,
-  SHA256: 32,
-  SHA512: 64
-}
-
-},{}],195:[function(require,module,exports){
-'use strict'
-
-const hmac = require('./hmac')
-const aes = require('./aes')
-const keys = require('./keys')
-
-exports = module.exports
-
-exports.aes = aes
-exports.hmac = hmac
-exports.keys = keys
-exports.randomBytes = require('./random-bytes')
-exports.pbkdf2 = require('./pbkdf2')
-
-},{"./aes":192,"./hmac":193,"./keys":200,"./pbkdf2":207,"./random-bytes":208}],196:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const webcrypto = require('../webcrypto.js')()
-const nodeify = require('../nodeify')
-const BN = require('asn1.js').bignum
-
-const util = require('../util')
-const toBase64 = util.toBase64
-const toBn = util.toBn
-
-const bits = {
-  'P-256': 256,
-  'P-384': 384,
-  'P-521': 521
-}
-
-exports.generateEphmeralKeyPair = function (curve, callback) {
-  nodeify(webcrypto.subtle.generateKey(
-    {
-      name: 'ECDH',
-      namedCurve: curve
-    },
-    true,
-    ['deriveBits']
-  ).then((pair) => {
-    // forcePrivate is used for testing only
-    const genSharedKey = (theirPub, forcePrivate, cb) => {
-      if (typeof forcePrivate === 'function') {
-        cb = forcePrivate
-        forcePrivate = undefined
-      }
-
-      let privateKey
-
-      if (forcePrivate) {
-        privateKey = webcrypto.subtle.importKey(
-          'jwk',
-          unmarshalPrivateKey(curve, forcePrivate),
-          {
-            name: 'ECDH',
-            namedCurve: curve
-          },
-          false,
-          ['deriveBits']
-        )
-      } else {
-        privateKey = Promise.resolve(pair.privateKey)
-      }
-
-      const keys = Promise.all([
-        webcrypto.subtle.importKey(
-          'jwk',
-          unmarshalPublicKey(curve, theirPub),
-          {
-            name: 'ECDH',
-            namedCurve: curve
-          },
-          false,
-          []
-        ),
-        privateKey
-      ])
-
-      nodeify(keys.then((keys) => webcrypto.subtle.deriveBits(
-        {
-          name: 'ECDH',
-          namedCurve: curve,
-          public: keys[0]
-        },
-        keys[1],
-        bits[curve]
-      )).then((bits) => Buffer.from(bits)), cb)
-    }
-
-    return webcrypto.subtle.exportKey('jwk', pair.publicKey)
-      .then((publicKey) => {
-        return {
-          key: marshalPublicKey(publicKey),
-          genSharedKey
-        }
-      })
-  }), callback)
-}
-
-const curveLengths = {
-  'P-256': 32,
-  'P-384': 48,
-  'P-521': 66
-}
-
-// Marshal converts a jwk encodec ECDH public key into the
-// form specified in section 4.3.6 of ANSI X9.62. (This is the format
-// go-ipfs uses)
-function marshalPublicKey (jwk) {
-  const byteLen = curveLengths[jwk.crv]
-
-  return Buffer.concat([
-    Buffer.from([4]), // uncompressed point
-    toBn(jwk.x).toArrayLike(Buffer, 'be', byteLen),
-    toBn(jwk.y).toArrayLike(Buffer, 'be', byteLen)
-  ], 1 + byteLen * 2)
-}
-
-// Unmarshal converts a point, serialized by Marshal, into an jwk encoded key
-function unmarshalPublicKey (curve, key) {
-  const byteLen = curveLengths[curve]
-
-  if (!key.slice(0, 1).equals(Buffer.from([4]))) {
-    throw new Error('Invalid key format')
-  }
-  const x = new BN(key.slice(1, byteLen + 1))
-  const y = new BN(key.slice(1 + byteLen))
-
-  return {
-    kty: 'EC',
-    crv: curve,
-    x: toBase64(x, byteLen),
-    y: toBase64(y, byteLen),
-    ext: true
-  }
-}
-
-function unmarshalPrivateKey (curve, key) {
-  const result = unmarshalPublicKey(curve, key.public)
-  result.d = toBase64(new BN(key.private))
-  return result
-}
-
-}).call(this,require("buffer").Buffer)
-},{"../nodeify":206,"../util":209,"../webcrypto.js":210,"asn1.js":5,"buffer":84}],197:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const multihashing = require('multihashing-async')
-const protobuf = require('protons')
-const bs58 = require('bs58')
-
-const crypto = require('./ed25519')
-const pbm = protobuf(require('./keys.proto'))
-
-class Ed25519PublicKey {
-  constructor (key) {
-    this._key = ensureKey(key, crypto.publicKeyLength)
-  }
-
-  verify (data, sig, callback) {
-    ensure(callback)
-    crypto.hashAndVerify(this._key, sig, data, callback)
-  }
-
-  marshal () {
-    return Buffer.from(this._key)
-  }
-
-  get bytes () {
-    return pbm.PublicKey.encode({
-      Type: pbm.KeyType.Ed25519,
-      Data: this.marshal()
-    })
-  }
-
-  equals (key) {
-    return this.bytes.equals(key.bytes)
-  }
-
-  hash (callback) {
-    ensure(callback)
-    multihashing(this.bytes, 'sha2-256', callback)
-  }
-}
-
-class Ed25519PrivateKey {
-  // key       - 64 byte Uint8Array or Buffer containing private key
-  // publicKey - 32 byte Uint8Array or Buffer containing public key
-  constructor (key, publicKey) {
-    this._key = ensureKey(key, crypto.privateKeyLength)
-    this._publicKey = ensureKey(publicKey, crypto.publicKeyLength)
-  }
-
-  sign (message, callback) {
-    ensure(callback)
-    crypto.hashAndSign(this._key, message, callback)
-  }
-
-  get public () {
-    if (!this._publicKey) {
-      throw new Error('public key not provided')
-    }
-
-    return new Ed25519PublicKey(this._publicKey)
-  }
-
-  marshal () {
-    return Buffer.concat([Buffer.from(this._key), Buffer.from(this._publicKey)])
-  }
-
-  get bytes () {
-    return pbm.PrivateKey.encode({
-      Type: pbm.KeyType.Ed25519,
-      Data: this.marshal()
-    })
-  }
-
-  equals (key) {
-    return this.bytes.equals(key.bytes)
-  }
-
-  hash (callback) {
-    ensure(callback)
-    multihashing(this.bytes, 'sha2-256', callback)
-  }
-
-  /**
-   * Gets the ID of the key.
-   *
-   * The key id is the base58 encoding of the SHA-256 multihash of its public key.
-   * The public key is a protobuf encoding containing a type and the DER encoding
-   * of the PKCS SubjectPublicKeyInfo.
-   *
-   * @param {function(Error, id)} callback
-   * @returns {undefined}
-   */
-  id (callback) {
-    this.public.hash((err, hash) => {
-      if (err) {
-        return callback(err)
-      }
-      callback(null, bs58.encode(hash))
-    })
-  }
-}
-
-function unmarshalEd25519PrivateKey (bytes, callback) {
-  try {
-    bytes = ensureKey(bytes, crypto.privateKeyLength + crypto.publicKeyLength)
-  } catch (err) {
-    return callback(err)
-  }
-  const privateKeyBytes = bytes.slice(0, crypto.privateKeyLength)
-  const publicKeyBytes = bytes.slice(crypto.privateKeyLength, bytes.length)
-  callback(null, new Ed25519PrivateKey(privateKeyBytes, publicKeyBytes))
-}
-
-function unmarshalEd25519PublicKey (bytes) {
-  bytes = ensureKey(bytes, crypto.publicKeyLength)
-  return new Ed25519PublicKey(bytes)
-}
-
-function generateKeyPair (_bits, cb) {
-  if (cb === undefined && typeof _bits === 'function') {
-    cb = _bits
-  }
-
-  crypto.generateKey((err, keys) => {
-    if (err) {
-      return cb(err)
-    }
-    let privkey
-    try {
-      privkey = new Ed25519PrivateKey(keys.secretKey, keys.publicKey)
-    } catch (err) {
-      cb(err)
-      return
-    }
-
-    cb(null, privkey)
-  })
-}
-
-function generateKeyPairFromSeed (seed, _bits, cb) {
-  if (cb === undefined && typeof _bits === 'function') {
-    cb = _bits
-  }
-
-  crypto.generateKeyFromSeed(seed, (err, keys) => {
-    if (err) {
-      return cb(err)
-    }
-    let privkey
-    try {
-      privkey = new Ed25519PrivateKey(keys.secretKey, keys.publicKey)
-    } catch (err) {
-      cb(err)
-      return
-    }
-
-    cb(null, privkey)
-  })
-}
-
-function ensure (cb) {
-  if (typeof cb !== 'function') {
-    throw new Error('callback is required')
-  }
-}
-
-function ensureKey (key, length) {
-  if (Buffer.isBuffer(key)) {
-    key = new Uint8Array(key)
-  }
-  if (!(key instanceof Uint8Array) || key.length !== length) {
-    throw new Error('Key must be a Uint8Array or Buffer of length ' + length)
-  }
-  return key
-}
-
-module.exports = {
-  Ed25519PublicKey,
-  Ed25519PrivateKey,
-  unmarshalEd25519PrivateKey,
-  unmarshalEd25519PublicKey,
-  generateKeyPair,
-  generateKeyPairFromSeed
-}
-
-}).call(this,require("buffer").Buffer)
-},{"./ed25519":198,"./keys.proto":202,"bs58":86,"buffer":84,"multihashing-async":410,"protons":513}],198:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const nacl = require('tweetnacl')
-const setImmediate = require('async/setImmediate')
-
-exports.publicKeyLength = nacl.sign.publicKeyLength
-exports.privateKeyLength = nacl.sign.secretKeyLength
-
-exports.generateKey = function (callback) {
-  setImmediate(() => {
-    let result
-    try {
-      result = nacl.sign.keyPair()
-    } catch (err) {
-      return callback(err)
-    }
-    callback(null, result)
-  })
-}
-
-// seed should be a 32 byte uint8array
-exports.generateKeyFromSeed = function (seed, callback) {
-  setImmediate(() => {
-    let result
-    try {
-      result = nacl.sign.keyPair.fromSeed(seed)
-    } catch (err) {
-      return callback(err)
-    }
-    callback(null, result)
-  })
-}
-
-exports.hashAndSign = function (key, msg, callback) {
-  setImmediate(() => {
-    callback(null, Buffer.from(nacl.sign.detached(msg, key)))
-  })
-}
-
-exports.hashAndVerify = function (key, sig, msg, callback) {
-  setImmediate(() => {
-    let result
-    try {
-      result = nacl.sign.detached.verify(msg, sig, key)
-    } catch (err) {
-      return callback(err)
-    }
-
-    callback(null, result)
-  })
-}
-
-}).call(this,require("buffer").Buffer)
-},{"async/setImmediate":50,"buffer":84,"tweetnacl":646}],199:[function(require,module,exports){
-'use strict'
-
-const ecdh = require('./ecdh')
-
-// Generates an ephemeral public key and returns a function that will compute
-// the shared secret key.
-//
-// Focuses only on ECDH now, but can be made more general in the future.
-module.exports = (curve, callback) => {
-  ecdh.generateEphmeralKeyPair(curve, callback)
-}
-
-},{"./ecdh":196}],200:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const protobuf = require('protons')
-const keysPBM = protobuf(require('./keys.proto'))
-const forge = require('node-forge')
-
-exports = module.exports
-
-const supportedKeys = {
-  rsa: require('./rsa-class'),
-  ed25519: require('./ed25519-class'),
-  secp256k1: require('libp2p-crypto-secp256k1')(keysPBM, require('../random-bytes'))
-}
-
-exports.supportedKeys = supportedKeys
-exports.keysPBM = keysPBM
-
-function isValidKeyType (keyType) {
-  const key = supportedKeys[keyType.toLowerCase()]
-  return key !== undefined
-}
-
-exports.keyStretcher = require('./key-stretcher')
-exports.generateEphemeralKeyPair = require('./ephemeral-keys')
-
-// Generates a keypair of the given type and bitsize
-exports.generateKeyPair = (type, bits, cb) => {
-  let key = supportedKeys[type.toLowerCase()]
-
-  if (!key) {
-    return cb(new Error('invalid or unsupported key type'))
-  }
-
-  key.generateKeyPair(bits, cb)
-}
-
-// Generates a keypair of the given type and bitsize
-// seed is a 32 byte uint8array
-exports.generateKeyPairFromSeed = (type, seed, bits, cb) => {
-  let key = supportedKeys[type.toLowerCase()]
-  if (!key) {
-    return cb(new Error('invalid or unsupported key type'))
-  }
-  if (type.toLowerCase() !== 'ed25519') {
-    return cb(new Error('Seed key derivation is unimplemented for RSA or secp256k1'))
-  }
-  key.generateKeyPairFromSeed(seed, bits, cb)
-}
-
-// Converts a protobuf serialized public key into its
-// representative object
-exports.unmarshalPublicKey = (buf) => {
-  const decoded = keysPBM.PublicKey.decode(buf)
-  const data = decoded.Data
-
-  switch (decoded.Type) {
-    case keysPBM.KeyType.RSA:
-      return supportedKeys.rsa.unmarshalRsaPublicKey(data)
-    case keysPBM.KeyType.Ed25519:
-      return supportedKeys.ed25519.unmarshalEd25519PublicKey(data)
-    case keysPBM.KeyType.Secp256k1:
-      if (supportedKeys.secp256k1) {
-        return supportedKeys.secp256k1.unmarshalSecp256k1PublicKey(data)
-      } else {
-        throw new Error('secp256k1 support requires libp2p-crypto-secp256k1 package')
-      }
-    default:
-      throw new Error('invalid or unsupported key type')
-  }
-}
-
-// Converts a public key object into a protobuf serialized public key
-exports.marshalPublicKey = (key, type) => {
-  type = (type || 'rsa').toLowerCase()
-  if (!isValidKeyType(type)) {
-    throw new Error('invalid or unsupported key type')
-  }
-
-  return key.bytes
-}
-
-// Converts a protobuf serialized private key into its
-// representative object
-exports.unmarshalPrivateKey = (buf, callback) => {
-  let decoded
-  try {
-    decoded = keysPBM.PrivateKey.decode(buf)
-  } catch (err) {
-    return callback(err)
-  }
-
-  const data = decoded.Data
-
-  switch (decoded.Type) {
-    case keysPBM.KeyType.RSA:
-      return supportedKeys.rsa.unmarshalRsaPrivateKey(data, callback)
-    case keysPBM.KeyType.Ed25519:
-      return supportedKeys.ed25519.unmarshalEd25519PrivateKey(data, callback)
-    case keysPBM.KeyType.Secp256k1:
-      if (supportedKeys.secp256k1) {
-        return supportedKeys.secp256k1.unmarshalSecp256k1PrivateKey(data, callback)
-      } else {
-        return callback(new Error('secp256k1 support requires libp2p-crypto-secp256k1 package'))
-      }
-    default:
-      callback(new Error('invalid or unsupported key type'))
-  }
-}
-
-// Converts a private key object into a protobuf serialized private key
-exports.marshalPrivateKey = (key, type) => {
-  type = (type || 'rsa').toLowerCase()
-  if (!isValidKeyType(type)) {
-    throw new Error('invalid or unsupported key type')
-  }
-
-  return key.bytes
-}
-
-exports.import = (pem, password, callback) => {
-  try {
-    const key = forge.pki.decryptRsaPrivateKey(pem, password)
-    if (key === null) {
-      throw new Error('Cannot read the key, most likely the password is wrong or not a RSA key')
-    }
-    let der = forge.asn1.toDer(forge.pki.privateKeyToAsn1(key))
-    der = Buffer.from(der.getBytes(), 'binary')
-    return supportedKeys.rsa.unmarshalRsaPrivateKey(der, callback)
-  } catch (err) {
-    callback(err)
-  }
-}
-
-}).call(this,require("buffer").Buffer)
-},{"../random-bytes":208,"./ed25519-class":197,"./ephemeral-keys":199,"./key-stretcher":201,"./keys.proto":202,"./rsa-class":204,"buffer":84,"libp2p-crypto-secp256k1":190,"node-forge":437,"protons":513}],201:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const whilst = require('async/whilst')
-const hmac = require('../hmac')
-
-const cipherMap = {
-  'AES-128': {
-    ivSize: 16,
-    keySize: 16
-  },
-  'AES-256': {
-    ivSize: 16,
-    keySize: 32
-  },
-  Blowfish: {
-    ivSize: 8,
-    cipherKeySize: 32
-  }
-}
-
-// Generates a set of keys for each party by stretching the shared key.
-// (myIV, theirIV, myCipherKey, theirCipherKey, myMACKey, theirMACKey)
-module.exports = (cipherType, hash, secret, callback) => {
-  const cipher = cipherMap[cipherType]
-
-  if (!cipher) {
-    return callback(new Error('unkown cipherType passed'))
-  }
-
-  if (!hash) {
-    return callback(new Error('unkown hashType passed'))
-  }
-
-  const cipherKeySize = cipher.keySize
-  const ivSize = cipher.ivSize
-  const hmacKeySize = 20
-  const seed = Buffer.from('key expansion')
-  const resultLength = 2 * (ivSize + cipherKeySize + hmacKeySize)
-
-  hmac.create(hash, secret, (err, m) => {
-    if (err) {
-      return callback(err)
-    }
-
-    m.digest(seed, (err, a) => {
-      if (err) {
-        return callback(err)
-      }
-
-      let result = []
-      let j = 0
-
-      whilst(
-        () => j < resultLength,
-        stretch,
-        finish
-      )
-
-      function stretch (cb) {
-        m.digest(Buffer.concat([a, seed]), (err, b) => {
-          if (err) {
-            return cb(err)
-          }
-
-          let todo = b.length
-
-          if (j + todo > resultLength) {
-            todo = resultLength - j
-          }
-
-          result.push(b)
-
-          j += todo
-
-          m.digest(a, (err, _a) => {
-            if (err) {
-              return cb(err)
-            }
-            a = _a
-            cb()
-          })
-        })
-      }
-
-      function finish (err) {
-        if (err) {
-          return callback(err)
-        }
-
-        const half = resultLength / 2
-        const resultBuffer = Buffer.concat(result)
-        const r1 = resultBuffer.slice(0, half)
-        const r2 = resultBuffer.slice(half, resultLength)
-
-        const createKey = (res) => ({
-          iv: res.slice(0, ivSize),
-          cipherKey: res.slice(ivSize, ivSize + cipherKeySize),
-          macKey: res.slice(ivSize + cipherKeySize)
-        })
-
-        callback(null, {
-          k1: createKey(r1),
-          k2: createKey(r2)
-        })
-      }
-    })
-  })
-}
-
-}).call(this,require("buffer").Buffer)
-},{"../hmac":193,"async/whilst":54,"buffer":84}],202:[function(require,module,exports){
-'use strict'
-
-module.exports = `enum KeyType {
-  RSA = 0;
-  Ed25519 = 1;
-  Secp256k1 = 2;
-}
-message PublicKey {
-  required KeyType Type = 1;
-  required bytes Data = 2;
-}
-message PrivateKey {
-  required KeyType Type = 1;
-  required bytes Data = 2;
-}`
-},{}],203:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const nodeify = require('../nodeify')
-
-const webcrypto = require('../webcrypto.js')()
-
-exports.utils = require('./rsa-utils')
-
-exports.generateKey = function (bits, callback) {
-  nodeify(webcrypto.subtle.generateKey(
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      modulusLength: bits,
-      publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-      hash: {name: 'SHA-256'}
-    },
-    true,
-    ['sign', 'verify']
-  )
-    .then(exportKey)
-    .then((keys) => ({
-      privateKey: keys[0],
-      publicKey: keys[1]
-    })), callback)
-}
-
-// Takes a jwk key
-exports.unmarshalPrivateKey = function (key, callback) {
-  const privateKey = webcrypto.subtle.importKey(
-    'jwk',
-    key,
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: {name: 'SHA-256'}
-    },
-    true,
-    ['sign']
-  )
-
-  nodeify(Promise.all([
-    privateKey,
-    derivePublicFromPrivate(key)
-  ]).then((keys) => exportKey({
-    privateKey: keys[0],
-    publicKey: keys[1]
-  })).then((keys) => ({
-    privateKey: keys[0],
-    publicKey: keys[1]
-  })), callback)
-}
-
-exports.getRandomValues = function (arr) {
-  return Buffer.from(webcrypto.getRandomValues(arr))
-}
-
-exports.hashAndSign = function (key, msg, callback) {
-  nodeify(webcrypto.subtle.importKey(
-    'jwk',
-    key,
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: {name: 'SHA-256'}
-    },
-    false,
-    ['sign']
-  ).then((privateKey) => {
-    return webcrypto.subtle.sign(
-      {name: 'RSASSA-PKCS1-v1_5'},
-      privateKey,
-      Uint8Array.from(msg)
-    )
-  }).then((sig) => Buffer.from(sig)), callback)
-}
-
-exports.hashAndVerify = function (key, sig, msg, callback) {
-  nodeify(webcrypto.subtle.importKey(
-    'jwk',
-    key,
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: {name: 'SHA-256'}
-    },
-    false,
-    ['verify']
-  ).then((publicKey) => {
-    return webcrypto.subtle.verify(
-      {name: 'RSASSA-PKCS1-v1_5'},
-      publicKey,
-      sig,
-      msg
-    )
-  }), callback)
-}
-
-function exportKey (pair) {
-  return Promise.all([
-    webcrypto.subtle.exportKey('jwk', pair.privateKey),
-    webcrypto.subtle.exportKey('jwk', pair.publicKey)
-  ])
-}
-
-function derivePublicFromPrivate (jwKey) {
-  return webcrypto.subtle.importKey(
-    'jwk',
-    {
-      kty: jwKey.kty,
-      n: jwKey.n,
-      e: jwKey.e
-    },
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: {name: 'SHA-256'}
-    },
-    true,
-    ['verify']
-  )
-}
-
-}).call(this,require("buffer").Buffer)
-},{"../nodeify":206,"../webcrypto.js":210,"./rsa-utils":205,"buffer":84}],204:[function(require,module,exports){
-'use strict'
-
-const multihashing = require('multihashing-async')
-const protobuf = require('protons')
-const bs58 = require('bs58')
-
-const crypto = require('./rsa')
-const pbm = protobuf(require('./keys.proto'))
-const forge = require('node-forge')
-const setImmediate = require('async/setImmediate')
-
-class RsaPublicKey {
-  constructor (key) {
-    this._key = key
-  }
-
-  verify (data, sig, callback) {
-    ensure(callback)
-    crypto.hashAndVerify(this._key, sig, data, callback)
-  }
-
-  marshal () {
-    return crypto.utils.jwkToPkix(this._key)
-  }
-
-  get bytes () {
-    return pbm.PublicKey.encode({
-      Type: pbm.KeyType.RSA,
-      Data: this.marshal()
-    })
-  }
-
-  encrypt (bytes) {
-    return this._key.encrypt(bytes, 'RSAES-PKCS1-V1_5')
-  }
-
-  equals (key) {
-    return this.bytes.equals(key.bytes)
-  }
-
-  hash (callback) {
-    ensure(callback)
-    multihashing(this.bytes, 'sha2-256', callback)
-  }
-}
-
-class RsaPrivateKey {
-  // key       - Object of the jwk format
-  // publicKey - Buffer of the spki format
-  constructor (key, publicKey) {
-    this._key = key
-    this._publicKey = publicKey
-  }
-
-  genSecret () {
-    return crypto.getRandomValues(new Uint8Array(16))
-  }
-
-  sign (message, callback) {
-    ensure(callback)
-    crypto.hashAndSign(this._key, message, callback)
-  }
-
-  get public () {
-    if (!this._publicKey) {
-      throw new Error('public key not provided')
-    }
-
-    return new RsaPublicKey(this._publicKey)
-  }
-
-  decrypt (msg, callback) {
-    crypto.decrypt(this._key, msg, callback)
-  }
-
-  marshal () {
-    return crypto.utils.jwkToPkcs1(this._key)
-  }
-
-  get bytes () {
-    return pbm.PrivateKey.encode({
-      Type: pbm.KeyType.RSA,
-      Data: this.marshal()
-    })
-  }
-
-  equals (key) {
-    return this.bytes.equals(key.bytes)
-  }
-
-  hash (callback) {
-    ensure(callback)
-    multihashing(this.bytes, 'sha2-256', callback)
-  }
-
-  /**
-   * Gets the ID of the key.
-   *
-   * The key id is the base58 encoding of the SHA-256 multihash of its public key.
-   * The public key is a protobuf encoding containing a type and the DER encoding
-   * of the PKCS SubjectPublicKeyInfo.
-   *
-   * @param {function(Error, id)} callback
-   * @returns {undefined}
-   */
-  id (callback) {
-    this.public.hash((err, hash) => {
-      if (err) {
-        return callback(err)
-      }
-      callback(null, bs58.encode(hash))
-    })
-  }
-
-  /**
-   * Exports the key into a password protected PEM format
-   *
-   * @param {string} [format] - Defaults to 'pkcs-8'.
-   * @param {string} password - The password to read the encrypted PEM
-   * @param {function(Error, KeyInfo)} callback
-   * @returns {undefined}
-   */
-  export (format, password, callback) {
-    if (typeof password === 'function') {
-      callback = password
-      password = format
-      format = 'pkcs-8'
-    }
-
-    ensure(callback)
-
-    setImmediate(() => {
-      let err = null
-      let pem = null
-      try {
-        const buffer = new forge.util.ByteBuffer(this.marshal())
-        const asn1 = forge.asn1.fromDer(buffer)
-        const privateKey = forge.pki.privateKeyFromAsn1(asn1)
-
-        if (format === 'pkcs-8') {
-          const options = {
-            algorithm: 'aes256',
-            count: 10000,
-            saltSize: 128 / 8,
-            prfAlgorithm: 'sha512'
-          }
-          pem = forge.pki.encryptRsaPrivateKey(privateKey, password, options)
-        } else {
-          err = new Error(`Unknown export format '${format}'`)
-        }
-      } catch (_err) {
-        err = _err
-      }
-
-      callback(err, pem)
-    })
-  }
-}
-
-function unmarshalRsaPrivateKey (bytes, callback) {
-  const jwk = crypto.utils.pkcs1ToJwk(bytes)
-
-  crypto.unmarshalPrivateKey(jwk, (err, keys) => {
-    if (err) {
-      return callback(err)
-    }
-
-    callback(null, new RsaPrivateKey(keys.privateKey, keys.publicKey))
-  })
-}
-
-function unmarshalRsaPublicKey (bytes) {
-  const jwk = crypto.utils.pkixToJwk(bytes)
-
-  return new RsaPublicKey(jwk)
-}
-
-function fromJwk (jwk, callback) {
-  crypto.unmarshalPrivateKey(jwk, (err, keys) => {
-    if (err) {
-      return callback(err)
-    }
-
-    callback(null, new RsaPrivateKey(keys.privateKey, keys.publicKey))
-  })
-}
-
-function generateKeyPair (bits, callback) {
-  crypto.generateKey(bits, (err, keys) => {
-    if (err) {
-      return callback(err)
-    }
-
-    callback(null, new RsaPrivateKey(keys.privateKey, keys.publicKey))
-  })
-}
-
-function ensure (callback) {
-  if (typeof callback !== 'function') {
-    throw new Error('callback is required')
-  }
-}
-
-module.exports = {
-  RsaPublicKey,
-  RsaPrivateKey,
-  unmarshalRsaPublicKey,
-  unmarshalRsaPrivateKey,
-  generateKeyPair,
-  fromJwk
-}
-
-},{"./keys.proto":202,"./rsa":203,"async/setImmediate":50,"bs58":86,"multihashing-async":410,"node-forge":437,"protons":513}],205:[function(require,module,exports){
-'use strict'
-
-const asn1 = require('asn1.js')
-
-const util = require('./../util')
-const toBase64 = util.toBase64
-const toBn = util.toBn
-
-const RSAPrivateKey = asn1.define('RSAPrivateKey', function () {
-  this.seq().obj(
-    this.key('version').int(),
-    this.key('modulus').int(),
-    this.key('publicExponent').int(),
-    this.key('privateExponent').int(),
-    this.key('prime1').int(),
-    this.key('prime2').int(),
-    this.key('exponent1').int(),
-    this.key('exponent2').int(),
-    this.key('coefficient').int()
-  )
-})
-
-const AlgorithmIdentifier = asn1.define('AlgorithmIdentifier', function () {
-  this.seq().obj(
-    this.key('algorithm').objid({
-      '1.2.840.113549.1.1.1': 'rsa'
-    }),
-    this.key('none').optional().null_(),
-    this.key('curve').optional().objid(),
-    this.key('params').optional().seq().obj(
-      this.key('p').int(),
-      this.key('q').int(),
-      this.key('g').int()
-    )
-  )
-})
-
-const PublicKey = asn1.define('RSAPublicKey', function () {
-  this.seq().obj(
-    this.key('algorithm').use(AlgorithmIdentifier),
-    this.key('subjectPublicKey').bitstr()
-  )
-})
-
-const RSAPublicKey = asn1.define('RSAPublicKey', function () {
-  this.seq().obj(
-    this.key('modulus').int(),
-    this.key('publicExponent').int()
-  )
-})
-
-// Convert a PKCS#1 in ASN1 DER format to a JWK key
-exports.pkcs1ToJwk = function (bytes) {
-  const asn1 = RSAPrivateKey.decode(bytes, 'der')
-
-  return {
-    kty: 'RSA',
-    n: toBase64(asn1.modulus),
-    e: toBase64(asn1.publicExponent),
-    d: toBase64(asn1.privateExponent),
-    p: toBase64(asn1.prime1),
-    q: toBase64(asn1.prime2),
-    dp: toBase64(asn1.exponent1),
-    dq: toBase64(asn1.exponent2),
-    qi: toBase64(asn1.coefficient),
-    alg: 'RS256',
-    kid: '2011-04-29'
-  }
-}
-
-// Convert a JWK key into PKCS#1 in ASN1 DER format
-exports.jwkToPkcs1 = function (jwk) {
-  return RSAPrivateKey.encode({
-    version: 0,
-    modulus: toBn(jwk.n),
-    publicExponent: toBn(jwk.e),
-    privateExponent: toBn(jwk.d),
-    prime1: toBn(jwk.p),
-    prime2: toBn(jwk.q),
-    exponent1: toBn(jwk.dp),
-    exponent2: toBn(jwk.dq),
-    coefficient: toBn(jwk.qi)
-  }, 'der')
-}
-
-// Convert a PKCIX in ASN1 DER format to a JWK key
-exports.pkixToJwk = function (bytes) {
-  const ndata = PublicKey.decode(bytes, 'der')
-  const asn1 = RSAPublicKey.decode(ndata.subjectPublicKey.data, 'der')
-
-  return {
-    kty: 'RSA',
-    n: toBase64(asn1.modulus),
-    e: toBase64(asn1.publicExponent),
-    alg: 'RS256',
-    kid: '2011-04-29'
-  }
-}
-
-// Convert a JWK key to PKCIX in ASN1 DER format
-exports.jwkToPkix = function (jwk) {
-  return PublicKey.encode({
-    algorithm: {
-      algorithm: 'rsa',
-      none: null
-    },
-    subjectPublicKey: {
-      data: RSAPublicKey.encode({
-        modulus: toBn(jwk.n),
-        publicExponent: toBn(jwk.e)
-      }, 'der')
-    }
-  }, 'der')
-}
-
-},{"./../util":209,"asn1.js":5}],206:[function(require,module,exports){
-'use strict'
-
-// Based on npmjs.com/nodeify but without additional `nextTick` calls
-// to keep the overhead low
-module.exports = function nodeify (promise, cb) {
-  return promise.then((res) => {
-    cb(null, res)
-  }, (err) => {
-    cb(err)
-  })
-}
-
-},{}],207:[function(require,module,exports){
-'use strict'
-
-const forge = require('node-forge')
-
-/**
- * Maps an IPFS hash name to its node-forge equivalent.
- *
- * See https://github.com/multiformats/multihash/blob/master/hashtable.csv
- *
- * @private
- */
-const hashName = {
-  sha1: 'sha1',
-  'sha2-256': 'sha256',
-  'sha2-512': 'sha512'
-}
-
-/**
- * Computes the Password-Based Key Derivation Function 2.
- *
- * @param {string} password
- * @param {string} salt
- * @param {number} iterations
- * @param {number} keySize (in bytes)
- * @param {string} hash - The hash name ('sha1', 'sha2-512, ...)
- * @returns {string} - A new password
- */
-function pbkdf2 (password, salt, iterations, keySize, hash) {
-  const hasher = hashName[hash]
-  if (!hasher) {
-    throw new Error(`Hash '${hash}' is unknown or not supported`)
-  }
-  const dek = forge.pkcs5.pbkdf2(
-    password,
-    salt,
-    iterations,
-    keySize,
-    hasher)
-  return forge.util.encode64(dek)
-}
-
-module.exports = pbkdf2
-
-},{"node-forge":437}],208:[function(require,module,exports){
-'use strict'
-
-const rsa = require('./keys/rsa')
-
-function randomBytes (number) {
-  if (!number || typeof number !== 'number') {
-    throw new Error('first argument must be a Number bigger than 0')
-  }
-
-  return rsa.getRandomValues(new Uint8Array(number))
-}
-
-module.exports = randomBytes
-
-},{"./keys/rsa":203}],209:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const BN = require('asn1.js').bignum
-
-// Convert a BN.js instance to a base64 encoded string without padding
-// Adapted from https://tools.ietf.org/html/draft-ietf-jose-json-web-signature-41#appendix-C
-exports.toBase64 = function toBase64 (bn, len) {
-  // if len is defined then the bytes are leading-0 padded to the length
-  let s = bn.toArrayLike(Buffer, 'be', len).toString('base64')
-
-  return s
-    .replace(/(=*)$/, '') // Remove any trailing '='s
-    .replace(/\+/g, '-') // 62nd char of encoding
-    .replace(/\//g, '_') // 63rd char of encoding
-}
-
-// Convert a base64 encoded string to a BN.js instance
-exports.toBn = function toBn (str) {
-  return new BN(Buffer.from(str, 'base64'))
-}
-
-}).call(this,require("buffer").Buffer)
-},{"asn1.js":5,"buffer":84}],210:[function(require,module,exports){
-/* global self */
-
-'use strict'
-
-module.exports = () => {
-  // This is only a shim for interfaces, not for functionality
-  if (typeof self !== 'undefined') {
-    require('webcrypto-shim')(self)
-
-    if (self.crypto) {
-      return self.crypto
-    }
-  }
-
-  throw new Error('Please use an environment with crypto support')
-}
-
-},{"webcrypto-shim":658}],211:[function(require,module,exports){
-arguments[4][176][0].apply(exports,arguments)
-},{"./debug":212,"_process":499,"dup":176}],212:[function(require,module,exports){
-arguments[4][177][0].apply(exports,arguments)
-},{"dup":177,"ms":393}],213:[function(require,module,exports){
+},{"ms":471}],205:[function(require,module,exports){
 'use strict'
 
 const debug = require('debug')
@@ -55701,7 +54586,7 @@ module.exports = {
   multicodec: '/floodsub/1.0.0'
 }
 
-},{"debug":211}],214:[function(require,module,exports){
+},{"debug":203}],206:[function(require,module,exports){
 'use strict'
 
 const EventEmitter = require('events')
@@ -56086,7 +54971,7 @@ class FloodSub extends EventEmitter {
 
 module.exports = FloodSub
 
-},{"./config":213,"./message":215,"./peer":218,"./utils":219,"assert":19,"async/each":23,"async/setImmediate":50,"events":145,"lodash.values":325,"pull-length-prefixed":525,"pull-stream":533,"safe-buffer":601,"time-cache":643}],215:[function(require,module,exports){
+},{"./config":205,"./message":207,"./peer":210,"./utils":211,"assert":18,"async/each":22,"async/setImmediate":49,"events":146,"lodash.values":408,"pull-length-prefixed":604,"pull-stream":612,"safe-buffer":681,"time-cache":723}],207:[function(require,module,exports){
 'use strict'
 
 const protons = require('protons')
@@ -56098,7 +54983,7 @@ exports = module.exports
 exports.rpc = rpcProto
 exports.td = topicDescriptorProto
 
-},{"./rpc.proto.js":216,"./topic-descriptor.proto.js":217,"protons":513}],216:[function(require,module,exports){
+},{"./rpc.proto.js":208,"./topic-descriptor.proto.js":209,"protons":592}],208:[function(require,module,exports){
 'use strict'
 module.exports = `
 message RPC {
@@ -56118,7 +55003,7 @@ message RPC {
   }
 }`
 
-},{}],217:[function(require,module,exports){
+},{}],209:[function(require,module,exports){
 'use strict'
 module.exports = `
 // topicCID = cid(merkledag_protobuf(topicDescriptor)); (not the topic.name)
@@ -56150,7 +55035,7 @@ message TopicDescriptor {
   }
 }`
 
-},{}],218:[function(require,module,exports){
+},{}],210:[function(require,module,exports){
 'use strict'
 
 const lp = require('pull-length-prefixed')
@@ -56339,7 +55224,7 @@ class Peer extends EventEmitter {
 
 module.exports = Peer
 
-},{"./message":215,"async/setImmediate":50,"events":145,"pull-length-prefixed":525,"pull-pushable":529,"pull-stream":533}],219:[function(require,module,exports){
+},{"./message":207,"async/setImmediate":49,"events":146,"pull-length-prefixed":604,"pull-pushable":608,"pull-stream":612}],211:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -56438,7 +55323,1515 @@ exports.normalizeOutRpcMessages = (messages) => {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":168,"bs58":86,"libp2p-crypto":195}],220:[function(require,module,exports){
+},{"../../is-buffer/index.js":172,"bs58":86,"libp2p-crypto":187}],212:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const map = require('lodash.map')
+const filter = require('lodash.filter')
+const convert = require('./convert')
+const protocols = require('./protocols-table')
+const varint = require('varint')
+
+// export codec
+module.exports = {
+  stringToStringTuples: stringToStringTuples,
+  stringTuplesToString: stringTuplesToString,
+
+  tuplesToStringTuples: tuplesToStringTuples,
+  stringTuplesToTuples: stringTuplesToTuples,
+
+  bufferToTuples: bufferToTuples,
+  tuplesToBuffer: tuplesToBuffer,
+
+  bufferToString: bufferToString,
+  stringToBuffer: stringToBuffer,
+
+  fromString: fromString,
+  fromBuffer: fromBuffer,
+  validateBuffer: validateBuffer,
+  isValidBuffer: isValidBuffer,
+  cleanPath: cleanPath,
+
+  ParseError: ParseError,
+  protoFromTuple: protoFromTuple,
+
+  sizeForAddr: sizeForAddr
+}
+
+// string -> [[str name, str addr]... ]
+function stringToStringTuples (str) {
+  const tuples = []
+  const parts = str.split('/').slice(1) // skip first empty elem
+  if (parts.length === 1 && parts[0] === '') {
+    return []
+  }
+
+  for (let p = 0; p < parts.length; p++) {
+    const part = parts[p]
+    const proto = protocols(part)
+
+    if (proto.size === 0) {
+      tuples.push([part])
+      continue
+    }
+
+    p++ // advance addr part
+    if (p >= parts.length) {
+      throw ParseError('invalid address: ' + str)
+    }
+
+    tuples.push([part, parts[p]])
+  }
+
+  return tuples
+}
+
+// [[str name, str addr]... ] -> string
+function stringTuplesToString (tuples) {
+  const parts = []
+  map(tuples, function (tup) {
+    const proto = protoFromTuple(tup)
+    parts.push(proto.name)
+    if (tup.length > 1) {
+      parts.push(tup[1])
+    }
+  })
+
+  return '/' + parts.join('/')
+}
+
+// [[str name, str addr]... ] -> [[int code, Buffer]... ]
+function stringTuplesToTuples (tuples) {
+  return map(tuples, function (tup) {
+    if (!Array.isArray(tup)) {
+      tup = [tup]
+    }
+    const proto = protoFromTuple(tup)
+    if (tup.length > 1) {
+      return [proto.code, convert.toBuffer(proto.code, tup[1])]
+    }
+    return [proto.code]
+  })
+}
+
+// [[int code, Buffer]... ] -> [[str name, str addr]... ]
+function tuplesToStringTuples (tuples) {
+  return map(tuples, function (tup) {
+    const proto = protoFromTuple(tup)
+    if (tup.length > 1) {
+      return [proto.code, convert.toString(proto.code, tup[1])]
+    }
+    return [proto.code]
+  })
+}
+
+// [[int code, Buffer ]... ] -> Buffer
+function tuplesToBuffer (tuples) {
+  return fromBuffer(Buffer.concat(map(tuples, function (tup) {
+    const proto = protoFromTuple(tup)
+    let buf = Buffer.from(varint.encode(proto.code))
+
+    if (tup.length > 1) {
+      buf = Buffer.concat([buf, tup[1]]) // add address buffer
+    }
+
+    return buf
+  })))
+}
+
+function sizeForAddr (p, addr) {
+  if (p.size > 0) {
+    return p.size / 8
+  } else if (p.size === 0) {
+    return 0
+  } else {
+    const size = varint.decode(addr)
+    return size + varint.decode.bytes
+  }
+}
+
+// Buffer -> [[int code, Buffer ]... ]
+function bufferToTuples (buf) {
+  const tuples = []
+  let i = 0
+  while (i < buf.length) {
+    const code = varint.decode(buf, i)
+    const n = varint.decode.bytes
+
+    const p = protocols(code)
+
+    const size = sizeForAddr(p, buf.slice(i + n))
+
+    if (size === 0) {
+      tuples.push([code])
+      i += n
+      continue
+    }
+
+    const addr = buf.slice(i + n, i + n + size)
+
+    i += (size + n)
+
+    if (i > buf.length) { // did not end _exactly_ at buffer.length
+      throw ParseError('Invalid address buffer: ' + buf.toString('hex'))
+    }
+
+    // ok, tuple seems good.
+    tuples.push([code, addr])
+  }
+
+  return tuples
+}
+
+// Buffer -> String
+function bufferToString (buf) {
+  const a = bufferToTuples(buf)
+  const b = tuplesToStringTuples(a)
+  return stringTuplesToString(b)
+}
+
+// String -> Buffer
+function stringToBuffer (str) {
+  str = cleanPath(str)
+  const a = stringToStringTuples(str)
+  const b = stringTuplesToTuples(a)
+
+  return tuplesToBuffer(b)
+}
+
+// String -> Buffer
+function fromString (str) {
+  return stringToBuffer(str)
+}
+
+// Buffer -> Buffer
+function fromBuffer (buf) {
+  const err = validateBuffer(buf)
+  if (err) throw err
+  return Buffer.from(buf) // copy
+}
+
+function validateBuffer (buf) {
+  try {
+    bufferToTuples(buf) // try to parse. will throw if breaks
+  } catch (err) {
+    return err
+  }
+}
+
+function isValidBuffer (buf) {
+  return validateBuffer(buf) === undefined
+}
+
+function cleanPath (str) {
+  return '/' + filter(str.trim().split('/')).join('/')
+}
+
+function ParseError (str) {
+  return new Error('Error parsing address: ' + str)
+}
+
+function protoFromTuple (tup) {
+  const proto = protocols(tup[0])
+  return proto
+}
+
+}).call(this,require("buffer").Buffer)
+},{"./convert":213,"./protocols-table":215,"buffer":84,"lodash.filter":397,"lodash.map":401,"varint":735}],213:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const ip = require('ip')
+const ipAddress = require('ip-address')
+const protocols = require('./protocols-table')
+const bs58 = require('bs58')
+const varint = require('varint')
+
+module.exports = Convert
+
+// converts (serializes) addresses
+function Convert (proto, a) {
+  if (a instanceof Buffer) {
+    return Convert.toString(proto, a)
+  } else {
+    return Convert.toBuffer(proto, a)
+  }
+}
+
+Convert.toString = function convertToString (proto, buf) {
+  proto = protocols(proto)
+  switch (proto.code) {
+    case 4: // ipv4
+    case 41: // ipv6
+      return ip.toString(buf)
+
+    case 6: // tcp
+    case 17: // udp
+    case 33: // dccp
+    case 132: // sctp
+      return buf2port(buf)
+
+    case 54: // dns4
+    case 55: // dns6
+    case 56: // dnsaddr
+      return buf2str(buf)
+
+    case 421: // ipfs
+      return buf2mh(buf)
+    default:
+      return buf.toString('hex') // no clue. convert to hex
+  }
+}
+
+Convert.toBuffer = function convertToBuffer (proto, str) {
+  proto = protocols(proto)
+  switch (proto.code) {
+    case 4: // ipv4
+      return ip2buf(new ipAddress.Address4(str))
+    case 41: // ipv6
+      return ip2buf(new ipAddress.Address6(str))
+
+    case 6: // tcp
+    case 17: // udp
+    case 33: // dccp
+    case 132: // sctp
+      return port2buf(parseInt(str, 10))
+
+    case 54: // dns4
+    case 55: // dns6
+    case 56: // dnsaddr
+      return str2buf(str)
+
+    case 421: // ipfs
+      return mh2buf(str)
+    default:
+      return Buffer.from(str, 'hex') // no clue. convert from hex
+  }
+}
+
+function ip2buf (ipaddr) {
+  if (!ipaddr.isValid()) throw new Error('invalid ip address')
+  return ip.toBuffer(ipaddr.address)
+}
+
+function port2buf (port) {
+  const buf = Buffer.alloc(2)
+  buf.writeUInt16BE(port, 0)
+  return buf
+}
+
+function buf2port (buf) {
+  return buf.readUInt16BE(0)
+}
+
+function str2buf (str) {
+  const buf = Buffer.from(str)
+  const size = Buffer.from(varint.encode(buf.length))
+  return Buffer.concat([size, buf])
+}
+
+function buf2str (buf) {
+  const size = varint.decode(buf)
+  buf = buf.slice(varint.decode.bytes)
+
+  if (buf.length !== size) {
+    throw new Error('inconsistent lengths')
+  }
+
+  return buf.toString()
+}
+
+function mh2buf (hash) {
+  // the address is a varint prefixed multihash string representation
+  const mh = Buffer.from(bs58.decode(hash))
+  const size = Buffer.from(varint.encode(mh.length))
+  return Buffer.concat([size, mh])
+}
+
+function buf2mh (buf) {
+  const size = varint.decode(buf)
+  const address = buf.slice(varint.decode.bytes)
+
+  if (address.length !== size) {
+    throw new Error('inconsistent lengths')
+  }
+
+  return bs58.encode(address)
+}
+
+}).call(this,require("buffer").Buffer)
+},{"./protocols-table":215,"bs58":86,"buffer":84,"ip":171,"ip-address":161,"varint":735}],214:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const map = require('lodash.map')
+const extend = require('xtend')
+const codec = require('./codec')
+const protocols = require('./protocols-table')
+const varint = require('varint')
+const bs58 = require('bs58')
+const withIs = require('class-is')
+
+const NotImplemented = new Error('Sorry, Not Implemented Yet.')
+
+/**
+ * Creates a [multiaddr](https://github.com/multiformats/multiaddr) from
+ * a Buffer, String or another Multiaddr instance
+ * public key.
+ * @class Multiaddr
+ * @param {(String|Buffer|Multiaddr)} addr - If String or Buffer, needs to adhere
+ * to the address format of a [multiaddr](https://github.com/multiformats/multiaddr#string-format)
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ */
+const Multiaddr = withIs.proto(function (addr) {
+  if (!(this instanceof Multiaddr)) {
+    return new Multiaddr(addr)
+  }
+
+  // default
+  if (addr == null) {
+    addr = ''
+  }
+
+  if (addr instanceof Buffer) {
+    /**
+     * @type {Buffer} - The raw bytes representing this multiaddress
+     */
+    this.buffer = codec.fromBuffer(addr)
+  } else if (typeof addr === 'string' || addr instanceof String) {
+    if (addr.length > 0 && addr.charAt(0) !== '/') {
+      throw new Error(`multiaddr "${addr}" must start with a "/"`)
+    }
+    this.buffer = codec.fromString(addr)
+  } else if (addr.buffer && addr.protos && addr.protoCodes) { // Multiaddr
+    this.buffer = codec.fromBuffer(addr.buffer) // validate + copy buffer
+  } else {
+    throw new Error('addr must be a string, Buffer, or another Multiaddr')
+  }
+}, { className: 'Multiaddr', symbolName: '@multiformats/js-multiaddr/multiaddr' })
+
+/**
+ * Returns Multiaddr as a String
+ *
+ * @returns {String}
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').toString()
+ * // '/ip4/127.0.0.1/tcp/4001'
+ */
+Multiaddr.prototype.toString = function toString () {
+  return codec.bufferToString(this.buffer)
+}
+
+/**
+ * Returns Multiaddr as a convinient options object to be used with net.createConnection
+ *
+ * @returns {{family: String, host: String, transport: String, port: String}}
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').toOptions()
+ * // { family: 'ipv4', host: '127.0.0.1', transport: 'tcp', port: '4001' }
+ */
+Multiaddr.prototype.toOptions = function toOptions () {
+  const opts = {}
+  const parsed = this.toString().split('/')
+  opts.family = parsed[1] === 'ip4' ? 'ipv4' : 'ipv6'
+  opts.host = parsed[2]
+  opts.transport = parsed[3]
+  opts.port = parsed[4]
+  return opts
+}
+
+/**
+ * Returns Multiaddr as a human-readable string
+ *
+ * @returns {String}
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').inspect()
+ * // '<Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>'
+ */
+Multiaddr.prototype.inspect = function inspect () {
+  return '<Multiaddr ' +
+    this.buffer.toString('hex') + ' - ' +
+    codec.bufferToString(this.buffer) + '>'
+}
+
+/**
+ * Returns the protocols the Multiaddr is defined with, as an array of objects, in
+ * left-to-right order. Each object contains the protocol code, protocol name,
+ * and the size of its address space in bits.
+ * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
+ *
+ * @returns {Array.<Object>} protocols - All the protocols the address is composed of
+ * @returns {Number} protocols[].code
+ * @returns {Number} protocols[].size
+ * @returns {String} protocols[].name
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').protos()
+ * // [ { code: 4, size: 32, name: 'ip4' },
+ * //   { code: 6, size: 16, name: 'tcp' } ]
+ */
+Multiaddr.prototype.protos = function protos () {
+  return map(this.protoCodes(), function (code) {
+    return extend(protocols(code))
+    // copy to prevent users from modifying the internal objs.
+  })
+}
+
+/**
+ * Returns the codes of the protocols in left-to-right order.
+ * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
+ *
+ * @returns {Array.<Number>} protocol codes
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').protoCodes()
+ * // [ 4, 6 ]
+ */
+Multiaddr.prototype.protoCodes = function protoCodes () {
+  const codes = []
+  const buf = this.buffer
+  let i = 0
+  while (i < buf.length) {
+    const code = varint.decode(buf, i)
+    const n = varint.decode.bytes
+
+    const p = protocols(code)
+    const size = codec.sizeForAddr(p, buf.slice(i + n))
+
+    i += (size + n)
+    codes.push(code)
+  }
+
+  return codes
+}
+
+/**
+ * Returns the names of the protocols in left-to-right order.
+ * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
+ *
+ * @return {Array.<String>} protocol names
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').protoNames()
+ * // [ 'ip4', 'tcp' ]
+ */
+Multiaddr.prototype.protoNames = function protoNames () {
+  return map(this.protos(), function (proto) {
+    return proto.name
+  })
+}
+
+/**
+ * Returns a tuple of parts
+ *
+ * @return {Array.<Array>} tuples
+ * @return {Number} tuples[].0 code of protocol
+ * @return {Buffer} tuples[].1 contents of address
+ * @example
+ * Multiaddr("/ip4/127.0.0.1/tcp/4001").tuples()
+ * // [ [ 4, <Buffer 7f 00 00 01> ], [ 6, <Buffer 0f a1> ] ]
+ */
+Multiaddr.prototype.tuples = function tuples () {
+  return codec.bufferToTuples(this.buffer)
+}
+
+/**
+ * Returns a tuple of string/number parts
+ *
+ * @return {Array.<Array>} tuples
+ * @return {Number} tuples[].0 code of protocol
+ * @return {(String|Number)} tuples[].1 contents of address
+ * @example
+ * Multiaddr("/ip4/127.0.0.1/tcp/4001").stringTuples()
+ * // [ [ 4, '127.0.0.1' ], [ 6, 4001 ] ]
+ */
+Multiaddr.prototype.stringTuples = function stringTuples () {
+  const t = codec.bufferToTuples(this.buffer)
+  return codec.tuplesToStringTuples(t)
+}
+
+/**
+ * Encapsulates a Multiaddr in another Multiaddr
+ *
+ * @param {Multiaddr} addr - Multiaddr to add into this Multiaddr
+ * @return {Multiaddr}
+ * @example
+ * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
+ * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
+ *
+ * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ *
+ * const mh3 = mh1.encapsulate(mh2)
+ * // <Multiaddr 0408080808060438047f000001060fa1 - /ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001>
+ *
+ * mh3.toString()
+ * // '/ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001'
+ */
+Multiaddr.prototype.encapsulate = function encapsulate (addr) {
+  addr = Multiaddr(addr)
+  return Multiaddr(this.toString() + addr.toString())
+}
+
+/**
+ * Decapsulates a Multiaddr from another Multiaddr
+ *
+ * @param {Multiaddr} addr - Multiaddr to remove from this Multiaddr
+ * @return {Multiaddr}
+ * @example
+ * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
+ * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
+ *
+ * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ *
+ * const mh3 = mh1.encapsulate(mh2)
+ * // <Multiaddr 0408080808060438047f000001060fa1 - /ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001>
+ *
+ * mh3.decapsulate(mh2).toString()
+ * // '/ip4/8.8.8.8/tcp/1080'
+ */
+Multiaddr.prototype.decapsulate = function decapsulate (addr) {
+  addr = addr.toString()
+  const s = this.toString()
+  const i = s.lastIndexOf(addr)
+  if (i < 0) {
+    throw new Error('Address ' + this + ' does not contain subaddress: ' + addr)
+  }
+  return Multiaddr(s.slice(0, i))
+}
+
+/**
+ * Extract the peerId if the multiaddr contains one
+ *
+ * @return {String|null} peerId - The id of the peer or null if invalid or missing from the ma
+ * @example
+ * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080/ipfs/QmValidBase58string')
+ * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080/ipfs/QmValidBase58string>
+ *
+ * // should return QmValidBase58string or null if the id is missing or invalid
+ * const peerId = mh1.getPeerId()
+ */
+Multiaddr.prototype.getPeerId = function getPeerId () {
+  let b58str = null
+  try {
+    b58str = this.stringTuples().filter((tuple) => {
+      if (tuple[0] === protocols.names['ipfs'].code) {
+        return true
+      }
+    })[0][1]
+
+    bs58.decode(b58str)
+  } catch (e) {
+    b58str = null
+  }
+
+  return b58str
+}
+
+/**
+ * Checks if two Multiaddrs are the same
+ *
+ * @param {Multiaddr} addr
+ * @return {Bool}
+ * @example
+ * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
+ * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
+ *
+ * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ *
+ * mh1.equals(mh1)
+ * // true
+ *
+ * mh1.equals(mh2)
+ * // false
+ */
+Multiaddr.prototype.equals = function equals (addr) {
+  return this.buffer.equals(addr.buffer)
+}
+
+/**
+ * Gets a Multiaddrs node-friendly address object. Note that protocol information
+ * is left out: in Node (and most network systems) the protocol is unknowable
+ * given only the address.
+ *
+ * Has to be a ThinWaist Address, otherwise throws error
+ *
+ * @returns {{family: String, address: String, port: String}}
+ * @throws {Error} Throws error if Multiaddr is not a Thin Waist address
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').nodeAddress()
+ * // {family: 'IPv4', address: '127.0.0.1', port: '4001'}
+ */
+Multiaddr.prototype.nodeAddress = function nodeAddress () {
+  const codes = this.protoCodes()
+  const names = this.protoNames()
+  const parts = this.toString().split('/').slice(1)
+
+  if (parts.length < 4) {
+    throw new Error('multiaddr must have a valid format: "/{ip4, ip6, dns4, dns6}/{address}/{tcp, udp}/{port}".')
+  } else if (codes[0] !== 4 && codes[0] !== 41 && codes[0] !== 54 && codes[0] !== 55) {
+    throw new Error(`no protocol with name: "'${names[0]}'". Must have a valid family name: "{ip4, ip6, dns4, dns6}".`)
+  } else if (parts[2] !== 'tcp' && parts[2] !== 'udp') {
+    throw new Error(`no protocol with name: "'${names[1]}'". Must have a valid transport protocol: "{tcp, udp}".`)
+  }
+
+  return {
+    family: (codes[0] === 41 || codes[0] === 55) ? 6 : 4,
+    address: parts[1], // ip addr
+    port: parts[3] // tcp or udp port
+  }
+}
+
+/**
+ * Creates a Multiaddr from a node-friendly address object
+ *
+ * @param {String} addr
+ * @param {String} transport
+ * @returns {Multiaddr} multiaddr
+ * @throws {Error} Throws error if addr is not truthy
+ * @throws {Error} Throws error if transport is not truthy
+ * @example
+ * Multiaddr.fromNodeAddress({address: '127.0.0.1', port: '4001'}, 'tcp')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ */
+Multiaddr.fromNodeAddress = function fromNodeAddress (addr, transport) {
+  if (!addr) throw new Error('requires node address object')
+  if (!transport) throw new Error('requires transport protocol')
+  const ip = (addr.family === 'IPv6') ? 'ip6' : 'ip4'
+  return Multiaddr('/' + [ip, addr.address, transport, addr.port].join('/'))
+}
+
+// TODO find a better example, not sure about it's good enough
+/**
+ * Returns if a Multiaddr is a Thin Waist address or not.
+ *
+ * Thin Waist is if a Multiaddr adheres to the standard combination of:
+ *
+ * `{IPv4, IPv6}/{TCP, UDP}`
+ *
+ * @param {Multiaddr} [addr] - Defaults to using `this` instance
+ * @returns {Boolean} isThinWaistAddress
+ * @example
+ * const mh1 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ * const mh2 = Multiaddr('/ip4/192.168.2.1/tcp/5001')
+ * // <Multiaddr 04c0a80201061389 - /ip4/192.168.2.1/tcp/5001>
+ * const mh3 = mh1.encapsulate(mh2)
+ * // <Multiaddr 047f000001060fa104c0a80201061389 - /ip4/127.0.0.1/tcp/4001/ip4/192.168.2.1/tcp/5001>
+ * mh1.isThinWaistAddress()
+ * // true
+ * mh2.isThinWaistAddress()
+ * // true
+ * mh3.isThinWaistAddress()
+ * // false
+ */
+Multiaddr.prototype.isThinWaistAddress = function isThinWaistAddress (addr) {
+  const protos = (addr || this).protos()
+
+  if (protos.length !== 2) {
+    return false
+  }
+
+  if (protos[0].code !== 4 && protos[0].code !== 41) {
+    return false
+  }
+  if (protos[1].code !== 6 && protos[1].code !== 17) {
+    return false
+  }
+  return true
+}
+
+// TODO rename this to something else than "stupid string"
+/**
+ * Converts a "stupid string" into a Multiaddr.
+ *
+ * Stupid string format:
+ * ```
+ * <proto><IPv>://<IP Addr>[:<proto port>]
+ * udp4://1.2.3.4:5678
+ * ```
+ *
+ * @param {String} [str] - String in the "stupid" format
+ * @throws {NotImplemented}
+ * @returns {undefined}
+ * @todo Not Implemented yet
+ */
+Multiaddr.prototype.fromStupidString = function fromStupidString (str) {
+  throw NotImplemented
+}
+
+/**
+ * Object containing table, names and codes of all supported protocols.
+ * To get the protocol values from a Multiaddr, you can use
+ * [`.protos()`](#multiaddrprotos),
+ * [`.protoCodes()`](#multiaddrprotocodes) or
+ * [`.protoNames()`](#multiaddrprotonames)
+ *
+ * @instance
+ * @returns {{table: Array, names: Object, codes: Object}}
+ *
+ */
+Multiaddr.protocols = protocols
+
+/**
+ * Returns if something is a Multiaddr that is a name
+ *
+ * @param {Multiaddr} addr
+ * @return {Bool} isName
+ */
+Multiaddr.isName = function isName (addr) {
+  if (!Multiaddr.isMultiaddr(addr)) {
+    return false
+  }
+
+  // if a part of the multiaddr is resolvable, then return true
+  return addr.protos().some((proto) => proto.resolvable)
+}
+
+/**
+ * Returns an array of multiaddrs, by resolving the multiaddr that is a name
+ *
+ * @param {Multiaddr} addr
+ *
+ * @param {Function} callback
+ * @return {Bool} isName
+ */
+Multiaddr.resolve = function resolve (addr, callback) {
+  if (!Multiaddr.isMultiaddr(addr) || !Multiaddr.isName(addr)) {
+    return callback(new Error('not a valid name'))
+  }
+
+  /*
+   * Needs more consideration from spec design:
+   *   - what to return
+   *   - how to achieve it in the browser?
+   */
+  return callback(new Error('not implemented yet'))
+}
+
+exports = module.exports = Multiaddr
+
+}).call(this,require("buffer").Buffer)
+},{"./codec":212,"./protocols-table":215,"bs58":86,"buffer":84,"class-is":92,"lodash.map":401,"varint":735,"xtend":773}],215:[function(require,module,exports){
+'use strict'
+
+const map = require('lodash.map')
+
+function Protocols (proto) {
+  if (typeof (proto) === 'number') {
+    if (Protocols.codes[proto]) {
+      return Protocols.codes[proto]
+    }
+
+    throw new Error('no protocol with code: ' + proto)
+  } else if (typeof (proto) === 'string' || proto instanceof String) {
+    if (Protocols.names[proto]) {
+      return Protocols.names[proto]
+    }
+
+    throw new Error('no protocol with name: ' + proto)
+  }
+
+  throw new Error('invalid protocol id type: ' + proto)
+}
+
+const V = -1
+Protocols.lengthPrefixedVarSize = V
+Protocols.V = V
+
+Protocols.table = [
+  [4, 32, 'ip4'],
+  [6, 16, 'tcp'],
+  [17, 16, 'udp'],
+  [33, 16, 'dccp'],
+  [41, 128, 'ip6'],
+  [54, V, 'dns4', 'resolvable'],
+  [55, V, 'dns6', 'resolvable'],
+  [56, V, 'dnsaddr', 'resolvable'],
+  [132, 16, 'sctp'],
+  // all of the below use varint for size
+  [302, 0, 'utp'],
+  [421, Protocols.lengthPrefixedVarSize, 'ipfs'],
+  [480, 0, 'http'],
+  [443, 0, 'https'],
+  [477, 0, 'ws'],
+  [478, 0, 'wss'],
+  [479, 0, 'p2p-websocket-star'],
+  [275, 0, 'p2p-webrtc-star'],
+  [276, 0, 'p2p-webrtc-direct'],
+  [290, 0, 'p2p-circuit']
+]
+
+Protocols.names = {}
+Protocols.codes = {}
+
+// populate tables
+map(Protocols.table, function (row) {
+  const proto = p.apply(null, row)
+  Protocols.codes[proto.code] = proto
+  Protocols.names[proto.name] = proto
+})
+
+Protocols.object = p
+
+function p (code, size, name, resolvable) {
+  return {
+    code: code,
+    size: size,
+    name: name,
+    resolvable: Boolean(resolvable)
+  }
+}
+
+module.exports = Protocols
+
+},{"lodash.map":401}],216:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":217,"./protocols-table":219,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],217:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":219,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],218:[function(require,module,exports){
+(function (Buffer){
+'use strict'
+
+const map = require('lodash.map')
+const extend = require('xtend')
+const codec = require('./codec')
+const protocols = require('./protocols-table')
+const varint = require('varint')
+const bs58 = require('bs58')
+const withIs = require('class-is')
+
+const NotImplemented = new Error('Sorry, Not Implemented Yet.')
+
+/**
+ * Creates a [multiaddr](https://github.com/multiformats/multiaddr) from
+ * a Buffer, String or another Multiaddr instance
+ * public key.
+ * @class Multiaddr
+ * @param {(String|Buffer|Multiaddr)} addr - If String or Buffer, needs to adhere
+ * to the address format of a [multiaddr](https://github.com/multiformats/multiaddr#string-format)
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ */
+const Multiaddr = withIs.proto(function (addr) {
+  if (!(this instanceof Multiaddr)) {
+    return new Multiaddr(addr)
+  }
+
+  // default
+  if (addr == null) {
+    addr = ''
+  }
+
+  if (addr instanceof Buffer) {
+    /**
+     * @type {Buffer} - The raw bytes representing this multiaddress
+     */
+    this.buffer = codec.fromBuffer(addr)
+  } else if (typeof addr === 'string' || addr instanceof String) {
+    this.buffer = codec.fromString(addr)
+  } else if (addr.buffer && addr.protos && addr.protoCodes) { // Multiaddr
+    this.buffer = codec.fromBuffer(addr.buffer) // validate + copy buffer
+  } else {
+    throw new Error('addr must be a string, Buffer, or another Multiaddr')
+  }
+}, { className: 'Multiaddr', symbolName: '@multiformats/js-multiaddr/multiaddr' })
+
+/**
+ * Returns Multiaddr as a String
+ *
+ * @returns {String}
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').toString()
+ * // '/ip4/127.0.0.1/tcp/4001'
+ */
+Multiaddr.prototype.toString = function toString () {
+  return codec.bufferToString(this.buffer)
+}
+
+/**
+ * Returns Multiaddr as a convinient options object to be used with net.createConnection
+ *
+ * @returns {{family: String, host: String, transport: String, port: String}}
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').toOptions()
+ * // { family: 'ipv4', host: '127.0.0.1', transport: 'tcp', port: '4001' }
+ */
+Multiaddr.prototype.toOptions = function toOptions () {
+  const opts = {}
+  const parsed = this.toString().split('/')
+  opts.family = parsed[1] === 'ip4' ? 'ipv4' : 'ipv6'
+  opts.host = parsed[2]
+  opts.transport = parsed[3]
+  opts.port = parsed[4]
+  return opts
+}
+
+/**
+ * Returns Multiaddr as a human-readable string
+ *
+ * @returns {String}
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').inspect()
+ * // '<Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>'
+ */
+Multiaddr.prototype.inspect = function inspect () {
+  return '<Multiaddr ' +
+    this.buffer.toString('hex') + ' - ' +
+    codec.bufferToString(this.buffer) + '>'
+}
+
+/**
+ * Returns the protocols the Multiaddr is defined with, as an array of objects, in
+ * left-to-right order. Each object contains the protocol code, protocol name,
+ * and the size of its address space in bits.
+ * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
+ *
+ * @returns {Array.<Object>} protocols - All the protocols the address is composed of
+ * @returns {Number} protocols[].code
+ * @returns {Number} protocols[].size
+ * @returns {String} protocols[].name
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').protos()
+ * // [ { code: 4, size: 32, name: 'ip4' },
+ * //   { code: 6, size: 16, name: 'tcp' } ]
+ */
+Multiaddr.prototype.protos = function protos () {
+  return map(this.protoCodes(), function (code) {
+    return extend(protocols(code))
+    // copy to prevent users from modifying the internal objs.
+  })
+}
+
+/**
+ * Returns the codes of the protocols in left-to-right order.
+ * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
+ *
+ * @returns {Array.<Number>} protocol codes
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').protoCodes()
+ * // [ 4, 6 ]
+ */
+Multiaddr.prototype.protoCodes = function protoCodes () {
+  const codes = []
+  const buf = this.buffer
+  let i = 0
+  while (i < buf.length) {
+    const code = varint.decode(buf, i)
+    const n = varint.decode.bytes
+
+    const p = protocols(code)
+    const size = codec.sizeForAddr(p, buf.slice(i + n))
+
+    i += (size + n)
+    codes.push(code)
+  }
+
+  return codes
+}
+
+/**
+ * Returns the names of the protocols in left-to-right order.
+ * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
+ *
+ * @return {Array.<String>} protocol names
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').protoNames()
+ * // [ 'ip4', 'tcp' ]
+ */
+Multiaddr.prototype.protoNames = function protoNames () {
+  return map(this.protos(), function (proto) {
+    return proto.name
+  })
+}
+
+/**
+ * Returns a tuple of parts
+ *
+ * @return {Array.<Array>} tuples
+ * @return {Number} tuples[].0 code of protocol
+ * @return {Buffer} tuples[].1 contents of address
+ * @example
+ * Multiaddr("/ip4/127.0.0.1/tcp/4001").tuples()
+ * // [ [ 4, <Buffer 7f 00 00 01> ], [ 6, <Buffer 0f a1> ] ]
+ */
+Multiaddr.prototype.tuples = function tuples () {
+  return codec.bufferToTuples(this.buffer)
+}
+
+/**
+ * Returns a tuple of string/number parts
+ *
+ * @return {Array.<Array>} tuples
+ * @return {Number} tuples[].0 code of protocol
+ * @return {(String|Number)} tuples[].1 contents of address
+ * @example
+ * Multiaddr("/ip4/127.0.0.1/tcp/4001").stringTuples()
+ * // [ [ 4, '127.0.0.1' ], [ 6, 4001 ] ]
+ */
+Multiaddr.prototype.stringTuples = function stringTuples () {
+  const t = codec.bufferToTuples(this.buffer)
+  return codec.tuplesToStringTuples(t)
+}
+
+/**
+ * Encapsulates a Multiaddr in another Multiaddr
+ *
+ * @param {Multiaddr} addr - Multiaddr to add into this Multiaddr
+ * @return {Multiaddr}
+ * @example
+ * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
+ * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
+ *
+ * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ *
+ * const mh3 = mh1.encapsulate(mh2)
+ * // <Multiaddr 0408080808060438047f000001060fa1 - /ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001>
+ *
+ * mh3.toString()
+ * // '/ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001'
+ */
+Multiaddr.prototype.encapsulate = function encapsulate (addr) {
+  addr = Multiaddr(addr)
+  return Multiaddr(this.toString() + addr.toString())
+}
+
+/**
+ * Decapsulates a Multiaddr from another Multiaddr
+ *
+ * @param {Multiaddr} addr - Multiaddr to remove from this Multiaddr
+ * @return {Multiaddr}
+ * @example
+ * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
+ * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
+ *
+ * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ *
+ * const mh3 = mh1.encapsulate(mh2)
+ * // <Multiaddr 0408080808060438047f000001060fa1 - /ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001>
+ *
+ * mh3.decapsulate(mh2).toString()
+ * // '/ip4/8.8.8.8/tcp/1080'
+ */
+Multiaddr.prototype.decapsulate = function decapsulate (addr) {
+  addr = addr.toString()
+  const s = this.toString()
+  const i = s.lastIndexOf(addr)
+  if (i < 0) {
+    throw new Error('Address ' + this + ' does not contain subaddress: ' + addr)
+  }
+  return Multiaddr(s.slice(0, i))
+}
+
+/**
+ * Extract the peerId if the multiaddr contains one
+ *
+ * @return {String|null} peerId - The id of the peer or null if invalid or missing from the ma
+ * @example
+ * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080/ipfs/QmValidBase58string')
+ * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080/ipfs/QmValidBase58string>
+ *
+ * // should return QmValidBase58string or null if the id is missing or invalid
+ * const peerId = mh1.getPeerId()
+ */
+Multiaddr.prototype.getPeerId = function getPeerId () {
+  let b58str = null
+  try {
+    b58str = this.stringTuples().filter((tuple) => {
+      if (tuple[0] === protocols.names['ipfs'].code) {
+        return true
+      }
+    })[0][1]
+
+    bs58.decode(b58str)
+  } catch (e) {
+    b58str = null
+  }
+
+  return b58str
+}
+
+/**
+ * Checks if two Multiaddrs are the same
+ *
+ * @param {Multiaddr} addr
+ * @return {Bool}
+ * @example
+ * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
+ * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
+ *
+ * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ *
+ * mh1.equals(mh1)
+ * // true
+ *
+ * mh1.equals(mh2)
+ * // false
+ */
+Multiaddr.prototype.equals = function equals (addr) {
+  return this.buffer.equals(addr.buffer)
+}
+
+/**
+ * Gets a Multiaddrs node-friendly address object. Note that protocol information
+ * is left out: in Node (and most network systems) the protocol is unknowable
+ * given only the address.
+ *
+ * Has to be a ThinWaist Address, otherwise throws error
+ *
+ * @returns {{family: String, address: String, port: String}}
+ * @throws {Error} Throws error if Multiaddr is not a Thin Waist address
+ * @example
+ * Multiaddr('/ip4/127.0.0.1/tcp/4001').nodeAddress()
+ * // {family: 'IPv4', address: '127.0.0.1', port: '4001'}
+ */
+Multiaddr.prototype.nodeAddress = function nodeAddress () {
+  if (!this.isThinWaistAddress()) {
+    throw new Error('Multiaddr must be "thin waist" address for nodeAddress.')
+  }
+
+  const codes = this.protoCodes()
+  const parts = this.toString().split('/').slice(1)
+  return {
+    family: (codes[0] === 41) ? 'IPv6' : 'IPv4',
+    address: parts[1], // ip addr
+    port: parts[3] // tcp or udp port
+  }
+}
+
+/**
+ * Creates a Multiaddr from a node-friendly address object
+ *
+ * @param {String} addr
+ * @param {String} transport
+ * @returns {Multiaddr} multiaddr
+ * @throws {Error} Throws error if addr is not truthy
+ * @throws {Error} Throws error if transport is not truthy
+ * @example
+ * Multiaddr.fromNodeAddress({address: '127.0.0.1', port: '4001'}, 'tcp')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ */
+Multiaddr.fromNodeAddress = function fromNodeAddress (addr, transport) {
+  if (!addr) throw new Error('requires node address object')
+  if (!transport) throw new Error('requires transport protocol')
+  const ip = (addr.family === 'IPv6') ? 'ip6' : 'ip4'
+  return Multiaddr('/' + [ip, addr.address, transport, addr.port].join('/'))
+}
+
+// TODO find a better example, not sure about it's good enough
+/**
+ * Returns if a Multiaddr is a Thin Waist address or not.
+ *
+ * Thin Waist is if a Multiaddr adheres to the standard combination of:
+ *
+ * `{IPv4, IPv6}/{TCP, UDP}`
+ *
+ * @param {Multiaddr} [addr] - Defaults to using `this` instance
+ * @returns {Boolean} isThinWaistAddress
+ * @example
+ * const mh1 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
+ * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
+ * const mh2 = Multiaddr('/ip4/192.168.2.1/tcp/5001')
+ * // <Multiaddr 04c0a80201061389 - /ip4/192.168.2.1/tcp/5001>
+ * const mh3 = mh1.encapsulate(mh2)
+ * // <Multiaddr 047f000001060fa104c0a80201061389 - /ip4/127.0.0.1/tcp/4001/ip4/192.168.2.1/tcp/5001>
+ * mh1.isThinWaistAddress()
+ * // true
+ * mh2.isThinWaistAddress()
+ * // true
+ * mh3.isThinWaistAddress()
+ * // false
+ */
+Multiaddr.prototype.isThinWaistAddress = function isThinWaistAddress (addr) {
+  const protos = (addr || this).protos()
+
+  if (protos.length !== 2) {
+    return false
+  }
+
+  if (protos[0].code !== 4 && protos[0].code !== 41) {
+    return false
+  }
+  if (protos[1].code !== 6 && protos[1].code !== 17) {
+    return false
+  }
+  return true
+}
+
+// TODO rename this to something else than "stupid string"
+/**
+ * Converts a "stupid string" into a Multiaddr.
+ *
+ * Stupid string format:
+ * ```
+ * <proto><IPv>://<IP Addr>[:<proto port>]
+ * udp4://1.2.3.4:5678
+ * ```
+ *
+ * @param {String} [str] - String in the "stupid" format
+ * @throws {NotImplemented}
+ * @returns {undefined}
+ * @todo Not Implemented yet
+ */
+Multiaddr.prototype.fromStupidString = function fromStupidString (str) {
+  throw NotImplemented
+}
+
+/**
+ * Object containing table, names and codes of all supported protocols.
+ * To get the protocol values from a Multiaddr, you can use
+ * [`.protos()`](#multiaddrprotos),
+ * [`.protoCodes()`](#multiaddrprotocodes) or
+ * [`.protoNames()`](#multiaddrprotonames)
+ *
+ * @instance
+ * @returns {{table: Array, names: Object, codes: Object}}
+ *
+ */
+Multiaddr.protocols = protocols
+
+/**
+ * Returns if something is a Multiaddr that is a name
+ *
+ * @param {Multiaddr} addr
+ * @return {Bool} isName
+ */
+Multiaddr.isName = function isName (addr) {
+  if (!Multiaddr.isMultiaddr(addr)) {
+    return false
+  }
+
+  // if a part of the multiaddr is resolvable, then return true
+  return addr.protos().some((proto) => proto.resolvable)
+}
+
+/**
+ * Returns an array of multiaddrs, by resolving the multiaddr that is a name
+ *
+ * @param {Multiaddr} addr
+ *
+ * @param {Function} callback
+ * @return {Bool} isName
+ */
+Multiaddr.resolve = function resolve (addr, callback) {
+  if (!Multiaddr.isMultiaddr(addr) || !Multiaddr.isName(addr)) {
+    return callback(new Error('not a valid name'))
+  }
+
+  /*
+   * Needs more consideration from spec design:
+   *   - what to return
+   *   - how to achieve it in the browser?
+   */
+  return callback(new Error('not implemented yet'))
+}
+
+exports = module.exports = Multiaddr
+
+}).call(this,require("buffer").Buffer)
+},{"./codec":216,"./protocols-table":219,"bs58":86,"buffer":84,"class-is":92,"lodash.map":401,"varint":735,"xtend":773}],219:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],220:[function(require,module,exports){
+'use strict'
+
+const PeerId = require('peer-id')
+const ensureMultiaddr = require('./utils').ensureMultiaddr
+const MultiaddrSet = require('./multiaddr-set')
+const assert = require('assert')
+
+// Peer represents a peer on the IPFS network
+class PeerInfo {
+  constructor (peerId) {
+    assert(peerId, 'Missing peerId. Use Peer.create(cb) to create one')
+
+    this.id = peerId
+    this.multiaddrs = new MultiaddrSet()
+    this.protocols = new Set()
+    this._connectedMultiaddr = undefined
+  }
+
+  // only stores the current multiaddr being used
+  connect (ma) {
+    ma = ensureMultiaddr(ma)
+    if (!this.multiaddrs.has(ma) && ma.toString() !== `/ipfs/${this.id.toB58String()}`) {
+      throw new Error('can\'t be connected to missing multiaddr from set')
+    }
+    this._connectedMultiaddr = ma
+  }
+
+  disconnect () {
+    this._connectedMultiaddr = undefined
+  }
+
+  isConnected () {
+    return this._connectedMultiaddr
+  }
+}
+
+PeerInfo.create = (peerId, callback) => {
+  if (typeof peerId === 'function') {
+    callback = peerId
+    peerId = null
+
+    PeerId.create((err, id) => {
+      if (err) {
+        return callback(err)
+      }
+
+      callback(null, new PeerInfo(id))
+    })
+    return
+  }
+
+  // Already a PeerId instance
+  if (typeof peerId.toJSON === 'function') {
+    callback(null, new PeerInfo(peerId))
+  } else {
+    PeerId.createFromJSON(peerId, (err, id) => callback(err, new PeerInfo(id)))
+  }
+}
+
+PeerInfo.isPeerInfo = (peerInfo) => {
+  return Boolean(typeof peerInfo === 'object' &&
+    peerInfo.id &&
+    peerInfo.multiaddrs)
+}
+
+module.exports = PeerInfo
+
+},{"./multiaddr-set":221,"./utils":222,"assert":18,"peer-id":568}],221:[function(require,module,exports){
+'use strict'
+
+const ensureMultiaddr = require('./utils').ensureMultiaddr
+const uniqBy = require('lodash.uniqby')
+
+// Because JavaScript doesn't let you overload the compare in Set()..
+class MultiaddrSet {
+  constructor (multiaddrs) {
+    this._multiaddrs = multiaddrs || []
+    this._observedMultiaddrs = []
+  }
+
+  add (ma) {
+    ma = ensureMultiaddr(ma)
+
+    if (!this.has(ma)) {
+      this._multiaddrs.push(ma)
+    }
+  }
+
+  // addSafe - prevent multiaddr explosion™
+  // Multiaddr explosion is when you dial to a bunch of nodes and every node
+  // gives you a different observed address and you start storing them all to
+  // share with other peers. This seems like a good idea until you realize that
+  // most of those addresses are unique to the subnet that peer is in and so,
+  // they are completely worthless for all the other peers. This method is
+  // exclusively used by identify.
+  addSafe (ma) {
+    ma = ensureMultiaddr(ma)
+
+    const check = this._observedMultiaddrs.some((m, i) => {
+      if (m.equals(ma)) {
+        this.add(ma)
+        this._observedMultiaddrs.splice(i, 1)
+        return true
+      }
+    })
+    if (!check) {
+      this._observedMultiaddrs.push(ma)
+    }
+  }
+
+  toArray () {
+    return this._multiaddrs.slice()
+  }
+
+  get size () {
+    return this._multiaddrs.length
+  }
+
+  forEach (fn) {
+    return this._multiaddrs.forEach(fn)
+  }
+
+  filterBy (maFmt) {
+    if (typeof maFmt !== 'object' ||
+      typeof maFmt.matches !== 'function' ||
+      typeof maFmt.partialMatch !== 'function' ||
+      typeof maFmt.toString !== 'function') return []
+
+    return this._multiaddrs.filter((ma) => maFmt.matches(ma))
+  }
+
+  has (ma) {
+    ma = ensureMultiaddr(ma)
+    return this._multiaddrs.some((m) => m.equals(ma))
+  }
+
+  delete (ma) {
+    ma = ensureMultiaddr(ma)
+
+    this._multiaddrs.some((m, i) => {
+      if (m.equals(ma)) {
+        this._multiaddrs.splice(i, 1)
+        return true
+      }
+    })
+  }
+
+  // replaces selected existing multiaddrs with new ones
+  replace (existing, fresh) {
+    if (!Array.isArray(existing)) {
+      existing = [existing]
+    }
+    if (!Array.isArray(fresh)) {
+      fresh = [fresh]
+    }
+    existing.forEach((m) => this.delete(m))
+    fresh.forEach((m) => this.add(m))
+  }
+
+  clear () {
+    this._multiaddrs = []
+  }
+
+  // this only really helps make ip6 and ip4 multiaddrs distinct if they are
+  // different
+  // TODO this is not an ideal solution, probably this code should just be
+  // in libp2p-tcp
+  distinct () {
+    return uniqBy(this._multiaddrs, (ma) => {
+      return [ma.toOptions().port, ma.toOptions().transport].join()
+    })
+  }
+}
+
+module.exports = MultiaddrSet
+
+},{"./utils":222,"lodash.uniqby":407}],222:[function(require,module,exports){
+'use strict'
+
+const multiaddr = require('multiaddr')
+
+function ensureMultiaddr (ma) {
+  if (multiaddr.isMultiaddr(ma)) {
+    return ma
+  }
+
+  return multiaddr(ma)
+}
+
+module.exports = {
+  ensureMultiaddr: ensureMultiaddr
+}
+
+},{"multiaddr":218}],223:[function(require,module,exports){
 'use strict'
 const PeerInfo = require('peer-info')
 const PeerId = require('peer-id')
@@ -56511,7 +56904,7 @@ function hasObservedAddr (input) {
   return input.observedAddr && input.observedAddr.length > 0
 }
 
-},{"./message":223,"multiaddr":403,"peer-id":493,"peer-info":494,"pull-length-prefixed":525,"pull-stream":533}],221:[function(require,module,exports){
+},{"./message":226,"multiaddr":214,"peer-id":568,"peer-info":220,"pull-length-prefixed":604,"pull-stream":612}],224:[function(require,module,exports){
 'use strict'
 
 exports = module.exports
@@ -56519,7 +56912,7 @@ exports.multicodec = '/ipfs/id/1.0.0'
 exports.listener = require('./listener')
 exports.dialer = require('./dialer')
 
-},{"./dialer":220,"./listener":222}],222:[function(require,module,exports){
+},{"./dialer":223,"./listener":225}],225:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -56556,7 +56949,7 @@ module.exports = (conn, pInfoSelf) => {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"./message":223,"buffer":84,"pull-length-prefixed":525,"pull-stream":533}],223:[function(require,module,exports){
+},{"./message":226,"buffer":84,"pull-length-prefixed":604,"pull-stream":612}],226:[function(require,module,exports){
 'use strict'
 
 const protons = require('protons')
@@ -56588,16 +56981,16 @@ message Identify {
 
 module.exports = protons(schema).Identify
 
-},{"protons":513}],224:[function(require,module,exports){
-arguments[4][176][0].apply(exports,arguments)
-},{"./debug":225,"_process":499,"dup":176}],225:[function(require,module,exports){
-arguments[4][177][0].apply(exports,arguments)
-},{"dup":177,"ms":393}],226:[function(require,module,exports){
+},{"protons":592}],227:[function(require,module,exports){
+arguments[4][203][0].apply(exports,arguments)
+},{"./debug":228,"_process":578,"dup":203}],228:[function(require,module,exports){
+arguments[4][204][0].apply(exports,arguments)
+},{"dup":204,"ms":471}],229:[function(require,module,exports){
 'use strict'
 
 module.exports = '/mplex/6.7.0'
 
-},{}],227:[function(require,module,exports){
+},{}],230:[function(require,module,exports){
 'use strict'
 
 const toStream = require('pull-stream-to-stream')
@@ -56628,7 +57021,7 @@ exports.multicodec = MULTIPLEX_CODEC
 exports.dialer = (conn) => create(conn, false)
 exports.listener = (conn) => create(conn, true)
 
-},{"./codec":226,"./internals":229,"./muxer":230,"pull-stream-to-stream":532,"pump":574}],228:[function(require,module,exports){
+},{"./codec":229,"./internals":232,"./muxer":233,"pull-stream-to-stream":611,"pump":653}],231:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 /* @flow */
@@ -56825,7 +57218,7 @@ class Channel extends stream.Duplex {
 module.exports = Channel
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":84,"debug":224,"readable-stream":596}],229:[function(require,module,exports){
+},{"buffer":84,"debug":227,"readable-stream":676}],232:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 /* @flow */
@@ -57317,7 +57710,7 @@ class Multiplex extends stream.Duplex {
 module.exports = Multiplex
 
 }).call(this,require("buffer").Buffer)
-},{"./channel":228,"buffer":84,"debug":224,"duplexify":143,"readable-stream":596,"varint":655}],230:[function(require,module,exports){
+},{"./channel":231,"buffer":84,"debug":227,"duplexify":143,"readable-stream":676,"varint":735}],233:[function(require,module,exports){
 'use strict'
 
 const EventEmitter = require('events').EventEmitter
@@ -57397,7 +57790,7 @@ class MultiplexMuxer extends EventEmitter {
 
 module.exports = MultiplexMuxer
 
-},{"./codec":226,"async/setImmediate":50,"events":145,"interface-connection":156,"pull-catch":516,"pull-stream":533,"stream-to-pull-stream":631}],231:[function(require,module,exports){
+},{"./codec":229,"async/setImmediate":49,"events":146,"interface-connection":160,"pull-catch":595,"pull-stream":612,"stream-to-pull-stream":711}],234:[function(require,module,exports){
 'use strict'
 
 module.exports = {
@@ -57405,7 +57798,7 @@ module.exports = {
   PING_LENGTH: 32
 }
 
-},{}],232:[function(require,module,exports){
+},{}],235:[function(require,module,exports){
 'use strict'
 
 const pull = require('pull-stream')
@@ -57457,7 +57850,7 @@ exports = module.exports
 exports.mount = mount
 exports.unmount = unmount
 
-},{"./constants":231,"debug":129,"pull-handshake":522,"pull-stream":533}],233:[function(require,module,exports){
+},{"./constants":234,"debug":129,"pull-handshake":601,"pull-stream":612}],236:[function(require,module,exports){
 'use strict'
 
 const handler = require('./handler')
@@ -57466,7 +57859,7 @@ exports = module.exports = require('./ping')
 exports.mount = handler.mount
 exports.unmount = handler.unmount
 
-},{"./handler":232,"./ping":234}],234:[function(require,module,exports){
+},{"./handler":235,"./ping":237}],237:[function(require,module,exports){
 'use strict'
 
 const EventEmitter = require('events').EventEmitter
@@ -57550,7 +57943,7 @@ class Ping extends EventEmitter {
 
 module.exports = Ping
 
-},{"./constants":231,"./util":235,"debug":129,"events":145,"pull-handshake":522,"pull-stream":533}],235:[function(require,module,exports){
+},{"./constants":234,"./util":238,"debug":129,"events":146,"pull-handshake":601,"pull-stream":612}],238:[function(require,module,exports){
 'use strict'
 
 const crypto = require('libp2p-crypto')
@@ -57565,11 +57958,268 @@ exports.rnd = (length) => {
   return crypto.randomBytes(length)
 }
 
-},{"./constants":231,"libp2p-crypto":195}],236:[function(require,module,exports){
-arguments[4][176][0].apply(exports,arguments)
-},{"./debug":237,"_process":499,"dup":176}],237:[function(require,module,exports){
-arguments[4][177][0].apply(exports,arguments)
-},{"dup":177,"ms":393}],238:[function(require,module,exports){
+},{"./constants":234,"libp2p-crypto":187}],239:[function(require,module,exports){
+arguments[4][203][0].apply(exports,arguments)
+},{"./debug":240,"_process":578,"dup":203}],240:[function(require,module,exports){
+arguments[4][204][0].apply(exports,arguments)
+},{"dup":204,"ms":471}],241:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":242,"./protocols-table":244,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],242:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":244,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],243:[function(require,module,exports){
+arguments[4][218][0].apply(exports,arguments)
+},{"./codec":241,"./protocols-table":244,"bs58":86,"buffer":84,"class-is":92,"dup":218,"lodash.map":401,"varint":735,"xtend":773}],244:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],245:[function(require,module,exports){
+'use strict'
+
+const multiaddr = require('multiaddr')
+
+/*
+ * Valid combinations
+ */
+const DNS4 = base('dns4')
+const DNS6 = base('dns6')
+const _DNS = or(
+  base('dnsaddr'),
+  DNS4,
+  DNS6
+)
+
+const IP = or(base('ip4'), base('ip6'))
+const TCP = and(IP, base('tcp'))
+const UDP = and(IP, base('udp'))
+const UTP = and(UDP, base('utp'))
+
+const DNS = or(
+  and(_DNS, base('tcp')),
+  _DNS
+)
+
+const WebSockets = or(
+  and(TCP, base('ws')),
+  and(DNS, base('ws'))
+)
+
+const WebSocketsSecure = or(
+  and(TCP, base('wss')),
+  and(DNS, base('wss'))
+)
+
+const HTTP = or(
+  and(TCP, base('http')),
+  and(DNS),
+  and(DNS, base('http'))
+)
+
+const WebRTCStar = or(
+  and(WebSockets, base('p2p-webrtc-star'), base('ipfs')),
+  and(WebSocketsSecure, base('p2p-webrtc-star'), base('ipfs'))
+)
+
+const WebSocketStar = or(
+  and(WebSockets, base('p2p-websocket-star'), base('ipfs')),
+  and(WebSocketsSecure, base('p2p-websocket-star'), base('ipfs')),
+  and(WebSockets, base('p2p-websocket-star')),
+  and(WebSocketsSecure, base('p2p-websocket-star'))
+)
+
+const WebRTCDirect = and(HTTP, base('p2p-webrtc-direct'))
+
+const Reliable = or(
+  WebSockets,
+  WebSocketsSecure,
+  HTTP,
+  WebRTCStar,
+  WebRTCDirect,
+  TCP,
+  UTP
+)
+
+let _IPFS = or(
+  and(Reliable, base('ipfs')),
+  WebRTCStar,
+  base('ipfs')
+)
+
+const _Circuit = or(
+  and(_IPFS, base('p2p-circuit'), _IPFS),
+  and(_IPFS, base('p2p-circuit')),
+  and(base('p2p-circuit'), _IPFS),
+  and(Reliable, base('p2p-circuit')),
+  and(base('p2p-circuit'), Reliable),
+  base('p2p-circuit')
+)
+
+const CircuitRecursive = () => or(
+  and(_Circuit, CircuitRecursive),
+  _Circuit
+)
+
+const Circuit = CircuitRecursive()
+
+const IPFS = or(
+  and(Circuit, _IPFS, Circuit),
+  and(_IPFS, Circuit),
+  and(Circuit, _IPFS),
+  Circuit,
+  _IPFS
+)
+
+exports.DNS = DNS
+exports.DNS4 = DNS4
+exports.DNS6 = DNS6
+exports.IP = IP
+exports.TCP = TCP
+exports.UDP = UDP
+exports.UTP = UTP
+exports.HTTP = HTTP
+exports.WebSockets = WebSockets
+exports.WebSocketsSecure = WebSocketsSecure
+exports.WebSocketStar = WebSocketStar
+exports.WebRTCStar = WebRTCStar
+exports.WebRTCDirect = WebRTCDirect
+exports.Reliable = Reliable
+exports.Circuit = Circuit
+exports.IPFS = IPFS
+
+/*
+ * Validation funcs
+ */
+
+function and () {
+  const args = Array.from(arguments)
+
+  function matches (a) {
+    if (typeof a === 'string') {
+      a = multiaddr(a)
+    }
+    let out = partialMatch(a.protoNames())
+    if (out === null) {
+      return false
+    }
+    return out.length === 0
+  }
+
+  function partialMatch (a) {
+    if (a.length < args.length) {
+      return null
+    }
+    args.some((arg) => {
+      a = typeof arg === 'function'
+        ? arg().partialMatch(a)
+        : arg.partialMatch(a)
+
+      if (a === null) {
+        return true
+      }
+    })
+
+    return a
+  }
+
+  return {
+    input: args,
+    matches: matches,
+    partialMatch: partialMatch
+  }
+}
+
+function or () {
+  const args = Array.from(arguments)
+
+  function matches (a) {
+    if (typeof a === 'string') {
+      a = multiaddr(a)
+    }
+    const out = partialMatch(a.protoNames())
+    if (out === null) {
+      return false
+    }
+    return out.length === 0
+  }
+
+  function partialMatch (a) {
+    let out = null
+    args.some((arg) => {
+      const res = typeof arg === 'function'
+        ? arg().partialMatch(a)
+        : arg.partialMatch(a)
+      if (res) {
+        out = res
+        return true
+      }
+    })
+
+    return out
+  }
+
+  const result = {
+    toString: function () { return '{ ' + args.join(' ') + ' }' },
+    input: args,
+    matches: matches,
+    partialMatch: partialMatch
+  }
+
+  return result
+}
+
+function base (n) {
+  const name = n
+
+  function matches (a) {
+    if (typeof a === 'string') {
+      a = multiaddr(a)
+    }
+
+    const pnames = a.protoNames()
+    if (pnames.length === 1 && pnames[0] === name) {
+      return true
+    }
+    return false
+  }
+
+  function partialMatch (protos) {
+    if (protos.length === 0) {
+      return null
+    }
+
+    if (protos[0] === name) {
+      return protos.slice(1)
+    }
+    return null
+  }
+
+  return {
+    toString: function () { return name },
+    matches: matches,
+    partialMatch: partialMatch
+  }
+}
+
+},{"multiaddr":243}],246:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":247,"./protocols-table":249,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],247:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":249,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],248:[function(require,module,exports){
+arguments[4][214][0].apply(exports,arguments)
+},{"./codec":246,"./protocols-table":249,"bs58":86,"buffer":84,"class-is":92,"dup":214,"lodash.map":401,"varint":735,"xtend":773}],249:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],250:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":251,"./protocols-table":253,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],251:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":253,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],252:[function(require,module,exports){
+arguments[4][218][0].apply(exports,arguments)
+},{"./codec":250,"./protocols-table":253,"bs58":86,"buffer":84,"class-is":92,"dup":218,"lodash.map":401,"varint":735,"xtend":773}],253:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],254:[function(require,module,exports){
+arguments[4][220][0].apply(exports,arguments)
+},{"./multiaddr-set":255,"./utils":256,"assert":18,"dup":220,"peer-id":568}],255:[function(require,module,exports){
+arguments[4][221][0].apply(exports,arguments)
+},{"./utils":256,"dup":221,"lodash.uniqby":407}],256:[function(require,module,exports){
+arguments[4][222][0].apply(exports,arguments)
+},{"dup":222,"multiaddr":252}],257:[function(require,module,exports){
 'use strict'
 
 const PeerId = require('peer-id')
@@ -57634,7 +58284,7 @@ class Railing extends EventEmitter {
 exports = module.exports = Railing
 exports.tag = 'bootstrap'
 
-},{"async/setImmediate":50,"debug":236,"events":145,"mafmt":389,"multiaddr":403,"peer-id":493,"peer-info":494}],239:[function(require,module,exports){
+},{"async/setImmediate":49,"debug":239,"events":146,"mafmt":245,"multiaddr":248,"peer-id":568,"peer-info":254}],258:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -57842,7 +58492,7 @@ class Client {
 module.exports = Client
 
 }).call(this,require("buffer").Buffer)
-},{"./rpc":243,"./sync":247,"async":22,"buffer":84,"debug":129,"pull-stream":533}],240:[function(require,module,exports){
+},{"./rpc":262,"./sync":266,"async":21,"buffer":84,"debug":129,"pull-stream":612}],259:[function(require,module,exports){
 'use strict'
 
 const debug = require('debug')
@@ -57909,13 +58559,13 @@ class RendezvousDiscovery extends EE {
 
 module.exports = RendezvousDiscovery
 
-},{"./client":239,"debug":129,"events":145}],241:[function(require,module,exports){
+},{"./client":258,"debug":129,"events":146}],260:[function(require,module,exports){
 module.exports = {
   Server: require('./server'),
   Client: require('./client'),
   Discovery: require('./discovery')
 }
-},{"./client":239,"./discovery":240,"./server":244}],242:[function(require,module,exports){
+},{"./client":258,"./discovery":259,"./server":263}],261:[function(require,module,exports){
 'use strict'
 
 const protons = require('protons')
@@ -57982,7 +58632,7 @@ message Message {
   optional DiscoverResponse discoverResponse = 6;
 }`)
 
-},{"protons":513}],243:[function(require,module,exports){
+},{"protons":592}],262:[function(require,module,exports){
 (function (setImmediate){
 'use strict'
 
@@ -58133,7 +58783,7 @@ const RPC = () => {
 module.exports = RPC
 
 }).call(this,require("timers").setImmediate)
-},{"./proto":242,"debug":129,"once":471,"peer-id":493,"peer-info":494,"pull-protocol-buffers":527,"pull-pushable":529,"pull-stream":533,"timers":644}],244:[function(require,module,exports){
+},{"./proto":261,"debug":129,"once":546,"peer-id":568,"peer-info":573,"pull-protocol-buffers":606,"pull-pushable":608,"pull-stream":612,"timers":724}],263:[function(require,module,exports){
 'use strict'
 
 const debug = require('debug')
@@ -58186,7 +58836,7 @@ class Server {
 
 module.exports = Server
 
-},{"./rpc":245,"./store/immutable":246,"debug":129,"pull-stream":533}],245:[function(require,module,exports){
+},{"./rpc":264,"./store/immutable":265,"debug":129,"pull-stream":612}],264:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -58366,7 +59016,7 @@ const RPC = (pi, main) => {
 module.exports = RPC
 
 }).call(this,require("buffer").Buffer)
-},{"../proto":242,"buffer":84,"debug":129,"peer-id":493,"peer-info":494,"pull-protocol-buffers":527,"pull-pushable":529,"pull-stream":533,"pull-through":564}],246:[function(require,module,exports){
+},{"../proto":261,"buffer":84,"debug":129,"peer-id":568,"peer-info":573,"pull-protocol-buffers":606,"pull-pushable":608,"pull-stream":612,"pull-through":643}],265:[function(require,module,exports){
 'use strict'
 
 const { Map } = require('immutable')
@@ -58583,7 +59233,7 @@ module.exports = {
   }
 }
 
-},{"immutable":153}],247:[function(require,module,exports){
+},{"immutable":155}],266:[function(require,module,exports){
 'use strict'
 
 const { Map } = require('immutable')
@@ -58642,51 +59292,665 @@ module.exports = {
   clearPoints
 }
 
-},{"immutable":153}],248:[function(require,module,exports){
-arguments[4][176][0].apply(exports,arguments)
-},{"./debug":249,"_process":499,"dup":176}],249:[function(require,module,exports){
-arguments[4][177][0].apply(exports,arguments)
-},{"dup":177,"ms":393}],250:[function(require,module,exports){
-arguments[4][191][0].apply(exports,arguments)
-},{"browserify-aes":67,"dup":191}],251:[function(require,module,exports){
-arguments[4][192][0].apply(exports,arguments)
-},{"./ciphers":250,"dup":192}],252:[function(require,module,exports){
-arguments[4][193][0].apply(exports,arguments)
-},{"../nodeify":265,"../webcrypto.js":269,"./lengths":253,"buffer":84,"dup":193}],253:[function(require,module,exports){
-arguments[4][194][0].apply(exports,arguments)
-},{"dup":194}],254:[function(require,module,exports){
-arguments[4][195][0].apply(exports,arguments)
-},{"./aes":251,"./hmac":252,"./keys":259,"./pbkdf2":266,"./random-bytes":267,"dup":195}],255:[function(require,module,exports){
-arguments[4][196][0].apply(exports,arguments)
-},{"../nodeify":265,"../util":268,"../webcrypto.js":269,"asn1.js":5,"buffer":84,"dup":196}],256:[function(require,module,exports){
-arguments[4][197][0].apply(exports,arguments)
-},{"./ed25519":257,"./keys.proto":261,"bs58":86,"buffer":84,"dup":197,"multihashing-async":410,"protons":513}],257:[function(require,module,exports){
-arguments[4][198][0].apply(exports,arguments)
-},{"async/setImmediate":50,"buffer":84,"dup":198,"tweetnacl":646}],258:[function(require,module,exports){
-arguments[4][199][0].apply(exports,arguments)
-},{"./ecdh":255,"dup":199}],259:[function(require,module,exports){
-arguments[4][200][0].apply(exports,arguments)
-},{"../random-bytes":267,"./ed25519-class":256,"./ephemeral-keys":258,"./key-stretcher":260,"./keys.proto":261,"./rsa-class":263,"buffer":84,"dup":200,"libp2p-crypto-secp256k1":190,"node-forge":437,"protons":513}],260:[function(require,module,exports){
-arguments[4][201][0].apply(exports,arguments)
-},{"../hmac":252,"async/whilst":54,"buffer":84,"dup":201}],261:[function(require,module,exports){
-arguments[4][202][0].apply(exports,arguments)
-},{"dup":202}],262:[function(require,module,exports){
+},{"immutable":155}],267:[function(require,module,exports){
 arguments[4][203][0].apply(exports,arguments)
-},{"../nodeify":265,"../webcrypto.js":269,"./rsa-utils":264,"buffer":84,"dup":203}],263:[function(require,module,exports){
+},{"./debug":268,"_process":578,"dup":203}],268:[function(require,module,exports){
 arguments[4][204][0].apply(exports,arguments)
-},{"./keys.proto":261,"./rsa":262,"async/setImmediate":50,"bs58":86,"dup":204,"multihashing-async":410,"node-forge":437,"protons":513}],264:[function(require,module,exports){
-arguments[4][205][0].apply(exports,arguments)
-},{"./../util":268,"asn1.js":5,"dup":205}],265:[function(require,module,exports){
-arguments[4][206][0].apply(exports,arguments)
-},{"dup":206}],266:[function(require,module,exports){
-arguments[4][207][0].apply(exports,arguments)
-},{"dup":207,"node-forge":437}],267:[function(require,module,exports){
-arguments[4][208][0].apply(exports,arguments)
-},{"./keys/rsa":262,"dup":208}],268:[function(require,module,exports){
-arguments[4][209][0].apply(exports,arguments)
-},{"asn1.js":5,"buffer":84,"dup":209}],269:[function(require,module,exports){
-arguments[4][210][0].apply(exports,arguments)
-},{"dup":210,"webcrypto-shim":658}],270:[function(require,module,exports){
+},{"dup":204,"ms":471}],269:[function(require,module,exports){
+arguments[4][183][0].apply(exports,arguments)
+},{"browserify-aes":67,"dup":183}],270:[function(require,module,exports){
+arguments[4][184][0].apply(exports,arguments)
+},{"./ciphers":269,"dup":184}],271:[function(require,module,exports){
+arguments[4][185][0].apply(exports,arguments)
+},{"../nodeify":284,"../webcrypto.js":288,"./lengths":272,"buffer":84,"dup":185}],272:[function(require,module,exports){
+arguments[4][186][0].apply(exports,arguments)
+},{"dup":186}],273:[function(require,module,exports){
+arguments[4][187][0].apply(exports,arguments)
+},{"./aes":270,"./hmac":271,"./keys":278,"./pbkdf2":285,"./random-bytes":286,"dup":187}],274:[function(require,module,exports){
+arguments[4][188][0].apply(exports,arguments)
+},{"../nodeify":284,"../util":287,"../webcrypto.js":288,"asn1.js":4,"buffer":84,"dup":188}],275:[function(require,module,exports){
+arguments[4][189][0].apply(exports,arguments)
+},{"./ed25519":276,"./keys.proto":280,"bs58":86,"buffer":84,"dup":189,"multihashing-async":484,"protons":592}],276:[function(require,module,exports){
+arguments[4][190][0].apply(exports,arguments)
+},{"async/setImmediate":49,"buffer":84,"dup":190,"tweetnacl":726}],277:[function(require,module,exports){
+arguments[4][191][0].apply(exports,arguments)
+},{"./ecdh":274,"dup":191}],278:[function(require,module,exports){
+arguments[4][192][0].apply(exports,arguments)
+},{"../random-bytes":286,"./ed25519-class":275,"./ephemeral-keys":277,"./key-stretcher":279,"./keys.proto":280,"./rsa-class":282,"buffer":84,"dup":192,"libp2p-crypto-secp256k1":182,"node-forge":511,"protons":592}],279:[function(require,module,exports){
+arguments[4][193][0].apply(exports,arguments)
+},{"../hmac":271,"async/whilst":53,"buffer":84,"dup":193}],280:[function(require,module,exports){
+arguments[4][194][0].apply(exports,arguments)
+},{"dup":194}],281:[function(require,module,exports){
+arguments[4][195][0].apply(exports,arguments)
+},{"../nodeify":284,"../webcrypto.js":288,"./rsa-utils":283,"buffer":84,"dup":195}],282:[function(require,module,exports){
+arguments[4][196][0].apply(exports,arguments)
+},{"./keys.proto":280,"./rsa":281,"async/setImmediate":49,"bs58":86,"dup":196,"multihashing-async":484,"node-forge":511,"protons":592}],283:[function(require,module,exports){
+arguments[4][197][0].apply(exports,arguments)
+},{"./../util":287,"asn1.js":4,"dup":197}],284:[function(require,module,exports){
+arguments[4][198][0].apply(exports,arguments)
+},{"dup":198}],285:[function(require,module,exports){
+arguments[4][199][0].apply(exports,arguments)
+},{"dup":199,"node-forge":511}],286:[function(require,module,exports){
+arguments[4][200][0].apply(exports,arguments)
+},{"./keys/rsa":281,"dup":200}],287:[function(require,module,exports){
+arguments[4][201][0].apply(exports,arguments)
+},{"asn1.js":4,"buffer":84,"dup":201}],288:[function(require,module,exports){
+arguments[4][202][0].apply(exports,arguments)
+},{"dup":202,"webcrypto-shim":296}],289:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":290,"./protocols-table":292,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],290:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":292,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],291:[function(require,module,exports){
+arguments[4][218][0].apply(exports,arguments)
+},{"./codec":289,"./protocols-table":292,"bs58":86,"buffer":84,"class-is":92,"dup":218,"lodash.map":401,"varint":735,"xtend":773}],292:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],293:[function(require,module,exports){
+arguments[4][220][0].apply(exports,arguments)
+},{"./multiaddr-set":294,"./utils":295,"assert":18,"dup":220,"peer-id":568}],294:[function(require,module,exports){
+arguments[4][221][0].apply(exports,arguments)
+},{"./utils":295,"dup":221,"lodash.uniqby":407}],295:[function(require,module,exports){
+arguments[4][222][0].apply(exports,arguments)
+},{"dup":222,"multiaddr":291}],296:[function(require,module,exports){
+/**
+ * @file Web Cryptography API shim
+ * @author Artem S Vybornov <vybornov@gmail.com>
+ * @license MIT
+ */
+module.exports = function webcryptoShim (global) {
+    'use strict';
+
+    if ( typeof Promise !== 'function' )
+        throw "Promise support required";
+
+    var _crypto = global.crypto || global.msCrypto;
+    if ( !_crypto ) return;
+
+    var _subtle = _crypto.subtle || _crypto.webkitSubtle;
+    if ( !_subtle ) return;
+
+    var _Crypto     = global.Crypto || _crypto.constructor || Object,
+        _SubtleCrypto = global.SubtleCrypto || _subtle.constructor || Object,
+        _CryptoKey  = global.CryptoKey || global.Key || Object;
+
+    var isEdge = global.navigator.userAgent.indexOf('Edge/') > -1
+    var isIE    = !!global.msCrypto && !isEdge,
+        isWebkit = !_crypto.subtle && !!_crypto.webkitSubtle;
+    if ( !isIE && !isWebkit ) return;
+
+    function s2a ( s ) {
+        return btoa(s).replace(/\=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+    }
+
+    function a2s ( s ) {
+        s += '===', s = s.slice( 0, -s.length % 4 );
+        return atob( s.replace(/-/g, '+').replace(/_/g, '/') );
+    }
+
+    function s2b ( s ) {
+        var b = new Uint8Array(s.length);
+        for ( var i = 0; i < s.length; i++ ) b[i] = s.charCodeAt(i);
+        return b;
+    }
+
+    function b2s ( b ) {
+        if ( b instanceof ArrayBuffer ) b = new Uint8Array(b);
+        return String.fromCharCode.apply( String, b );
+    }
+
+    function alg ( a ) {
+        var r = { 'name': (a.name || a || '').toUpperCase().replace('V','v') };
+        switch ( r.name ) {
+            case 'SHA-1':
+            case 'SHA-256':
+            case 'SHA-384':
+            case 'SHA-512':
+                break;
+            case 'AES-CBC':
+            case 'AES-GCM':
+            case 'AES-KW':
+                if ( a.length ) r['length'] = a.length;
+                break;
+            case 'HMAC':
+                if ( a.hash ) r['hash'] = alg(a.hash);
+                if ( a.length ) r['length'] = a.length;
+                break;
+            case 'RSAES-PKCS1-v1_5':
+                if ( a.publicExponent ) r['publicExponent'] = new Uint8Array(a.publicExponent);
+                if ( a.modulusLength ) r['modulusLength'] = a.modulusLength;
+                break;
+            case 'RSASSA-PKCS1-v1_5':
+            case 'RSA-OAEP':
+                if ( a.hash ) r['hash'] = alg(a.hash);
+                if ( a.publicExponent ) r['publicExponent'] = new Uint8Array(a.publicExponent);
+                if ( a.modulusLength ) r['modulusLength'] = a.modulusLength;
+                break;
+            default:
+                throw new SyntaxError("Bad algorithm name");
+        }
+        return r;
+    };
+
+    function jwkAlg ( a ) {
+        return {
+            'HMAC': {
+                'SHA-1': 'HS1',
+                'SHA-256': 'HS256',
+                'SHA-384': 'HS384',
+                'SHA-512': 'HS512',
+            },
+            'RSASSA-PKCS1-v1_5': {
+                'SHA-1': 'RS1',
+                'SHA-256': 'RS256',
+                'SHA-384': 'RS384',
+                'SHA-512': 'RS512',
+            },
+            'RSAES-PKCS1-v1_5': {
+                '': 'RSA1_5',
+            },
+            'RSA-OAEP': {
+                'SHA-1': 'RSA-OAEP',
+                'SHA-256': 'RSA-OAEP-256',
+            },
+            'AES-KW': {
+                '128': 'A128KW',
+                '192': 'A192KW',
+                '256': 'A256KW',
+            },
+            'AES-GCM': {
+                '128': 'A128GCM',
+                '192': 'A192GCM',
+                '256': 'A256GCM',
+            },
+            'AES-CBC': {
+                '128': 'A128CBC',
+                '192': 'A192CBC',
+                '256': 'A256CBC',
+            },
+        }[a.name][ ( a.hash || {} ).name || a.length || '' ];
+    }
+
+    function b2jwk ( k ) {
+        if ( k instanceof ArrayBuffer || k instanceof Uint8Array ) k = JSON.parse( decodeURIComponent( escape( b2s(k) ) ) );
+        var jwk = { 'kty': k.kty, 'alg': k.alg, 'ext': k.ext || k.extractable };
+        switch ( jwk.kty ) {
+            case 'oct':
+                jwk.k = k.k;
+            case 'RSA':
+                [ 'n', 'e', 'd', 'p', 'q', 'dp', 'dq', 'qi', 'oth' ].forEach( function ( x ) { if ( x in k ) jwk[x] = k[x] } );
+                break;
+            default:
+                throw new TypeError("Unsupported key type");
+        }
+        return jwk;
+    }
+
+    function jwk2b ( k ) {
+        var jwk = b2jwk(k);
+        if ( isIE ) jwk['extractable'] = jwk.ext, delete jwk.ext;
+        return s2b( unescape( encodeURIComponent( JSON.stringify(jwk) ) ) ).buffer;
+    }
+
+    function pkcs2jwk ( k ) {
+        var info = b2der(k), prv = false;
+        if ( info.length > 2 ) prv = true, info.shift(); // remove version from PKCS#8 PrivateKeyInfo structure
+        var jwk = { 'ext': true };
+        switch ( info[0][0] ) {
+            case '1.2.840.113549.1.1.1':
+                var rsaComp = [ 'n', 'e', 'd', 'p', 'q', 'dp', 'dq', 'qi' ],
+                    rsaKey  = b2der( info[1] );
+                if ( prv ) rsaKey.shift(); // remove version from PKCS#1 RSAPrivateKey structure
+                for ( var i = 0; i < rsaKey.length; i++ ) {
+                    if ( !rsaKey[i][0] ) rsaKey[i] = rsaKey[i].subarray(1);
+                    jwk[ rsaComp[i] ] = s2a( b2s( rsaKey[i] ) );
+                }
+                jwk['kty'] = 'RSA';
+                break;
+            default:
+                throw new TypeError("Unsupported key type");
+        }
+        return jwk;
+    }
+
+    function jwk2pkcs ( k ) {
+        var key, info = [ [ '', null ] ], prv = false;
+        switch ( k.kty ) {
+            case 'RSA':
+                var rsaComp = [ 'n', 'e', 'd', 'p', 'q', 'dp', 'dq', 'qi' ],
+                    rsaKey = [];
+                for ( var i = 0; i < rsaComp.length; i++ ) {
+                    if ( !( rsaComp[i] in k ) ) break;
+                    var b = rsaKey[i] = s2b( a2s( k[ rsaComp[i] ] ) );
+                    if ( b[0] & 0x80 ) rsaKey[i] = new Uint8Array(b.length + 1), rsaKey[i].set( b, 1 );
+                }
+                if ( rsaKey.length > 2 ) prv = true, rsaKey.unshift( new Uint8Array([0]) ); // add version to PKCS#1 RSAPrivateKey structure
+                info[0][0] = '1.2.840.113549.1.1.1';
+                key = rsaKey;
+                break;
+            default:
+                throw new TypeError("Unsupported key type");
+        }
+        info.push( new Uint8Array( der2b(key) ).buffer );
+        if ( !prv ) info[1] = { 'tag': 0x03, 'value': info[1] };
+        else info.unshift( new Uint8Array([0]) ); // add version to PKCS#8 PrivateKeyInfo structure
+        return new Uint8Array( der2b(info) ).buffer;
+    }
+
+    var oid2str = { 'KoZIhvcNAQEB': '1.2.840.113549.1.1.1' },
+        str2oid = { '1.2.840.113549.1.1.1': 'KoZIhvcNAQEB' };
+
+    function b2der ( buf, ctx ) {
+        if ( buf instanceof ArrayBuffer ) buf = new Uint8Array(buf);
+        if ( !ctx ) ctx = { pos: 0, end: buf.length };
+
+        if ( ctx.end - ctx.pos < 2 || ctx.end > buf.length ) throw new RangeError("Malformed DER");
+
+        var tag = buf[ctx.pos++],
+            len = buf[ctx.pos++];
+
+        if ( len >= 0x80 ) {
+            len &= 0x7f;
+            if ( ctx.end - ctx.pos < len ) throw new RangeError("Malformed DER");
+            for ( var xlen = 0; len--; ) xlen <<= 8, xlen |= buf[ctx.pos++];
+            len = xlen;
+        }
+
+        if ( ctx.end - ctx.pos < len ) throw new RangeError("Malformed DER");
+
+        var rv;
+
+        switch ( tag ) {
+            case 0x02: // Universal Primitive INTEGER
+                rv = buf.subarray( ctx.pos, ctx.pos += len );
+                break;
+            case 0x03: // Universal Primitive BIT STRING
+                if ( buf[ctx.pos++] ) throw new Error( "Unsupported bit string" );
+                len--;
+            case 0x04: // Universal Primitive OCTET STRING
+                rv = new Uint8Array( buf.subarray( ctx.pos, ctx.pos += len ) ).buffer;
+                break;
+            case 0x05: // Universal Primitive NULL
+                rv = null;
+                break;
+            case 0x06: // Universal Primitive OBJECT IDENTIFIER
+                var oid = btoa( b2s( buf.subarray( ctx.pos, ctx.pos += len ) ) );
+                if ( !( oid in oid2str ) ) throw new Error( "Unsupported OBJECT ID " + oid );
+                rv = oid2str[oid];
+                break;
+            case 0x30: // Universal Constructed SEQUENCE
+                rv = [];
+                for ( var end = ctx.pos + len; ctx.pos < end; ) rv.push( b2der( buf, ctx ) );
+                break;
+            default:
+                throw new Error( "Unsupported DER tag 0x" + tag.toString(16) );
+        }
+
+        return rv;
+    }
+
+    function der2b ( val, buf ) {
+        if ( !buf ) buf = [];
+
+        var tag = 0, len = 0,
+            pos = buf.length + 2;
+
+        buf.push( 0, 0 ); // placeholder
+
+        if ( val instanceof Uint8Array ) {  // Universal Primitive INTEGER
+            tag = 0x02, len = val.length;
+            for ( var i = 0; i < len; i++ ) buf.push( val[i] );
+        }
+        else if ( val instanceof ArrayBuffer ) { // Universal Primitive OCTET STRING
+            tag = 0x04, len = val.byteLength, val = new Uint8Array(val);
+            for ( var i = 0; i < len; i++ ) buf.push( val[i] );
+        }
+        else if ( val === null ) { // Universal Primitive NULL
+            tag = 0x05, len = 0;
+        }
+        else if ( typeof val === 'string' && val in str2oid ) { // Universal Primitive OBJECT IDENTIFIER
+            var oid = s2b( atob( str2oid[val] ) );
+            tag = 0x06, len = oid.length;
+            for ( var i = 0; i < len; i++ ) buf.push( oid[i] );
+        }
+        else if ( val instanceof Array ) { // Universal Constructed SEQUENCE
+            for ( var i = 0; i < val.length; i++ ) der2b( val[i], buf );
+            tag = 0x30, len = buf.length - pos;
+        }
+        else if ( typeof val === 'object' && val.tag === 0x03 && val.value instanceof ArrayBuffer ) { // Tag hint
+            val = new Uint8Array(val.value), tag = 0x03, len = val.byteLength;
+            buf.push(0); for ( var i = 0; i < len; i++ ) buf.push( val[i] );
+            len++;
+        }
+        else {
+            throw new Error( "Unsupported DER value " + val );
+        }
+
+        if ( len >= 0x80 ) {
+            var xlen = len, len = 4;
+            buf.splice( pos, 0, (xlen >> 24) & 0xff, (xlen >> 16) & 0xff, (xlen >> 8) & 0xff, xlen & 0xff );
+            while ( len > 1 && !(xlen >> 24) ) xlen <<= 8, len--;
+            if ( len < 4 ) buf.splice( pos, 4 - len );
+            len |= 0x80;
+        }
+
+        buf.splice( pos - 2, 2, tag, len );
+
+        return buf;
+    }
+
+    function CryptoKey ( key, alg, ext, use ) {
+        Object.defineProperties( this, {
+            _key: {
+                value: key
+            },
+            type: {
+                value: key.type,
+                enumerable: true,
+            },
+            extractable: {
+                value: (ext === undefined) ? key.extractable : ext,
+                enumerable: true,
+            },
+            algorithm: {
+                value: (alg === undefined) ? key.algorithm : alg,
+                enumerable: true,
+            },
+            usages: {
+                value: (use === undefined) ? key.usages : use,
+                enumerable: true,
+            },
+        });
+    }
+
+    function isPubKeyUse ( u ) {
+        return u === 'verify' || u === 'encrypt' || u === 'wrapKey';
+    }
+
+    function isPrvKeyUse ( u ) {
+        return u === 'sign' || u === 'decrypt' || u === 'unwrapKey';
+    }
+
+    [ 'generateKey', 'importKey', 'unwrapKey' ]
+        .forEach( function ( m ) {
+            var _fn = _subtle[m];
+
+            _subtle[m] = function ( a, b, c ) {
+                var args = [].slice.call(arguments),
+                    ka, kx, ku;
+
+                switch ( m ) {
+                    case 'generateKey':
+                        ka = alg(a), kx = b, ku = c;
+                        break;
+                    case 'importKey':
+                        ka = alg(c), kx = args[3], ku = args[4];
+                        if ( a === 'jwk' ) {
+                            b = b2jwk(b);
+                            if ( !b.alg ) b.alg = jwkAlg(ka);
+                            if ( !b.key_ops ) b.key_ops = ( b.kty !== 'oct' ) ? ( 'd' in b ) ? ku.filter(isPrvKeyUse) : ku.filter(isPubKeyUse) : ku.slice();
+                            args[1] = jwk2b(b);
+                        }
+                        break;
+                    case 'unwrapKey':
+                        ka = args[4], kx = args[5], ku = args[6];
+                        args[2] = c._key;
+                        break;
+                }
+
+                if ( m === 'generateKey' && ka.name === 'HMAC' && ka.hash ) {
+                    ka.length = ka.length || { 'SHA-1': 512, 'SHA-256': 512, 'SHA-384': 1024, 'SHA-512': 1024 }[ka.hash.name];
+                    return _subtle.importKey( 'raw', _crypto.getRandomValues( new Uint8Array( (ka.length+7)>>3 ) ), ka, kx, ku );
+                }
+
+                if ( isWebkit && m === 'generateKey' && ka.name === 'RSASSA-PKCS1-v1_5' && ( !ka.modulusLength || ka.modulusLength >= 2048 ) ) {
+                    a = alg(a), a.name = 'RSAES-PKCS1-v1_5', delete a.hash;
+                    return _subtle.generateKey( a, true, [ 'encrypt', 'decrypt' ] )
+                        .then( function ( k ) {
+                            return Promise.all([
+                                _subtle.exportKey( 'jwk', k.publicKey ),
+                                _subtle.exportKey( 'jwk', k.privateKey ),
+                            ]);
+                        })
+                        .then( function ( keys ) {
+                            keys[0].alg = keys[1].alg = jwkAlg(ka);
+                            keys[0].key_ops = ku.filter(isPubKeyUse), keys[1].key_ops = ku.filter(isPrvKeyUse);
+                            return Promise.all([
+                                _subtle.importKey( 'jwk', keys[0], ka, true, keys[0].key_ops ),
+                                _subtle.importKey( 'jwk', keys[1], ka, kx, keys[1].key_ops ),
+                            ]);
+                        })
+                        .then( function ( keys ) {
+                            return {
+                                publicKey: keys[0],
+                                privateKey: keys[1],
+                            };
+                        });
+                }
+
+                if ( ( isWebkit || ( isIE && ( ka.hash || {} ).name === 'SHA-1' ) )
+                        && m === 'importKey' && a === 'jwk' && ka.name === 'HMAC' && b.kty === 'oct' ) {
+                    return _subtle.importKey( 'raw', s2b( a2s(b.k) ), c, args[3], args[4] );
+                }
+
+                if ( isWebkit && m === 'importKey' && ( a === 'spki' || a === 'pkcs8' ) ) {
+                    return _subtle.importKey( 'jwk', pkcs2jwk(b), c, args[3], args[4] );
+                }
+
+                if ( isIE && m === 'unwrapKey' ) {
+                    return _subtle.decrypt( args[3], c, b )
+                        .then( function ( k ) {
+                            return _subtle.importKey( a, k, args[4], args[5], args[6] );
+                        });
+                }
+
+                var op;
+                try {
+                    op = _fn.apply( _subtle, args );
+                }
+                catch ( e ) {
+                    return Promise.reject(e);
+                }
+
+                if ( isIE ) {
+                    op = new Promise( function ( res, rej ) {
+                        op.onabort =
+                        op.onerror =    function ( e ) { rej(e)               };
+                        op.oncomplete = function ( r ) { res(r.target.result) };
+                    });
+                }
+
+                op = op.then( function ( k ) {
+                    if ( ka.name === 'HMAC' ) {
+                        if ( !ka.length ) ka.length = 8 * k.algorithm.length;
+                    }
+                    if ( ka.name.search('RSA') == 0 ) {
+                        if ( !ka.modulusLength ) ka.modulusLength = (k.publicKey || k).algorithm.modulusLength;
+                        if ( !ka.publicExponent ) ka.publicExponent = (k.publicKey || k).algorithm.publicExponent;
+                    }
+                    if ( k.publicKey && k.privateKey ) {
+                        k = {
+                            publicKey: new CryptoKey( k.publicKey, ka, kx, ku.filter(isPubKeyUse) ),
+                            privateKey: new CryptoKey( k.privateKey, ka, kx, ku.filter(isPrvKeyUse) ),
+                        };
+                    }
+                    else {
+                        k = new CryptoKey( k, ka, kx, ku );
+                    }
+                    return k;
+                });
+
+                return op;
+            }
+        });
+
+    [ 'exportKey', 'wrapKey' ]
+        .forEach( function ( m ) {
+            var _fn = _subtle[m];
+
+            _subtle[m] = function ( a, b, c ) {
+                var args = [].slice.call(arguments);
+
+                switch ( m ) {
+                    case 'exportKey':
+                        args[1] = b._key;
+                        break;
+                    case 'wrapKey':
+                        args[1] = b._key, args[2] = c._key;
+                        break;
+                }
+
+                if ( ( isWebkit || ( isIE && ( b.algorithm.hash || {} ).name === 'SHA-1' ) )
+                        && m === 'exportKey' && a === 'jwk' && b.algorithm.name === 'HMAC' ) {
+                    args[0] = 'raw';
+                }
+
+                if ( isWebkit && m === 'exportKey' && ( a === 'spki' || a === 'pkcs8' ) ) {
+                    args[0] = 'jwk';
+                }
+
+                if ( isIE && m === 'wrapKey' ) {
+                    return _subtle.exportKey( a, b )
+                        .then( function ( k ) {
+                            if ( a === 'jwk' ) k = s2b( unescape( encodeURIComponent( JSON.stringify( b2jwk(k) ) ) ) );
+                            return  _subtle.encrypt( args[3], c, k );
+                        });
+                }
+
+                var op;
+                try {
+                    op = _fn.apply( _subtle, args );
+                }
+                catch ( e ) {
+                    return Promise.reject(e);
+                }
+
+                if ( isIE ) {
+                    op = new Promise( function ( res, rej ) {
+                        op.onabort =
+                        op.onerror =    function ( e ) { rej(e)               };
+                        op.oncomplete = function ( r ) { res(r.target.result) };
+                    });
+                }
+
+                if ( m === 'exportKey' && a === 'jwk' ) {
+                    op = op.then( function ( k ) {
+                        if ( ( isWebkit || ( isIE && ( b.algorithm.hash || {} ).name === 'SHA-1' ) )
+                                && b.algorithm.name === 'HMAC') {
+                            return { 'kty': 'oct', 'alg': jwkAlg(b.algorithm), 'key_ops': b.usages.slice(), 'ext': true, 'k': s2a( b2s(k) ) };
+                        }
+                        k = b2jwk(k);
+                        if ( !k.alg ) k['alg'] = jwkAlg(b.algorithm);
+                        if ( !k.key_ops ) k['key_ops'] = ( b.type === 'public' ) ? b.usages.filter(isPubKeyUse) : ( b.type === 'private' ) ? b.usages.filter(isPrvKeyUse) : b.usages.slice();
+                        return k;
+                    });
+                }
+
+                if ( isWebkit && m === 'exportKey' && ( a === 'spki' || a === 'pkcs8' ) ) {
+                    op = op.then( function ( k ) {
+                        k = jwk2pkcs( b2jwk(k) );
+                        return k;
+                    });
+                }
+
+                return op;
+            }
+        });
+
+    [ 'encrypt', 'decrypt', 'sign', 'verify' ]
+        .forEach( function ( m ) {
+            var _fn = _subtle[m];
+
+            _subtle[m] = function ( a, b, c, d ) {
+                if ( isIE && ( !c.byteLength || ( d && !d.byteLength ) ) )
+                    throw new Error("Empy input is not allowed");
+
+                var args = [].slice.call(arguments),
+                    ka = alg(a);
+
+                if ( isIE && m === 'decrypt' && ka.name === 'AES-GCM' ) {
+                    var tl = a.tagLength >> 3;
+                    args[2] = (c.buffer || c).slice( 0, c.byteLength - tl ),
+                    a.tag = (c.buffer || c).slice( c.byteLength - tl );
+                }
+
+                args[1] = b._key;
+
+                var op;
+                try {
+                    op = _fn.apply( _subtle, args );
+                }
+                catch ( e ) {
+                    return Promise.reject(e);
+                }
+
+                if ( isIE ) {
+                    op = new Promise( function ( res, rej ) {
+                        op.onabort =
+                        op.onerror = function ( e ) {
+                            rej(e);
+                        };
+
+                        op.oncomplete = function ( r ) {
+                            var r = r.target.result;
+
+                            if ( m === 'encrypt' && r instanceof AesGcmEncryptResult ) {
+                                var c = r.ciphertext, t = r.tag;
+                                r = new Uint8Array( c.byteLength + t.byteLength );
+                                r.set( new Uint8Array(c), 0 );
+                                r.set( new Uint8Array(t), c.byteLength );
+                                r = r.buffer;
+                            }
+
+                            res(r);
+                        };
+                    });
+                }
+
+                return op;
+            }
+        });
+
+    if ( isIE ) {
+        var _digest = _subtle.digest;
+
+        _subtle['digest'] = function ( a, b ) {
+            if ( !b.byteLength )
+                throw new Error("Empy input is not allowed");
+
+            var op;
+            try {
+                op = _digest.call( _subtle, a, b );
+            }
+            catch ( e ) {
+                return Promise.reject(e);
+            }
+
+            op = new Promise( function ( res, rej ) {
+                op.onabort =
+                op.onerror =    function ( e ) { rej(e)               };
+                op.oncomplete = function ( r ) { res(r.target.result) };
+            });
+
+            return op;
+        };
+
+        global.crypto = Object.create( _crypto, {
+            getRandomValues: { value: function ( a ) { return _crypto.getRandomValues(a) } },
+            subtle:          { value: _subtle },
+        });
+
+        global.CryptoKey = CryptoKey;
+    }
+
+    if ( isWebkit ) {
+        _crypto.subtle = _subtle;
+
+        global.Crypto = _Crypto;
+        global.SubtleCrypto = _SubtleCrypto;
+        global.CryptoKey = CryptoKey;
+    }
+}
+
+},{}],297:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -58769,7 +60033,7 @@ function ensureBuffer () {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":84,"pull-length-prefixed":525,"pull-stream":533}],271:[function(require,module,exports){
+},{"buffer":84,"pull-length-prefixed":604,"pull-stream":612}],298:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -58979,7 +60243,7 @@ exports.verifyNonce = (state, n2) => {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"../support":279,"./secio.proto":276,"async/parallel":46,"async/waterfall":53,"buffer":84,"debug":248,"libp2p-crypto":254,"peer-id":493,"protons":513}],272:[function(require,module,exports){
+},{"../support":306,"./secio.proto":303,"async/parallel":45,"async/waterfall":52,"buffer":84,"debug":267,"libp2p-crypto":273,"peer-id":568,"protons":592}],299:[function(require,module,exports){
 'use strict'
 
 const debug = require('debug')
@@ -59016,7 +60280,7 @@ module.exports = function exchange (state, callback) {
   })
 }
 
-},{"../support":279,"./crypto":271,"async/waterfall":53,"debug":248}],273:[function(require,module,exports){
+},{"../support":306,"./crypto":298,"async/waterfall":52,"debug":267}],300:[function(require,module,exports){
 'use strict'
 
 const pull = require('pull-stream')
@@ -59078,7 +60342,7 @@ module.exports = function finish (state, callback) {
   })
 }
 
-},{"../etm":270,"./crypto":271,"debug":248,"pull-handshake":522,"pull-stream":533}],274:[function(require,module,exports){
+},{"../etm":297,"./crypto":298,"debug":267,"pull-handshake":601,"pull-stream":612}],301:[function(require,module,exports){
 'use strict'
 
 const series = require('async/series')
@@ -59111,7 +60375,7 @@ module.exports = function handshake (state, callback) {
   return state.stream
 }
 
-},{"./exchange":272,"./finish":273,"./propose":275,"async/series":49}],275:[function(require,module,exports){
+},{"./exchange":299,"./finish":300,"./propose":302,"async/series":48}],302:[function(require,module,exports){
 'use strict'
 
 const debug = require('debug')
@@ -59148,7 +60412,7 @@ module.exports = function propose (state, callback) {
   })
 }
 
-},{"../support":279,"./crypto":271,"async/waterfall":53,"debug":248}],276:[function(require,module,exports){
+},{"../support":306,"./crypto":298,"async/waterfall":52,"debug":267}],303:[function(require,module,exports){
 'use strict'
 
 module.exports = `message Propose {
@@ -59164,7 +60428,7 @@ message Exchange {
   optional bytes signature = 2;
 }`
 
-},{}],277:[function(require,module,exports){
+},{}],304:[function(require,module,exports){
 'use strict'
 
 const pull = require('pull-stream')
@@ -59224,7 +60488,7 @@ module.exports = {
   }
 }
 
-},{"./handshake":274,"./state":278,"assert":19,"debug":248,"interface-connection":156,"once":471,"peer-info":494,"pull-stream":533}],278:[function(require,module,exports){
+},{"./handshake":301,"./state":305,"assert":18,"debug":267,"interface-connection":160,"once":546,"peer-info":293,"pull-stream":612}],305:[function(require,module,exports){
 'use strict'
 
 const handshake = require('pull-handshake')
@@ -59273,7 +60537,7 @@ class State {
 
 module.exports = State
 
-},{"pull-defer":518,"pull-handshake":522}],279:[function(require,module,exports){
+},{"pull-defer":597,"pull-handshake":601}],306:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -59410,11 +60674,1137 @@ exports.read = function read (reader, cb) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"async/parallel":46,"buffer":84,"libp2p-crypto":254,"multihashing-async":410,"pull-length-prefixed":525,"pull-stream":533}],280:[function(require,module,exports){
-arguments[4][176][0].apply(exports,arguments)
-},{"./debug":281,"_process":499,"dup":176}],281:[function(require,module,exports){
-arguments[4][177][0].apply(exports,arguments)
-},{"dup":177,"ms":393}],282:[function(require,module,exports){
+},{"async/parallel":45,"buffer":84,"libp2p-crypto":273,"multihashing-async":484,"pull-length-prefixed":604,"pull-stream":612}],307:[function(require,module,exports){
+arguments[4][203][0].apply(exports,arguments)
+},{"./debug":308,"_process":578,"dup":203}],308:[function(require,module,exports){
+arguments[4][204][0].apply(exports,arguments)
+},{"dup":204,"ms":471}],309:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":310,"./protocols-table":312,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],310:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":312,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],311:[function(require,module,exports){
+arguments[4][218][0].apply(exports,arguments)
+},{"./codec":309,"./protocols-table":312,"bs58":86,"buffer":84,"class-is":92,"dup":218,"lodash.map":401,"varint":735,"xtend":773}],312:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],313:[function(require,module,exports){
+'use strict'
+
+const mafmt = require('mafmt')
+const multiaddr = require('multiaddr')
+
+const CircuitDialer = require('./circuit/dialer')
+const utilsFactory = require('./circuit/utils')
+
+const debug = require('debug')
+const log = debug('libp2p:circuit:transportdialer')
+log.err = debug('libp2p:circuit:error:transportdialer')
+
+const createListener = require('./listener')
+
+class Circuit {
+  static get tag () {
+    return 'Circuit'
+  }
+
+  /**
+   * Creates an instance of Dialer.
+   *
+   * @param {Swarm} swarm - the swarm
+   * @param {any} options - config options
+   *
+   * @memberOf Dialer
+   */
+  constructor (swarm, options) {
+    this.options = options || {}
+
+    this.swarm = swarm
+    this.dialer = null
+    this.utils = utilsFactory(swarm)
+    this.peerInfo = this.swarm._peerInfo
+    this.relays = this.filter(this.peerInfo.multiaddrs.toArray())
+
+    // if no explicit relays, add a default relay addr
+    if (this.relays.length === 0) {
+      this.peerInfo
+        .multiaddrs
+        .add(`/p2p-circuit/ipfs/${this.peerInfo.id.toB58String()}`)
+    }
+
+    this.dialer = new CircuitDialer(swarm, options)
+
+    this.swarm.on('peer-mux-established', this.dialer.canHop.bind(this.dialer))
+    this.swarm.on('peer-mux-closed', (peerInfo) => {
+      this.dialer.relayPeers.delete(peerInfo.id.toB58String())
+    })
+  }
+
+  /**
+   * Dial the relays in the Addresses.Swarm config
+   *
+   * @param {Array} relays
+   * @return {void}
+   */
+  _dialSwarmRelays () {
+    // if we have relay addresses in swarm config, then dial those relays
+    this.relays.forEach((relay) => {
+      let relaySegments = relay
+        .toString()
+        .split('/p2p-circuit')
+        .filter(segment => segment.length)
+
+      relaySegments.forEach((relaySegment) => {
+        this.dialer._dialRelay(this.utils.peerInfoFromMa(multiaddr(relaySegment)))
+      })
+    })
+  }
+
+  /**
+   * Dial a peer over a relay
+   *
+   * @param {multiaddr} ma - the multiaddr of the peer to dial
+   * @param {Object} options - dial options
+   * @param {Function} cb - a callback called once dialed
+   * @returns {Connection} - the connection
+   *
+   * @memberOf Dialer
+   */
+  dial (ma, options, cb) {
+    return this.dialer.dial(ma, options, cb)
+  }
+
+  /**
+   * Create a listener
+   *
+   * @param {any} options
+   * @param {Function} handler
+   * @return {listener}
+   */
+  createListener (options, handler) {
+    if (typeof options === 'function') {
+      handler = options
+      options = this.options || {}
+    }
+
+    const listener = createListener(this.swarm, options, handler)
+    listener.on('listen', this._dialSwarmRelays.bind(this))
+    return listener
+  }
+
+  /**
+   * Filter check for all multiaddresses
+   * that this transport can dial on
+   *
+   * @param {any} multiaddrs
+   * @returns {Array<multiaddr>}
+   *
+   * @memberOf Dialer
+   */
+  filter (multiaddrs) {
+    if (!Array.isArray(multiaddrs)) {
+      multiaddrs = [multiaddrs]
+    }
+    return multiaddrs.filter((ma) => {
+      return mafmt.Circuit.matches(ma)
+    })
+  }
+}
+
+module.exports = Circuit
+
+},{"./circuit/dialer":314,"./circuit/utils":318,"./listener":320,"debug":307,"mafmt":328,"multiaddr":311}],314:[function(require,module,exports){
+(function (setImmediate){
+'use strict'
+
+const Connection = require('interface-connection').Connection
+const isFunction = require('lodash.isfunction')
+const multiaddr = require('multiaddr')
+const once = require('once')
+const waterfall = require('async/waterfall')
+const utilsFactory = require('./utils')
+const StreamHandler = require('./stream-handler')
+const PeerId = require('peer-id')
+
+const debug = require('debug')
+const log = debug('libp2p:circuit:dialer')
+log.err = debug('libp2p:circuit:error:dialer')
+
+const multicodec = require('../multicodec')
+const proto = require('../protocol')
+
+class Dialer {
+  /**
+   * Creates an instance of Dialer.
+   * @param {Swarm} swarm - the swarm
+   * @param {any} options - config options
+   *
+   * @memberOf Dialer
+   */
+  constructor (swarm, options) {
+    this.swarm = swarm
+    this.relayPeers = new Map()
+    this.options = options
+    this.utils = utilsFactory(swarm)
+  }
+
+  /**
+   * Dial a peer over a relay
+   *
+   * @param {multiaddr} ma - the multiaddr of the peer to dial
+   * @param {Function} cb - a callback called once dialed
+   * @returns {Connection} - the connection
+   *
+   * @memberOf Dialer
+   */
+  dial (ma, cb) {
+    cb = cb || (() => {})
+    const strMa = ma.toString()
+    if (!strMa.includes('/p2p-circuit')) {
+      log.err('invalid circuit address')
+      return cb(new Error('invalid circuit address'))
+    }
+
+    const addr = strMa.split('p2p-circuit') // extract relay address if any
+    const relay = addr[0] === '/' ? null : multiaddr(addr[0])
+    const peer = multiaddr(addr[1] || addr[0])
+
+    const dstConn = new Connection()
+    setImmediate(this._dialPeer.bind(this), peer, relay, (err, conn) => {
+      if (err) {
+        log.err(err)
+        return cb(err)
+      }
+
+      dstConn.setInnerConn(conn)
+      cb(null, dstConn)
+    })
+
+    return dstConn
+  }
+
+  /**
+   * Does the peer support the HOP protocol
+   *
+   * @param {PeerInfo} peer
+   * @param {Function} cb
+   * @returns {*}
+   */
+  canHop (peer, cb) {
+    cb = once(cb || (() => {}))
+
+    if (!this.relayPeers.get(this.utils.getB58String(peer))) {
+      let streamHandler
+      waterfall([
+        (wCb) => this._dialRelay(peer, wCb),
+        (sh, wCb) => {
+          streamHandler = sh
+          wCb()
+        },
+        (wCb) => streamHandler.write(proto.CircuitRelay.encode({
+          type: proto.CircuitRelay.Type.CAN_HOP
+        }), wCb),
+        (wCb) => streamHandler.read(wCb),
+        (msg, wCb) => {
+          const response = proto.CircuitRelay.decode(msg)
+
+          if (response.code !== proto.CircuitRelay.Status.SUCCESS) {
+            return log(`HOP not supported, skipping - ${this.utils.getB58String(peer)}`)
+          }
+
+          log(`HOP supported adding as relay - ${this.utils.getB58String(peer)}`)
+          this.relayPeers.set(this.utils.getB58String(peer), peer)
+          wCb(null)
+        }
+      ], cb)
+    }
+
+    return cb(null)
+  }
+
+  /**
+   * Dial the destination peer over a relay
+   *
+   * @param {multiaddr} dstMa
+   * @param {Connection|PeerInfo} relay
+   * @param {Function} cb
+   * @return {Function|void}
+   * @private
+   */
+  _dialPeer (dstMa, relay, cb) {
+    if (isFunction(relay)) {
+      cb = relay
+      relay = null
+    }
+
+    if (!cb) {
+      cb = () => {}
+    }
+
+    dstMa = multiaddr(dstMa)
+    // if no relay provided, dial on all available relays until one succeeds
+    if (!relay) {
+      const relays = Array.from(this.relayPeers.values())
+      let next = (nextRelay) => {
+        if (!nextRelay) {
+          let err = `no relay peers were found or all relays failed to dial`
+          log.err(err)
+          return cb(err)
+        }
+
+        return this._negotiateRelay(nextRelay, dstMa, (err, conn) => {
+          if (err) {
+            log.err(err)
+            return next(relays.shift())
+          }
+          cb(null, conn)
+        })
+      }
+      next(relays.shift())
+    } else {
+      return this._negotiateRelay(relay, dstMa, (err, conn) => {
+        if (err) {
+          log.err(`An error has occurred negotiating the relay connection`, err)
+          return cb(err)
+        }
+
+        return cb(null, conn)
+      })
+    }
+  }
+
+  /**
+   * Negotiate the relay connection
+   *
+   * @param {Multiaddr|PeerInfo|Connection} relay - the Connection or PeerInfo of the relay
+   * @param {multiaddr} dstMa - the multiaddr of the peer to relay the connection for
+   * @param {Function} callback - a callback which gets the negotiated relay connection
+   * @returns {void}
+   * @private
+   *
+   * @memberOf Dialer
+   */
+  _negotiateRelay (relay, dstMa, callback) {
+    dstMa = multiaddr(dstMa)
+
+    const srcMas = this.swarm._peerInfo.multiaddrs.toArray()
+    let streamHandler
+    waterfall([
+      (cb) => {
+        if (relay instanceof Connection) {
+          return cb(null, new StreamHandler(relay))
+        }
+        return this._dialRelay(this.utils.peerInfoFromMa(relay), cb)
+      },
+      (sh, cb) => {
+        streamHandler = sh
+        cb(null)
+      },
+      (cb) => {
+        log(`negotiating relay for peer ${dstMa.getPeerId()}`)
+        streamHandler.write(
+          proto.CircuitRelay.encode({
+            type: proto.CircuitRelay.Type.HOP,
+            srcPeer: {
+              id: this.swarm._peerInfo.id.id,
+              addrs: srcMas.map((addr) => addr.buffer)
+            },
+            dstPeer: {
+              id: PeerId.createFromB58String(dstMa.getPeerId()).id,
+              addrs: [dstMa.buffer]
+            }
+          }), cb)
+      },
+      (cb) => streamHandler.read(cb),
+      (msg, cb) => {
+        const message = proto.CircuitRelay.decode(msg)
+        if (message.type !== proto.CircuitRelay.Type.STATUS) {
+          return cb(new Error(`Got invalid message type - ` +
+            `expected ${proto.CircuitRelay.Type.STATUS} got ${message.type}`))
+        }
+
+        if (message.code !== proto.CircuitRelay.Status.SUCCESS) {
+          return cb(new Error(`Got ${message.code} error code trying to dial over relay`))
+        }
+
+        cb(null, new Connection(streamHandler.rest()))
+      }
+    ], callback)
+  }
+
+  /**
+   * Dial a relay peer by its PeerInfo
+   *
+   * @param {PeerInfo} peer - the PeerInfo of the relay peer
+   * @param {Function} cb - a callback with the connection to the relay peer
+   * @returns {Function|void}
+   * @private
+   */
+  _dialRelay (peer, cb) {
+    cb = once(cb || (() => {}))
+
+    this.swarm.dial(peer, multicodec.relay, once((err, conn) => {
+      if (err) {
+        log.err(err)
+        return cb(err)
+      }
+      cb(null, new StreamHandler(conn))
+    }))
+  }
+}
+
+module.exports = Dialer
+
+}).call(this,require("timers").setImmediate)
+},{"../multicodec":321,"../protocol":322,"./stream-handler":317,"./utils":318,"async/waterfall":52,"debug":307,"interface-connection":160,"lodash.isfunction":400,"multiaddr":311,"once":546,"peer-id":568,"timers":724}],315:[function(require,module,exports){
+(function (setImmediate){
+'use strict'
+
+require('setimmediate')
+require('safe-buffer')
+
+const pull = require('pull-stream')
+const debug = require('debug')
+const PeerInfo = require('peer-info')
+const PeerId = require('peer-id')
+const EE = require('events').EventEmitter
+const once = require('once')
+const utilsFactory = require('./utils')
+const StreamHandler = require('./stream-handler')
+const assignInWith = require('lodash/assignInWith')
+const proto = require('../protocol')
+const multiaddr = require('multiaddr')
+
+const multicodec = require('./../multicodec')
+
+const log = debug('libp2p:swarm:circuit:relay')
+log.err = debug('libp2p:swarm:circuit:error:relay')
+
+class Hop extends EE {
+  /**
+   * Construct a Circuit object
+   *
+   * This class will handle incoming circuit connections and
+   * either start a relay or hand the relayed connection to
+   * the swarm
+   *
+   * @param {Swarm} swarm
+   * @param {Object} options
+   */
+  constructor (swarm, options) {
+    super()
+    this.swarm = swarm
+    this.peerInfo = this.swarm._peerInfo
+    this.utils = utilsFactory(swarm)
+    this.config = assignInWith(
+      {
+        active: false,
+        enabled: false
+      },
+      options,
+      (orig, src) => typeof src === 'undefined' ? false : src)
+
+    this.active = this.config.active
+  }
+
+  /**
+   * Handle the relay message
+   *
+   * @param {CircuitRelay} message
+   * @param {StreamHandler} streamHandler
+   * @returns {*}
+   */
+  handle (message, streamHandler) {
+    if (!this.config.enabled) {
+      return this.utils.writeResponse(streamHandler, proto.CircuitRelay.Status.HOP_CANT_SPEAK_RELAY)
+    }
+
+    // check if message is `CAN_HOP`
+    if (message.type === proto.CircuitRelay.Type.CAN_HOP) {
+      return this.utils.writeResponse(streamHandler, proto.CircuitRelay.Status.SUCCESS)
+    }
+
+    // This is a relay request - validate and create a circuit
+    const srcPeerId = PeerId.createFromBytes(message.dstPeer.id)
+    if (srcPeerId.toB58String() === this.peerInfo.id.toB58String()) {
+      return this.utils.writeResponse(streamHandler, proto.CircuitRelay.Status.HOP_CANT_RELAY_TO_SELF)
+    }
+
+    const dstPeerId = PeerId.createFromBytes(message.dstPeer.id).toB58String()
+    if (!message.dstPeer.addrs.length) {
+      // TODO: use encapsulate here
+      const addr = multiaddr(`/p2p-circuit/ipfs/${dstPeerId}`).buffer
+      message.dstPeer.addrs.push(addr)
+    }
+
+    this.utils.validateAddrs(message, streamHandler, proto.CircuitRelay.Type.HOP, (err) => {
+      if (err) {
+        return log(err)
+      }
+
+      let dstPeer
+      try {
+        dstPeer = this.swarm._peerBook.get(dstPeerId)
+        if (!dstPeer.isConnected() && !this.active) {
+          throw new Error('No Connection to peer')
+        }
+      } catch (err) {
+        if (!this.active) {
+          log.err(err)
+          setImmediate(() => this.emit('circuit:error', err))
+          return this.utils.writeResponse(streamHandler, proto.CircuitRelay.Status.HOP_NO_CONN_TO_DST)
+        }
+      }
+
+      return this._circuit(streamHandler.rest(), message, (err) => {
+        if (err) {
+          log.err(err)
+          setImmediate(() => this.emit('circuit:error', err))
+        }
+        setImmediate(() => this.emit('circuit:success'))
+      })
+    })
+  }
+
+  /**
+   * Attempt to make a circuit from A <-> R <-> B where R is this relay
+   *
+   * @param {Connection} conn - the source connection
+   * @param {CircuitRelay} message - the message with the src and dst entries
+   * @param {Function} cb - callback to signal success or failure
+   * @returns {void}
+   * @private
+   */
+  _circuit (conn, message, cb) {
+    this._dialPeer(message.dstPeer, (err, dstConn) => {
+      const srcStreamHandler = new StreamHandler(conn)
+      if (err) {
+        this.utils.writeResponse(srcStreamHandler, proto.CircuitRelay.Status.HOP_CANT_DIAL_DST)
+        pull(pull.empty(), srcStreamHandler.rest())
+        log.err(err)
+        return cb(err)
+      }
+
+      return this.utils.writeResponse(srcStreamHandler, proto.CircuitRelay.Status.SUCCESS, (err) => {
+        if (err) {
+          log.err(err)
+          return cb(err)
+        }
+
+        const streamHandler = new StreamHandler(dstConn)
+        const stopMsg = Object.assign({}, message, {
+          type: proto.CircuitRelay.Type.STOP // change the message type
+        })
+        streamHandler.write(proto.CircuitRelay.encode(stopMsg), (err) => {
+          if (err) {
+            const errStreamHandler = new StreamHandler(conn)
+            this.utils.writeResponse(errStreamHandler, proto.CircuitRelay.Status.HOP_CANT_OPEN_DST_STREAM)
+            pull(pull.empty(), errStreamHandler.rest())
+
+            log.err(err)
+            return cb(err)
+          }
+
+          streamHandler.read((err, msg) => {
+            if (err) {
+              log.err(err)
+              return cb(err)
+            }
+
+            const message = proto.CircuitRelay.decode(msg)
+            const srcConn = srcStreamHandler.rest()
+            if (message.code === proto.CircuitRelay.Status.SUCCESS) {
+              // circuit the src and dst streams
+              pull(
+                srcConn,
+                streamHandler.rest(),
+                srcConn
+              )
+
+              cb()
+            } else {
+              // close/end the source stream if there was an error
+              pull(
+                pull.empty(),
+                srcConn
+              )
+            }
+          })
+        })
+      })
+    })
+  }
+
+  /**
+   * Dial the dest peer and create a circuit
+   *
+   * @param {Multiaddr} dstPeer
+   * @param {Function} callback
+   * @returns {Function|void}
+   * @private
+   */
+  _dialPeer (dstPeer, callback) {
+    const peerInfo = new PeerInfo(PeerId.createFromBytes(dstPeer.id))
+    dstPeer.addrs.forEach((a) => peerInfo.multiaddrs.add(a))
+    this.swarm.dial(peerInfo, multicodec.relay, once((err, conn) => {
+      if (err) {
+        log.err(err)
+        return callback(err)
+      }
+
+      callback(null, conn)
+    }))
+  }
+}
+
+module.exports = Hop
+
+}).call(this,require("timers").setImmediate)
+},{"../protocol":322,"./../multicodec":321,"./stream-handler":317,"./utils":318,"debug":307,"events":146,"lodash/assignInWith":450,"multiaddr":311,"once":546,"peer-id":568,"peer-info":337,"pull-stream":612,"safe-buffer":681,"setimmediate":694,"timers":724}],316:[function(require,module,exports){
+'use strict'
+
+const setImmediate = require('async/setImmediate')
+
+const EE = require('events').EventEmitter
+const Connection = require('interface-connection').Connection
+const utilsFactory = require('./utils')
+const PeerInfo = require('peer-info')
+const PeerId = require('peer-id')
+const proto = require('../protocol')
+const series = require('async/series')
+
+const debug = require('debug')
+
+const log = debug('libp2p:circuit:stop')
+log.err = debug('libp2p:circuit:error:stop')
+
+class Stop extends EE {
+  constructor (swarm) {
+    super()
+    this.swarm = swarm
+    this.utils = utilsFactory(swarm)
+  }
+
+  handle (message, streamHandler, callback) {
+    callback = callback || (() => {})
+
+    series([
+      (cb) => this.utils.validateAddrs(message, streamHandler, proto.CircuitRelay.Type.STOP, cb),
+      (cb) => this.utils.writeResponse(streamHandler, proto.CircuitRelay.Status.Success, cb)
+    ], (err) => {
+      if (err) {
+        callback() // we don't return the error here, since multistream select don't expect one
+        return log(err)
+      }
+
+      const peerInfo = new PeerInfo(peerIdFromId(message.srcPeer.id))
+      message.srcPeer.addrs.forEach((addr) => peerInfo.multiaddrs.add(addr))
+      const newConn = new Connection(streamHandler.rest())
+      newConn.setPeerInfo(peerInfo)
+      setImmediate(() => this.emit('connection', newConn))
+      callback(newConn)
+    })
+  }
+}
+
+module.exports = Stop
+
+function peerIdFromId (id) {
+  if (typeof id === 'string') {
+    return PeerId.createFromB58String(id)
+  }
+
+  return PeerId.createFromBytes(id)
+}
+
+},{"../protocol":322,"./utils":318,"async/series":48,"async/setImmediate":49,"debug":307,"events":146,"interface-connection":160,"peer-id":568,"peer-info":337}],317:[function(require,module,exports){
+'use strict'
+
+const pull = require('pull-stream')
+const lp = require('pull-length-prefixed')
+const handshake = require('pull-handshake')
+
+const debug = require('debug')
+const log = debug('libp2p:circuit:stream-handler')
+log.err = debug('libp2p:circuit:error:stream-handler')
+
+class StreamHandler {
+  /**
+   * Create a stream handler for connection
+   *
+   * @param {Connection} conn - connection to read/write
+   * @param {Function|undefined} cb - handshake callback called on error
+   * @param {Number} timeout - handshake timeout
+   * @param {Number} maxLength - max bytes length of message
+   */
+  constructor (conn, cb, timeout, maxLength) {
+    this.conn = conn
+    this.stream = null
+    this.shake = null
+    this.timeout = cb || 1000 * 60
+    this.maxLength = maxLength || 4096
+
+    if (typeof cb === 'function') {
+      this.timeout = timeout || 1000 * 60
+    }
+
+    this.stream = handshake({timeout: this.timeout}, cb)
+    this.shake = this.stream.handshake
+
+    pull(this.stream, conn, this.stream)
+  }
+
+  isValid () {
+    return this.conn && this.shake && this.stream
+  }
+
+  /**
+   * Read and decode message
+   *
+   * @param {Function} cb
+   * @returns {void|Function}
+   */
+  read (cb) {
+    if (!this.isValid()) {
+      cb(new Error(`handler is not in a valid state`))
+    }
+
+    lp.decodeFromReader(this.shake, {maxLength: this.maxLength}, (err, msg) => {
+      if (err) {
+        log.err(err)
+        // this.shake.abort(err)
+        return cb(err)
+      }
+
+      return cb(null, msg)
+    })
+  }
+
+  /**
+   * Encode and write array of buffers
+   *
+   * @param {Buffer[]} msg
+   * @param {Function} [cb]
+   * @returns {Function}
+   */
+  write (msg, cb) {
+    cb = cb || (() => {})
+
+    if (!this.isValid()) {
+      cb(new Error(`handler is not in a valid state`))
+    }
+
+    pull(
+      pull.values([msg]),
+      lp.encode(),
+      pull.collect((err, encoded) => {
+        if (err) {
+          log.err(err)
+          this.shake.abort(err)
+          return cb(err)
+        }
+
+        encoded.forEach((e) => this.shake.write(e))
+        cb()
+      })
+    )
+  }
+
+  /**
+   * Get the raw Connection
+   *
+   * @returns {null|Connection|*}
+   */
+  getRawConn () {
+    return this.conn
+  }
+
+  /**
+   * Return the handshake rest stream and invalidate handler
+   *
+   * @return {*|{source, sink}}
+   */
+  rest () {
+    const rest = this.shake.rest()
+
+    this.conn = null
+    this.stream = null
+    this.shake = null
+    return rest
+  }
+}
+
+module.exports = StreamHandler
+
+},{"debug":307,"pull-handshake":601,"pull-length-prefixed":604,"pull-stream":612}],318:[function(require,module,exports){
+'use strict'
+
+const multiaddr = require('multiaddr')
+const PeerInfo = require('peer-info')
+const PeerId = require('peer-id')
+const proto = require('../protocol')
+
+module.exports = function (swarm) {
+  /**
+   * Get b58 string from multiaddr or peerinfo
+   *
+   * @param {Multiaddr|PeerInfo} peer
+   * @return {*}
+   */
+  function getB58String (peer) {
+    let b58Id = null
+    if (multiaddr.isMultiaddr(peer)) {
+      const relayMa = multiaddr(peer)
+      b58Id = relayMa.getPeerId()
+    } else if (PeerInfo.isPeerInfo(peer)) {
+      b58Id = peer.id.toB58String()
+    }
+
+    return b58Id
+  }
+
+  /**
+   * Helper to make a peer info from a multiaddrs
+   *
+   * @param {Multiaddr|PeerInfo|PeerId} ma
+   * @param {Swarm} swarm
+   * @return {PeerInfo}
+   * @private
+   */
+  // TODO: this is ripped off of libp2p, should probably be a generally available util function
+  function peerInfoFromMa (peer) {
+    let p
+    // PeerInfo
+    if (PeerInfo.isPeerInfo(peer)) {
+      p = peer
+      // Multiaddr instance (not string)
+    } else if (multiaddr.isMultiaddr(peer)) {
+      const peerIdB58Str = peer.getPeerId()
+      try {
+        p = swarm._peerBook.get(peerIdB58Str)
+      } catch (err) {
+        p = new PeerInfo(PeerId.createFromB58String(peerIdB58Str))
+      }
+      p.multiaddrs.add(peer)
+      // PeerId
+    } else if (PeerId.isPeerId(peer)) {
+      const peerIdB58Str = peer.toB58String()
+      p = swarm._peerBook.has(peerIdB58Str) ? swarm._peerBook.get(peerIdB58Str) : peer
+    }
+
+    return p
+  }
+
+  /**
+   * Checks if peer has an existing connection
+   *
+   * @param {String} peerId
+   * @param {Swarm} swarm
+   * @return {Boolean}
+   */
+  function isPeerConnected (peerId) {
+    return swarm.muxedConns[peerId] || swarm.conns[peerId]
+  }
+
+  /**
+   * Write a response
+   *
+   * @param {StreamHandler} streamHandler
+   * @param {CircuitRelay.Status} status
+   * @param {Function} cb
+   * @returns {*}
+   */
+  function writeResponse (streamHandler, status, cb) {
+    cb = cb || (() => {})
+    streamHandler.write(proto.CircuitRelay.encode({
+      type: proto.CircuitRelay.Type.STATUS,
+      code: status
+    }))
+    return cb()
+  }
+
+  /**
+   * Validate incomming HOP/STOP message
+   *
+   * @param {CircuitRelay} msg
+   * @param {StreamHandler} streamHandler
+   * @param {CircuitRelay.Type} type
+   * @returns {*}
+   * @param {Function} cb
+   */
+  function validateAddrs (msg, streamHandler, type, cb) {
+    try {
+      msg.dstPeer.addrs.forEach((addr) => {
+        return multiaddr(addr)
+      })
+    } catch (err) {
+      writeResponse(streamHandler, type === proto.CircuitRelay.Type.HOP
+        ? proto.CircuitRelay.Status.HOP_DST_MULTIADDR_INVALID
+        : proto.CircuitRelay.Status.STOP_DST_MULTIADDR_INVALID)
+      return cb(err)
+    }
+
+    try {
+      msg.srcPeer.addrs.forEach((addr) => {
+        return multiaddr(addr)
+      })
+    } catch (err) {
+      writeResponse(streamHandler, type === proto.CircuitRelay.Type.HOP
+        ? proto.CircuitRelay.Status.HOP_SRC_MULTIADDR_INVALID
+        : proto.CircuitRelay.Status.STOP_SRC_MULTIADDR_INVALID)
+      return cb(err)
+    }
+
+    return cb(null)
+  }
+
+  return {
+    getB58String: getB58String,
+    peerInfoFromMa: peerInfoFromMa,
+    isPeerConnected: isPeerConnected,
+    validateAddrs: validateAddrs,
+    writeResponse: writeResponse
+  }
+}
+
+},{"../protocol":322,"multiaddr":311,"peer-id":568,"peer-info":337}],319:[function(require,module,exports){
+'use strict'
+
+module.exports = require('./circuit')
+
+},{"./circuit":313}],320:[function(require,module,exports){
+'use strict'
+
+const setImmediate = require('async/setImmediate')
+
+const multicodec = require('./multicodec')
+const EE = require('events').EventEmitter
+const multiaddr = require('multiaddr')
+const mafmt = require('mafmt')
+const Stop = require('./circuit/stop')
+const Hop = require('./circuit/hop')
+const proto = require('./protocol')
+const utilsFactory = require('./circuit/utils')
+
+const StreamHandler = require('./circuit/stream-handler')
+
+const debug = require('debug')
+
+const log = debug('libp2p:circuit:listener')
+log.err = debug('libp2p:circuit:error:listener')
+
+module.exports = (swarm, options, connHandler) => {
+  const listener = new EE()
+  const utils = utilsFactory(swarm)
+
+  listener.stopHandler = new Stop(swarm)
+  listener.hopHandler = new Hop(swarm, options.hop)
+
+  /**
+   * Add swarm handler and listen for incoming connections
+   *
+   * @param {Multiaddr} ma
+   * @param {Function} callback
+   * @return {void}
+   */
+  listener.listen = (ma, callback) => {
+    callback = callback || (() => {})
+
+    swarm.handle(multicodec.relay, (relayProto, conn) => {
+      const streamHandler = new StreamHandler(conn)
+
+      streamHandler.read((err, msg) => {
+        if (err) {
+          log.err(err)
+          return
+        }
+
+        let request = null
+        try {
+          request = proto.CircuitRelay.decode(msg)
+        } catch (err) {
+          return utils.writeResponse(streamHandler, proto.CircuitRelay.Status.MALFORMED_MESSAGE)
+        }
+
+        switch (request.type) {
+          case proto.CircuitRelay.Type.CAN_HOP:
+          case proto.CircuitRelay.Type.HOP: {
+            return listener.hopHandler.handle(request, streamHandler)
+          }
+
+          case proto.CircuitRelay.Type.STOP: {
+            return listener.stopHandler.handle(request, streamHandler, connHandler)
+          }
+
+          default: {
+            return utils.writeResponse(streamHandler, proto.CircuitRelay.Status.INVALID_MSG_TYPE)
+          }
+        }
+      })
+    })
+
+    setImmediate(() => listener.emit('listen'))
+    callback()
+  }
+
+  /**
+   * Remove swarm listener
+   *
+   * @param {Function} cb
+   * @return {void}
+   */
+  listener.close = (cb) => {
+    swarm.unhandle(multicodec.stop)
+    setImmediate(() => listener.emit('close'))
+    cb()
+  }
+
+  /**
+   * Get fixed up multiaddrs
+   *
+   * NOTE: This method will grab the peers multiaddrs and expand them such that:
+   *
+   * a) If it's an existing /p2p-circuit address for a specific relay i.e.
+   *    `/ip4/0.0.0.0/tcp/0/ipfs/QmRelay/p2p-circuit` this method will expand the
+   *    address to `/ip4/0.0.0.0/tcp/0/ipfs/QmRelay/p2p-circuit/ipfs/QmPeer` where
+   *    `QmPeer` is this peers id
+   * b) If it's not a /p2p-circuit address, it will encapsulate the address as a /p2p-circuit
+   *    addr, such when dialing over a relay with this address, it will create the circuit using
+   *    the encapsulated transport address. This is useful when for example, a peer should only
+   *    be dialed over TCP rather than any other transport
+   *
+   * @param {Function} callback
+   * @return {void}
+   */
+  listener.getAddrs = (callback) => {
+    let addrs = swarm._peerInfo.multiaddrs.toArray()
+
+    // get all the explicit relay addrs excluding self
+    let p2pAddrs = addrs.filter((addr) => {
+      return mafmt.Circuit.matches(addr) &&
+        !addr.toString().includes(swarm._peerInfo.id.toB58String())
+    })
+
+    // use the explicit relays instead of any relay
+    if (p2pAddrs.length) {
+      addrs = p2pAddrs
+    }
+
+    let listenAddrs = []
+    addrs.forEach((addr) => {
+      const peerMa = `/p2p-circuit/ipfs/${swarm._peerInfo.id.toB58String()}`
+      if (addr.toString() === peerMa) {
+        listenAddrs.push(multiaddr(peerMa))
+        return
+      }
+
+      if (!mafmt.Circuit.matches(addr)) {
+        if (addr.getPeerId()) {
+          // by default we're reachable over any relay
+          listenAddrs.push(multiaddr(`/p2p-circuit`).encapsulate(addr))
+        } else {
+          listenAddrs.push(multiaddr(`/p2p-circuit`).encapsulate(`${addr}/ipfs/${swarm._peerInfo.id.toB58String()}`))
+        }
+      } else {
+        listenAddrs.push(addr.encapsulate(`/ipfs/${swarm._peerInfo.id.toB58String()}`))
+      }
+    })
+
+    callback(null, listenAddrs)
+  }
+
+  return listener
+}
+
+},{"./circuit/hop":315,"./circuit/stop":316,"./circuit/stream-handler":317,"./circuit/utils":318,"./multicodec":321,"./protocol":322,"async/setImmediate":49,"debug":307,"events":146,"mafmt":328,"multiaddr":311}],321:[function(require,module,exports){
+'use strict'
+
+module.exports = {
+  relay: '/libp2p/circuit/relay/0.1.0'
+}
+
+},{}],322:[function(require,module,exports){
+'use strict'
+
+const protobuf = require('protons')
+module.exports = protobuf(require('./proto.js'))
+
+},{"./proto.js":323,"protons":592}],323:[function(require,module,exports){
+'use strict'
+module.exports = `
+message CircuitRelay {
+
+  enum Status {
+    SUCCESS                    = 100;
+    HOP_SRC_ADDR_TOO_LONG      = 220;
+    HOP_DST_ADDR_TOO_LONG      = 221;
+    HOP_SRC_MULTIADDR_INVALID  = 250;
+    HOP_DST_MULTIADDR_INVALID  = 251;
+    HOP_NO_CONN_TO_DST         = 260;
+    HOP_CANT_DIAL_DST          = 261;
+    HOP_CANT_OPEN_DST_STREAM   = 262;
+    HOP_CANT_SPEAK_RELAY       = 270;
+    HOP_CANT_RELAY_TO_SELF     = 280;
+    STOP_SRC_ADDR_TOO_LONG     = 320;
+    STOP_DST_ADDR_TOO_LONG     = 321;
+    STOP_SRC_MULTIADDR_INVALID = 350;
+    STOP_DST_MULTIADDR_INVALID = 351;
+    STOP_RELAY_REFUSED         = 390;
+    MALFORMED_MESSAGE          = 400;
+  }
+
+  enum Type { // RPC identifier, either HOP, STOP or STATUS
+    HOP = 1;
+    STOP = 2;
+    STATUS = 3;
+    CAN_HOP = 4;
+  }
+
+  message Peer {
+    required bytes id = 1;    // peer id
+    repeated bytes addrs = 2; // peer's known addresses
+  }
+
+  optional Type type = 1;     // Type of the message
+
+  optional Peer srcPeer = 2;  // srcPeer and dstPeer are used when Type is HOP or STATUS
+  optional Peer dstPeer = 3;
+
+  optional Status code = 4;   // Status code, used when Type is STATUS
+}
+`
+
+},{}],324:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":325,"./protocols-table":327,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],325:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":327,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],326:[function(require,module,exports){
+arguments[4][218][0].apply(exports,arguments)
+},{"./codec":324,"./protocols-table":327,"bs58":86,"buffer":84,"class-is":92,"dup":218,"lodash.map":401,"varint":735,"xtend":773}],327:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],328:[function(require,module,exports){
+arguments[4][245][0].apply(exports,arguments)
+},{"dup":245,"multiaddr":326}],329:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":330,"./protocols-table":332,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],330:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":332,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],331:[function(require,module,exports){
+arguments[4][214][0].apply(exports,arguments)
+},{"./codec":329,"./protocols-table":332,"bs58":86,"buffer":84,"class-is":92,"dup":214,"lodash.map":401,"varint":735,"xtend":773}],332:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],333:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":334,"./protocols-table":336,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],334:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":336,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],335:[function(require,module,exports){
+arguments[4][218][0].apply(exports,arguments)
+},{"./codec":333,"./protocols-table":336,"bs58":86,"buffer":84,"class-is":92,"dup":218,"lodash.map":401,"varint":735,"xtend":773}],336:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],337:[function(require,module,exports){
+arguments[4][220][0].apply(exports,arguments)
+},{"./multiaddr-set":338,"./utils":339,"assert":18,"dup":220,"peer-id":568}],338:[function(require,module,exports){
+arguments[4][221][0].apply(exports,arguments)
+},{"./utils":339,"dup":221,"lodash.uniqby":407}],339:[function(require,module,exports){
+arguments[4][222][0].apply(exports,arguments)
+},{"dup":222,"multiaddr":335}],340:[function(require,module,exports){
 'use strict'
 
 const identify = require('libp2p-identify')
@@ -59548,7 +61938,7 @@ module.exports = function connection (swtch) {
   }
 }
 
-},{"./plaintext":290,"async/setImmediate":50,"async/waterfall":53,"debug":280,"libp2p-circuit":184,"libp2p-identify":221,"multistream-select":416,"once":471}],283:[function(require,module,exports){
+},{"./plaintext":348,"async/setImmediate":49,"async/waterfall":52,"debug":307,"libp2p-circuit":319,"libp2p-identify":224,"multistream-select":490,"once":546}],341:[function(require,module,exports){
 'use strict'
 
 const multistream = require('multistream-select')
@@ -59783,7 +62173,7 @@ function dial (swtch) {
 
 module.exports = dial
 
-},{"./get-peer-info":284,"./observe-connection":288,"async/setImmediate":50,"debug":280,"interface-connection":156,"libp2p-circuit":184,"multistream-select":416}],284:[function(require,module,exports){
+},{"./get-peer-info":342,"./observe-connection":346,"async/setImmediate":49,"debug":307,"interface-connection":160,"libp2p-circuit":319,"multistream-select":490}],342:[function(require,module,exports){
 'use strict'
 
 const PeerId = require('peer-id')
@@ -59826,7 +62216,7 @@ function getPeerInfo (peer, peerBook) {
 
 module.exports = getPeerInfo
 
-},{"multiaddr":403,"peer-id":493,"peer-info":494}],285:[function(require,module,exports){
+},{"multiaddr":331,"peer-id":568,"peer-info":337}],343:[function(require,module,exports){
 'use strict'
 
 const EE = require('events').EventEmitter
@@ -59976,7 +62366,7 @@ class Switch extends EE {
 
 module.exports = Switch
 
-},{"./connection":282,"./dial":283,"./get-peer-info":284,"./observer":289,"./plaintext":290,"./protocol-muxer":291,"./stats":292,"./transport":295,"assert":19,"async/each":23,"async/series":49,"events":145}],286:[function(require,module,exports){
+},{"./connection":340,"./dial":341,"./get-peer-info":342,"./observer":347,"./plaintext":348,"./protocol-muxer":349,"./stats":350,"./transport":353,"assert":18,"async/each":22,"async/series":48,"events":146}],344:[function(require,module,exports){
 'use strict'
 
 const map = require('async/map')
@@ -60068,7 +62458,7 @@ class LimitDialer {
 
 module.exports = LimitDialer
 
-},{"./queue":287,"async/map":45,"debug":280,"once":471}],287:[function(require,module,exports){
+},{"./queue":345,"async/map":44,"debug":307,"once":546}],345:[function(require,module,exports){
 'use strict'
 
 const Connection = require('interface-connection').Connection
@@ -60173,7 +62563,7 @@ class DialQueue {
 
 module.exports = DialQueue
 
-},{"async/queue":47,"async/timeout":52,"debug":280,"interface-connection":156,"pull-stream":533}],288:[function(require,module,exports){
+},{"async/queue":46,"async/timeout":51,"debug":307,"interface-connection":160,"pull-stream":612}],346:[function(require,module,exports){
 'use strict'
 
 const Connection = require('interface-connection').Connection
@@ -60206,7 +62596,7 @@ module.exports = (transport, protocol, _conn, observer) => {
   return new Connection(stream, _conn)
 }
 
-},{"interface-connection":156,"pull-stream":533}],289:[function(require,module,exports){
+},{"interface-connection":160,"pull-stream":612}],347:[function(require,module,exports){
 (function (setImmediate){
 'use strict'
 
@@ -60249,7 +62639,7 @@ module.exports = (swtch) => {
 }
 
 }).call(this,require("timers").setImmediate)
-},{"events":145,"pull-stream":533,"timers":644}],290:[function(require,module,exports){
+},{"events":146,"pull-stream":612,"timers":724}],348:[function(require,module,exports){
 'use strict'
 
 const setImmediate = require('async/setImmediate')
@@ -60267,7 +62657,7 @@ module.exports = {
   }
 }
 
-},{"async/setImmediate":50}],291:[function(require,module,exports){
+},{"async/setImmediate":49}],349:[function(require,module,exports){
 'use strict'
 
 const multistream = require('multistream-select')
@@ -60305,7 +62695,7 @@ module.exports = function protocolMuxer (protocols, observer) {
   }
 }
 
-},{"./observe-connection":288,"multistream-select":416}],292:[function(require,module,exports){
+},{"./observe-connection":346,"multistream-select":490}],350:[function(require,module,exports){
 'use strict'
 
 const EventEmitter = require('events')
@@ -60432,7 +62822,7 @@ module.exports = (observer, _options) => {
   }
 }
 
-},{"./old-peers":293,"./stat":294,"events":145}],293:[function(require,module,exports){
+},{"./old-peers":351,"./stat":352,"events":146}],351:[function(require,module,exports){
 'use strict'
 
 const LRU = require('quick-lru')
@@ -60441,7 +62831,7 @@ module.exports = (maxSize) => {
   return new LRU({ maxSize: maxSize })
 }
 
-},{"quick-lru":584}],294:[function(require,module,exports){
+},{"quick-lru":663}],352:[function(require,module,exports){
 'use strict'
 
 const EventEmitter = require('events')
@@ -60580,7 +62970,7 @@ class Stats extends EventEmitter {
 
 module.exports = Stats
 
-},{"big.js":56,"events":145,"moving-average":392}],295:[function(require,module,exports){
+},{"big.js":55,"events":146,"moving-average":470}],353:[function(require,module,exports){
 'use strict'
 
 const parallel = require('async/parallel')
@@ -60707,11 +63097,345 @@ function dialables (tp, multiaddrs) {
   return tp.filter(multiaddrs)
 }
 
-},{"./limit-dialer":286,"async/parallel":46,"debug":280,"once":471}],296:[function(require,module,exports){
-arguments[4][176][0].apply(exports,arguments)
-},{"./debug":297,"_process":499,"dup":176}],297:[function(require,module,exports){
-arguments[4][177][0].apply(exports,arguments)
-},{"dup":177,"ms":393}],298:[function(require,module,exports){
+},{"./limit-dialer":344,"async/parallel":45,"debug":307,"once":546}],354:[function(require,module,exports){
+arguments[4][203][0].apply(exports,arguments)
+},{"./debug":355,"_process":578,"dup":203}],355:[function(require,module,exports){
+arguments[4][204][0].apply(exports,arguments)
+},{"dup":204,"ms":471}],356:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":357,"./protocols-table":359,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],357:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":359,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],358:[function(require,module,exports){
+arguments[4][218][0].apply(exports,arguments)
+},{"./codec":356,"./protocols-table":359,"bs58":86,"buffer":84,"class-is":92,"dup":218,"lodash.map":401,"varint":735,"xtend":773}],359:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],360:[function(require,module,exports){
+'use strict'
+
+const multiaddr = require('multiaddr')
+
+/*
+ * Valid combinations
+ */
+const DNS4 = base('dns4')
+const DNS6 = base('dns6')
+const _DNS = or(
+  base('dnsaddr'),
+  DNS4,
+  DNS6
+)
+
+const IP = or(base('ip4'), base('ip6'))
+const TCP = and(IP, base('tcp'))
+const UDP = and(IP, base('udp'))
+const UTP = and(UDP, base('utp'))
+
+const DNS = or(
+  and(_DNS, base('tcp')),
+  _DNS
+)
+
+const WebSockets = or(
+  and(TCP, base('ws')),
+  and(DNS, base('ws'))
+)
+
+const WebSocketsSecure = or(
+  and(TCP, base('wss')),
+  and(DNS, base('wss'))
+)
+
+const HTTP = or(
+  and(TCP, base('http')),
+  and(IP, base('http')),
+  and(DNS, base('http')),
+  and(DNS)
+)
+
+const HTTPS = or(
+  and(TCP, base('https')),
+  and(IP, base('https')),
+  and(DNS, base('https'))
+)
+
+const WebRTCStar = or(
+  and(WebSockets, base('p2p-webrtc-star'), base('ipfs')),
+  and(WebSocketsSecure, base('p2p-webrtc-star'), base('ipfs'))
+)
+
+const WebSocketStar = or(
+  and(WebSockets, base('p2p-websocket-star'), base('ipfs')),
+  and(WebSocketsSecure, base('p2p-websocket-star'), base('ipfs')),
+  and(WebSockets, base('p2p-websocket-star')),
+  and(WebSocketsSecure, base('p2p-websocket-star'))
+)
+
+const WebRTCDirect = or(
+  and(HTTP, base('p2p-webrtc-direct')),
+  and(HTTPS, base('p2p-webrtc-direct'))
+)
+
+const Reliable = or(
+  WebSockets,
+  WebSocketsSecure,
+  HTTP,
+  HTTPS,
+  WebRTCStar,
+  WebRTCDirect,
+  TCP,
+  UTP
+)
+
+const WebRTCCircuit = or(
+  and(Reliable, base('p2p-webrtc-circuit'), base('ipfs')),
+  and(base('p2p-webrtc-circuit'), base('ipfs'))
+)
+
+let _IPFS = or(
+  and(Reliable, base('ipfs')),
+  WebRTCStar,
+  base('ipfs')
+)
+
+const _Circuit = or(
+  and(_IPFS, base('p2p-circuit'), _IPFS),
+  and(_IPFS, base('p2p-circuit')),
+  and(base('p2p-circuit'), _IPFS),
+  and(Reliable, base('p2p-circuit')),
+  and(base('p2p-circuit'), Reliable),
+  base('p2p-circuit')
+)
+
+const CircuitRecursive = () => or(
+  and(_Circuit, CircuitRecursive),
+  _Circuit
+)
+
+const Circuit = CircuitRecursive()
+
+const IPFS = or(
+  and(Circuit, _IPFS, Circuit),
+  and(_IPFS, Circuit),
+  and(Circuit, _IPFS),
+  Circuit,
+  _IPFS
+)
+
+exports.DNS = DNS
+exports.DNS4 = DNS4
+exports.DNS6 = DNS6
+exports.IP = IP
+exports.TCP = TCP
+exports.UDP = UDP
+exports.UTP = UTP
+exports.HTTP = HTTP
+exports.HTTPS = HTTPS
+exports.WebSockets = WebSockets
+exports.WebSocketsSecure = WebSocketsSecure
+exports.WebSocketStar = WebSocketStar
+exports.WebRTCStar = WebRTCStar
+exports.WebRTCDirect = WebRTCDirect
+exports.WebRTCCircuit = WebRTCCircuit
+exports.Reliable = Reliable
+exports.Circuit = Circuit
+exports.IPFS = IPFS
+
+/*
+ * Validation funcs
+ */
+
+function and () {
+  const args = Array.from(arguments)
+
+  function matches (a) {
+    if (typeof a === 'string') {
+      a = multiaddr(a)
+    }
+    let out = partialMatch(a.protoNames())
+    if (out === null) {
+      return false
+    }
+    return out.length === 0
+  }
+
+  function partialMatch (a) {
+    if (a.length < args.length) {
+      return null
+    }
+    args.some((arg) => {
+      a = typeof arg === 'function'
+        ? arg().partialMatch(a)
+        : arg.partialMatch(a)
+
+      if (a === null) {
+        return true
+      }
+    })
+
+    return a
+  }
+
+  return {
+    toString: function () { return '{ ' + args.join(' ') + ' }' },
+    input: args,
+    matches: matches,
+    partialMatch: partialMatch
+  }
+}
+
+function or () {
+  const args = Array.from(arguments)
+
+  function matches (a) {
+    if (typeof a === 'string') {
+      a = multiaddr(a)
+    }
+    const out = partialMatch(a.protoNames())
+    if (out === null) {
+      return false
+    }
+    return out.length === 0
+  }
+
+  function partialMatch (a) {
+    let out = null
+    args.some((arg) => {
+      const res = typeof arg === 'function'
+        ? arg().partialMatch(a)
+        : arg.partialMatch(a)
+      if (res) {
+        out = res
+        return true
+      }
+    })
+
+    return out
+  }
+
+  const result = {
+    toString: function () { return '{ ' + args.join(' ') + ' }' },
+    input: args,
+    matches: matches,
+    partialMatch: partialMatch
+  }
+
+  return result
+}
+
+function base (n) {
+  const name = n
+
+  function matches (a) {
+    if (typeof a === 'string') {
+      a = multiaddr(a)
+    }
+
+    const pnames = a.protoNames()
+    if (pnames.length === 1 && pnames[0] === name) {
+      return true
+    }
+    return false
+  }
+
+  function partialMatch (protos) {
+    if (protos.length === 0) {
+      return null
+    }
+
+    if (protos[0] === name) {
+      return protos.slice(1)
+    }
+    return null
+  }
+
+  return {
+    toString: function () { return name },
+    matches: matches,
+    partialMatch: partialMatch
+  }
+}
+
+},{"multiaddr":358}],361:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":362,"./protocols-table":364,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],362:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":364,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],363:[function(require,module,exports){
+arguments[4][214][0].apply(exports,arguments)
+},{"./codec":361,"./protocols-table":364,"bs58":86,"buffer":84,"class-is":92,"dup":214,"lodash.map":401,"varint":735,"xtend":773}],364:[function(require,module,exports){
+'use strict'
+
+const map = require('lodash.map')
+
+function Protocols (proto) {
+  if (typeof (proto) === 'number') {
+    if (Protocols.codes[proto]) {
+      return Protocols.codes[proto]
+    }
+
+    throw new Error('no protocol with code: ' + proto)
+  } else if (typeof (proto) === 'string' || proto instanceof String) {
+    if (Protocols.names[proto]) {
+      return Protocols.names[proto]
+    }
+
+    throw new Error('no protocol with name: ' + proto)
+  }
+
+  throw new Error('invalid protocol id type: ' + proto)
+}
+
+const V = -1
+Protocols.lengthPrefixedVarSize = V
+Protocols.V = V
+
+Protocols.table = [
+  [4, 32, 'ip4'],
+  [6, 16, 'tcp'],
+  [17, 16, 'udp'],
+  [33, 16, 'dccp'],
+  [41, 128, 'ip6'],
+  [54, V, 'dns4', 'resolvable'],
+  [55, V, 'dns6', 'resolvable'],
+  [56, V, 'dnsaddr', 'resolvable'],
+  [132, 16, 'sctp'],
+  // all of the below use varint for size
+  [302, 0, 'utp'],
+  [421, Protocols.lengthPrefixedVarSize, 'ipfs'],
+  [480, 0, 'http'],
+  [443, 0, 'https'],
+  [477, 0, 'ws'],
+  [478, 0, 'wss'],
+  [479, 0, 'p2p-websocket-star'],
+  [275, 0, 'p2p-webrtc-star'],
+  [276, 0, 'p2p-webrtc-direct'],
+  [277, 0, 'p2p-webrtc-circuit'],
+  [290, 0, 'p2p-circuit']
+]
+
+Protocols.names = {}
+Protocols.codes = {}
+
+// populate tables
+map(Protocols.table, function (row) {
+  const proto = p.apply(null, row)
+  Protocols.codes[proto.code] = proto
+  Protocols.names[proto.name] = proto
+})
+
+Protocols.object = p
+
+function p (code, size, name, resolvable) {
+  return {
+    code: code,
+    size: size,
+    name: name,
+    resolvable: Boolean(resolvable)
+  }
+}
+
+module.exports = Protocols
+
+},{"lodash.map":401}],365:[function(require,module,exports){
 (function (Buffer){
 module.exports = Peer
 
@@ -61523,7 +64247,7 @@ Peer.prototype._transformConstraints = function (constraints) {
 function noop () {}
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":84,"debug":296,"get-browser-rtc":147,"inherits":154,"randombytes":585,"readable-stream":596}],299:[function(require,module,exports){
+},{"buffer":84,"debug":354,"get-browser-rtc":148,"inherits":158,"randombytes":665,"readable-stream":676}],366:[function(require,module,exports){
 'use strict'
 
 const proto = require('./proto')
@@ -61534,7 +64258,7 @@ module.exports = {
   [proto.WebRTCCircuit.Status.E_INTERNAL_ERR]: 'Internal error'
 }
 
-},{"./proto":301}],300:[function(require,module,exports){
+},{"./proto":368}],367:[function(require,module,exports){
 (function (setImmediate){
 'use strict'
 
@@ -61776,7 +64500,7 @@ module.exports = withIs(WebRTCCircuit, {
 })
 
 }).call(this,require("timers").setImmediate)
-},{"./errcodes":299,"./proto":301,"class-is":92,"debug":296,"detect-node":131,"events":145,"interface-connection":156,"mafmt":389,"multiaddr":403,"once":471,"pull-block":514,"pull-length-prefixed":525,"pull-protocol-buffers":527,"pull-stream":533,"simple-peer":298,"stream-to-pull-stream":631,"timers":644,"wrtc":64}],301:[function(require,module,exports){
+},{"./errcodes":366,"./proto":368,"class-is":92,"debug":354,"detect-node":131,"events":146,"interface-connection":160,"mafmt":360,"multiaddr":363,"once":546,"pull-block":593,"pull-length-prefixed":604,"pull-protocol-buffers":606,"pull-stream":612,"simple-peer":365,"stream-to-pull-stream":711,"timers":724,"wrtc":63}],368:[function(require,module,exports){
 'use strict'
 const protons = require('protons')
 
@@ -61792,7 +64516,17 @@ message WebRTCCircuit {
   optional Status code = 2;
 }`)
 
-},{"protons":513}],302:[function(require,module,exports){
+},{"protons":592}],369:[function(require,module,exports){
+arguments[4][245][0].apply(exports,arguments)
+},{"dup":245,"multiaddr":372}],370:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":371,"./protocols-table":373,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],371:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":373,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],372:[function(require,module,exports){
+arguments[4][218][0].apply(exports,arguments)
+},{"./codec":370,"./protocols-table":373,"bs58":86,"buffer":84,"class-is":92,"dup":218,"lodash.map":401,"varint":735,"xtend":773}],373:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],374:[function(require,module,exports){
 'use strict'
 
 const connect = require('pull-ws/client')
@@ -61863,7 +64597,7 @@ class WebSockets {
 
 module.exports = withIs(WebSockets, { className: 'WebSockets', symbolName: '@libp2p/js-libp2p-websockets/websockets' })
 
-},{"./listener":303,"./ma-to-url":304,"class-is":92,"debug":129,"interface-connection":156,"lodash.includes":316,"mafmt":389,"pull-ws/client":565}],303:[function(require,module,exports){
+},{"./listener":375,"./ma-to-url":376,"class-is":92,"debug":129,"interface-connection":160,"lodash.includes":399,"mafmt":369,"pull-ws/client":644}],375:[function(require,module,exports){
 'use strict'
 
 const Connection = require('interface-connection').Connection
@@ -61938,7 +64672,7 @@ module.exports = (options, handler) => {
   return listener
 }
 
-},{"interface-connection":156,"lodash.includes":316,"multiaddr":403,"os":472,"pull-ws/server":569}],304:[function(require,module,exports){
+},{"interface-connection":160,"lodash.includes":399,"multiaddr":372,"os":547,"pull-ws/server":648}],376:[function(require,module,exports){
 'use strict'
 
 const debug = require('debug')
@@ -61977,7 +64711,15 @@ function maToUrl (ma) {
 
 module.exports = maToUrl
 
-},{"debug":129}],305:[function(require,module,exports){
+},{"debug":129}],377:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":378,"./protocols-table":380,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],378:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":380,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],379:[function(require,module,exports){
+arguments[4][214][0].apply(exports,arguments)
+},{"./codec":377,"./protocols-table":380,"bs58":86,"buffer":84,"class-is":92,"dup":214,"lodash.map":401,"varint":735,"xtend":773}],380:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],381:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -62096,7 +64838,21 @@ class PeerBook {
 module.exports = PeerBook
 
 }).call(this,{"isBuffer":require("../../../../is-buffer/index.js")})
-},{"../../../../is-buffer/index.js":168,"bs58":86,"peer-id":493,"peer-info":494}],306:[function(require,module,exports){
+},{"../../../../is-buffer/index.js":172,"bs58":86,"peer-id":568,"peer-info":386}],382:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":383,"./protocols-table":385,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],383:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":385,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],384:[function(require,module,exports){
+arguments[4][218][0].apply(exports,arguments)
+},{"./codec":382,"./protocols-table":385,"bs58":86,"buffer":84,"class-is":92,"dup":218,"lodash.map":401,"varint":735,"xtend":773}],385:[function(require,module,exports){
+arguments[4][215][0].apply(exports,arguments)
+},{"dup":215,"lodash.map":401}],386:[function(require,module,exports){
+arguments[4][220][0].apply(exports,arguments)
+},{"./multiaddr-set":387,"./utils":388,"assert":18,"dup":220,"peer-id":568}],387:[function(require,module,exports){
+arguments[4][221][0].apply(exports,arguments)
+},{"./utils":388,"dup":221,"lodash.uniqby":407}],388:[function(require,module,exports){
+arguments[4][222][0].apply(exports,arguments)
+},{"dup":222,"multiaddr":384}],389:[function(require,module,exports){
 'use strict'
 
 module.exports = (node) => {
@@ -62118,7 +64874,7 @@ module.exports = (node) => {
   }
 }
 
-},{}],307:[function(require,module,exports){
+},{}],390:[function(require,module,exports){
 'use strict'
 
 module.exports = (node) => {
@@ -62147,12 +64903,12 @@ module.exports = (node) => {
   }
 }
 
-},{}],308:[function(require,module,exports){
+},{}],391:[function(require,module,exports){
 'use strict'
 
 exports.NOT_STARTED_YET = 'The libp2p node is not started yet'
 
-},{}],309:[function(require,module,exports){
+},{}],392:[function(require,module,exports){
 (function (setImmediate){
 'use strict'
 
@@ -62204,7 +64960,7 @@ module.exports = (node) => {
 }
 
 }).call(this,require("timers").setImmediate)
-},{"multiaddr":403,"peer-id":493,"peer-info":494,"timers":644}],310:[function(require,module,exports){
+},{"multiaddr":379,"peer-id":568,"peer-info":386,"timers":724}],393:[function(require,module,exports){
 'use strict'
 
 const EventEmitter = require('events').EventEmitter
@@ -62500,7 +65256,7 @@ class Node extends EventEmitter {
 
 module.exports = Node
 
-},{"./content-routing":306,"./dht":307,"./get-peer-info":309,"./peer-routing":311,"./pubsub":312,"assert":19,"async/each":23,"async/series":49,"async/setImmediate":50,"events":145,"libp2p-ping":233,"libp2p-switch":285,"libp2p-websockets":302,"peer-book":305}],311:[function(require,module,exports){
+},{"./content-routing":389,"./dht":390,"./get-peer-info":392,"./peer-routing":394,"./pubsub":395,"assert":18,"async/each":22,"async/series":48,"async/setImmediate":49,"events":146,"libp2p-ping":236,"libp2p-switch":343,"libp2p-websockets":374,"peer-book":381}],394:[function(require,module,exports){
 'use strict'
 
 module.exports = (node) => {
@@ -62515,7 +65271,7 @@ module.exports = (node) => {
   }
 }
 
-},{}],312:[function(require,module,exports){
+},{}],395:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -62612,7 +65368,7 @@ module.exports = (node) => {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":168,"./error-messages":308,"async/setImmediate":50,"libp2p-floodsub":214}],313:[function(require,module,exports){
+},{"../../is-buffer/index.js":172,"./error-messages":391,"async/setImmediate":49,"libp2p-floodsub":206}],396:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -62993,7 +65749,7 @@ function toNumber(value) {
 module.exports = debounce;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],314:[function(require,module,exports){
+},{}],397:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -65363,7 +68119,7 @@ function property(path) {
 module.exports = filter;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],315:[function(require,module,exports){
+},{}],398:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -67820,7 +70576,7 @@ function property(path) {
 module.exports = find;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],316:[function(require,module,exports){
+},{}],399:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -68567,7 +71323,7 @@ function values(object) {
 
 module.exports = includes;
 
-},{}],317:[function(require,module,exports){
+},{}],400:[function(require,module,exports){
 (function (global){
 /**
  * Lodash (Custom Build) <https://lodash.com/>
@@ -68726,7 +71482,7 @@ function isObject(value) {
 module.exports = isFunction;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],318:[function(require,module,exports){
+},{}],401:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -71096,7 +73852,7 @@ function property(path) {
 module.exports = map;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],319:[function(require,module,exports){
+},{}],402:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -71258,7 +74014,7 @@ function max(array) {
 
 module.exports = max;
 
-},{}],320:[function(require,module,exports){
+},{}],403:[function(require,module,exports){
 (function (global){
 /**
  * Lodash (Custom Build) <https://lodash.com/>
@@ -73225,7 +75981,7 @@ function stubFalse() {
 module.exports = merge;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],321:[function(require,module,exports){
+},{}],404:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -73783,7 +76539,7 @@ function padStart(string, length, chars) {
 module.exports = padStart;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],322:[function(require,module,exports){
+},{}],405:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -74310,7 +77066,7 @@ function repeat(string, n, guard) {
 module.exports = repeat;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],323:[function(require,module,exports){
+},{}],406:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -74753,7 +77509,7 @@ function toNumber(value) {
 module.exports = throttle;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],324:[function(require,module,exports){
+},{}],407:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -77171,7 +79927,7 @@ function property(path) {
 module.exports = uniqBy;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],325:[function(require,module,exports){
+},{}],408:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -77640,7 +80396,7 @@ function values(object) {
 
 module.exports = values;
 
-},{}],326:[function(require,module,exports){
+},{}],409:[function(require,module,exports){
 var root = require('./_root');
 
 /** Built-in value references. */
@@ -77648,7 +80404,7 @@ var Symbol = root.Symbol;
 
 module.exports = Symbol;
 
-},{"./_root":362}],327:[function(require,module,exports){
+},{"./_root":445}],410:[function(require,module,exports){
 /**
  * A faster alternative to `Function#apply`, this function invokes `func`
  * with the `this` binding of `thisArg` and the arguments of `args`.
@@ -77671,7 +80427,7 @@ function apply(func, thisArg, args) {
 
 module.exports = apply;
 
-},{}],328:[function(require,module,exports){
+},{}],411:[function(require,module,exports){
 var baseTimes = require('./_baseTimes'),
     isArguments = require('./isArguments'),
     isArray = require('./isArray'),
@@ -77722,7 +80478,7 @@ function arrayLikeKeys(value, inherited) {
 
 module.exports = arrayLikeKeys;
 
-},{"./_baseTimes":342,"./_isIndex":352,"./isArguments":371,"./isArray":372,"./isBuffer":374,"./isTypedArray":379}],329:[function(require,module,exports){
+},{"./_baseTimes":425,"./_isIndex":435,"./isArguments":454,"./isArray":455,"./isBuffer":457,"./isTypedArray":462}],412:[function(require,module,exports){
 var baseAssignValue = require('./_baseAssignValue'),
     eq = require('./eq');
 
@@ -77752,7 +80508,7 @@ function assignValue(object, key, value) {
 
 module.exports = assignValue;
 
-},{"./_baseAssignValue":330,"./eq":369}],330:[function(require,module,exports){
+},{"./_baseAssignValue":413,"./eq":452}],413:[function(require,module,exports){
 var defineProperty = require('./_defineProperty');
 
 /**
@@ -77779,7 +80535,7 @@ function baseAssignValue(object, key, value) {
 
 module.exports = baseAssignValue;
 
-},{"./_defineProperty":347}],331:[function(require,module,exports){
+},{"./_defineProperty":430}],414:[function(require,module,exports){
 /**
  * The base implementation of `_.findIndex` and `_.findLastIndex` without
  * support for iteratee shorthands.
@@ -77805,7 +80561,7 @@ function baseFindIndex(array, predicate, fromIndex, fromRight) {
 
 module.exports = baseFindIndex;
 
-},{}],332:[function(require,module,exports){
+},{}],415:[function(require,module,exports){
 var Symbol = require('./_Symbol'),
     getRawTag = require('./_getRawTag'),
     objectToString = require('./_objectToString');
@@ -77835,7 +80591,7 @@ function baseGetTag(value) {
 
 module.exports = baseGetTag;
 
-},{"./_Symbol":326,"./_getRawTag":350,"./_objectToString":359}],333:[function(require,module,exports){
+},{"./_Symbol":409,"./_getRawTag":433,"./_objectToString":442}],416:[function(require,module,exports){
 var baseFindIndex = require('./_baseFindIndex'),
     baseIsNaN = require('./_baseIsNaN'),
     strictIndexOf = require('./_strictIndexOf');
@@ -77857,7 +80613,7 @@ function baseIndexOf(array, value, fromIndex) {
 
 module.exports = baseIndexOf;
 
-},{"./_baseFindIndex":331,"./_baseIsNaN":335,"./_strictIndexOf":365}],334:[function(require,module,exports){
+},{"./_baseFindIndex":414,"./_baseIsNaN":418,"./_strictIndexOf":448}],417:[function(require,module,exports){
 var baseGetTag = require('./_baseGetTag'),
     isObjectLike = require('./isObjectLike');
 
@@ -77877,7 +80633,7 @@ function baseIsArguments(value) {
 
 module.exports = baseIsArguments;
 
-},{"./_baseGetTag":332,"./isObjectLike":378}],335:[function(require,module,exports){
+},{"./_baseGetTag":415,"./isObjectLike":461}],418:[function(require,module,exports){
 /**
  * The base implementation of `_.isNaN` without support for number objects.
  *
@@ -77891,7 +80647,7 @@ function baseIsNaN(value) {
 
 module.exports = baseIsNaN;
 
-},{}],336:[function(require,module,exports){
+},{}],419:[function(require,module,exports){
 var isFunction = require('./isFunction'),
     isMasked = require('./_isMasked'),
     isObject = require('./isObject'),
@@ -77940,7 +80696,7 @@ function baseIsNative(value) {
 
 module.exports = baseIsNative;
 
-},{"./_isMasked":354,"./_toSource":366,"./isFunction":375,"./isObject":377}],337:[function(require,module,exports){
+},{"./_isMasked":437,"./_toSource":449,"./isFunction":458,"./isObject":460}],420:[function(require,module,exports){
 var baseGetTag = require('./_baseGetTag'),
     isLength = require('./isLength'),
     isObjectLike = require('./isObjectLike');
@@ -78002,7 +80758,7 @@ function baseIsTypedArray(value) {
 
 module.exports = baseIsTypedArray;
 
-},{"./_baseGetTag":332,"./isLength":376,"./isObjectLike":378}],338:[function(require,module,exports){
+},{"./_baseGetTag":415,"./isLength":459,"./isObjectLike":461}],421:[function(require,module,exports){
 var isPrototype = require('./_isPrototype'),
     nativeKeys = require('./_nativeKeys');
 
@@ -78034,7 +80790,7 @@ function baseKeys(object) {
 
 module.exports = baseKeys;
 
-},{"./_isPrototype":355,"./_nativeKeys":356}],339:[function(require,module,exports){
+},{"./_isPrototype":438,"./_nativeKeys":439}],422:[function(require,module,exports){
 var isObject = require('./isObject'),
     isPrototype = require('./_isPrototype'),
     nativeKeysIn = require('./_nativeKeysIn');
@@ -78069,7 +80825,7 @@ function baseKeysIn(object) {
 
 module.exports = baseKeysIn;
 
-},{"./_isPrototype":355,"./_nativeKeysIn":357,"./isObject":377}],340:[function(require,module,exports){
+},{"./_isPrototype":438,"./_nativeKeysIn":440,"./isObject":460}],423:[function(require,module,exports){
 var identity = require('./identity'),
     overRest = require('./_overRest'),
     setToString = require('./_setToString');
@@ -78088,7 +80844,7 @@ function baseRest(func, start) {
 
 module.exports = baseRest;
 
-},{"./_overRest":361,"./_setToString":363,"./identity":370}],341:[function(require,module,exports){
+},{"./_overRest":444,"./_setToString":446,"./identity":453}],424:[function(require,module,exports){
 var constant = require('./constant'),
     defineProperty = require('./_defineProperty'),
     identity = require('./identity');
@@ -78112,7 +80868,7 @@ var baseSetToString = !defineProperty ? identity : function(func, string) {
 
 module.exports = baseSetToString;
 
-},{"./_defineProperty":347,"./constant":368,"./identity":370}],342:[function(require,module,exports){
+},{"./_defineProperty":430,"./constant":451,"./identity":453}],425:[function(require,module,exports){
 /**
  * The base implementation of `_.times` without support for iteratee shorthands
  * or max array length checks.
@@ -78134,7 +80890,7 @@ function baseTimes(n, iteratee) {
 
 module.exports = baseTimes;
 
-},{}],343:[function(require,module,exports){
+},{}],426:[function(require,module,exports){
 /**
  * The base implementation of `_.unary` without support for storing metadata.
  *
@@ -78150,7 +80906,7 @@ function baseUnary(func) {
 
 module.exports = baseUnary;
 
-},{}],344:[function(require,module,exports){
+},{}],427:[function(require,module,exports){
 var assignValue = require('./_assignValue'),
     baseAssignValue = require('./_baseAssignValue');
 
@@ -78192,7 +80948,7 @@ function copyObject(source, props, object, customizer) {
 
 module.exports = copyObject;
 
-},{"./_assignValue":329,"./_baseAssignValue":330}],345:[function(require,module,exports){
+},{"./_assignValue":412,"./_baseAssignValue":413}],428:[function(require,module,exports){
 var root = require('./_root');
 
 /** Used to detect overreaching core-js shims. */
@@ -78200,7 +80956,7 @@ var coreJsData = root['__core-js_shared__'];
 
 module.exports = coreJsData;
 
-},{"./_root":362}],346:[function(require,module,exports){
+},{"./_root":445}],429:[function(require,module,exports){
 var baseRest = require('./_baseRest'),
     isIterateeCall = require('./_isIterateeCall');
 
@@ -78239,7 +80995,7 @@ function createAssigner(assigner) {
 
 module.exports = createAssigner;
 
-},{"./_baseRest":340,"./_isIterateeCall":353}],347:[function(require,module,exports){
+},{"./_baseRest":423,"./_isIterateeCall":436}],430:[function(require,module,exports){
 var getNative = require('./_getNative');
 
 var defineProperty = (function() {
@@ -78252,7 +81008,7 @@ var defineProperty = (function() {
 
 module.exports = defineProperty;
 
-},{"./_getNative":349}],348:[function(require,module,exports){
+},{"./_getNative":432}],431:[function(require,module,exports){
 (function (global){
 /** Detect free variable `global` from Node.js. */
 var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
@@ -78260,7 +81016,7 @@ var freeGlobal = typeof global == 'object' && global && global.Object === Object
 module.exports = freeGlobal;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],349:[function(require,module,exports){
+},{}],432:[function(require,module,exports){
 var baseIsNative = require('./_baseIsNative'),
     getValue = require('./_getValue');
 
@@ -78279,7 +81035,7 @@ function getNative(object, key) {
 
 module.exports = getNative;
 
-},{"./_baseIsNative":336,"./_getValue":351}],350:[function(require,module,exports){
+},{"./_baseIsNative":419,"./_getValue":434}],433:[function(require,module,exports){
 var Symbol = require('./_Symbol');
 
 /** Used for built-in method references. */
@@ -78327,7 +81083,7 @@ function getRawTag(value) {
 
 module.exports = getRawTag;
 
-},{"./_Symbol":326}],351:[function(require,module,exports){
+},{"./_Symbol":409}],434:[function(require,module,exports){
 /**
  * Gets the value at `key` of `object`.
  *
@@ -78342,7 +81098,7 @@ function getValue(object, key) {
 
 module.exports = getValue;
 
-},{}],352:[function(require,module,exports){
+},{}],435:[function(require,module,exports){
 /** Used as references for various `Number` constants. */
 var MAX_SAFE_INTEGER = 9007199254740991;
 
@@ -78369,7 +81125,7 @@ function isIndex(value, length) {
 
 module.exports = isIndex;
 
-},{}],353:[function(require,module,exports){
+},{}],436:[function(require,module,exports){
 var eq = require('./eq'),
     isArrayLike = require('./isArrayLike'),
     isIndex = require('./_isIndex'),
@@ -78401,7 +81157,7 @@ function isIterateeCall(value, index, object) {
 
 module.exports = isIterateeCall;
 
-},{"./_isIndex":352,"./eq":369,"./isArrayLike":373,"./isObject":377}],354:[function(require,module,exports){
+},{"./_isIndex":435,"./eq":452,"./isArrayLike":456,"./isObject":460}],437:[function(require,module,exports){
 var coreJsData = require('./_coreJsData');
 
 /** Used to detect methods masquerading as native. */
@@ -78423,7 +81179,7 @@ function isMasked(func) {
 
 module.exports = isMasked;
 
-},{"./_coreJsData":345}],355:[function(require,module,exports){
+},{"./_coreJsData":428}],438:[function(require,module,exports){
 /** Used for built-in method references. */
 var objectProto = Object.prototype;
 
@@ -78443,7 +81199,7 @@ function isPrototype(value) {
 
 module.exports = isPrototype;
 
-},{}],356:[function(require,module,exports){
+},{}],439:[function(require,module,exports){
 var overArg = require('./_overArg');
 
 /* Built-in method references for those with the same name as other `lodash` methods. */
@@ -78451,7 +81207,7 @@ var nativeKeys = overArg(Object.keys, Object);
 
 module.exports = nativeKeys;
 
-},{"./_overArg":360}],357:[function(require,module,exports){
+},{"./_overArg":443}],440:[function(require,module,exports){
 /**
  * This function is like
  * [`Object.keys`](http://ecma-international.org/ecma-262/7.0/#sec-object.keys)
@@ -78473,7 +81229,7 @@ function nativeKeysIn(object) {
 
 module.exports = nativeKeysIn;
 
-},{}],358:[function(require,module,exports){
+},{}],441:[function(require,module,exports){
 var freeGlobal = require('./_freeGlobal');
 
 /** Detect free variable `exports`. */
@@ -78505,7 +81261,7 @@ var nodeUtil = (function() {
 
 module.exports = nodeUtil;
 
-},{"./_freeGlobal":348}],359:[function(require,module,exports){
+},{"./_freeGlobal":431}],442:[function(require,module,exports){
 /** Used for built-in method references. */
 var objectProto = Object.prototype;
 
@@ -78529,7 +81285,7 @@ function objectToString(value) {
 
 module.exports = objectToString;
 
-},{}],360:[function(require,module,exports){
+},{}],443:[function(require,module,exports){
 /**
  * Creates a unary function that invokes `func` with its argument transformed.
  *
@@ -78546,7 +81302,7 @@ function overArg(func, transform) {
 
 module.exports = overArg;
 
-},{}],361:[function(require,module,exports){
+},{}],444:[function(require,module,exports){
 var apply = require('./_apply');
 
 /* Built-in method references for those with the same name as other `lodash` methods. */
@@ -78584,7 +81340,7 @@ function overRest(func, start, transform) {
 
 module.exports = overRest;
 
-},{"./_apply":327}],362:[function(require,module,exports){
+},{"./_apply":410}],445:[function(require,module,exports){
 var freeGlobal = require('./_freeGlobal');
 
 /** Detect free variable `self`. */
@@ -78595,7 +81351,7 @@ var root = freeGlobal || freeSelf || Function('return this')();
 
 module.exports = root;
 
-},{"./_freeGlobal":348}],363:[function(require,module,exports){
+},{"./_freeGlobal":431}],446:[function(require,module,exports){
 var baseSetToString = require('./_baseSetToString'),
     shortOut = require('./_shortOut');
 
@@ -78611,7 +81367,7 @@ var setToString = shortOut(baseSetToString);
 
 module.exports = setToString;
 
-},{"./_baseSetToString":341,"./_shortOut":364}],364:[function(require,module,exports){
+},{"./_baseSetToString":424,"./_shortOut":447}],447:[function(require,module,exports){
 /** Used to detect hot functions by number of calls within a span of milliseconds. */
 var HOT_COUNT = 800,
     HOT_SPAN = 16;
@@ -78650,7 +81406,7 @@ function shortOut(func) {
 
 module.exports = shortOut;
 
-},{}],365:[function(require,module,exports){
+},{}],448:[function(require,module,exports){
 /**
  * A specialized version of `_.indexOf` which performs strict equality
  * comparisons of values, i.e. `===`.
@@ -78675,7 +81431,7 @@ function strictIndexOf(array, value, fromIndex) {
 
 module.exports = strictIndexOf;
 
-},{}],366:[function(require,module,exports){
+},{}],449:[function(require,module,exports){
 /** Used for built-in method references. */
 var funcProto = Function.prototype;
 
@@ -78703,7 +81459,7 @@ function toSource(func) {
 
 module.exports = toSource;
 
-},{}],367:[function(require,module,exports){
+},{}],450:[function(require,module,exports){
 var copyObject = require('./_copyObject'),
     createAssigner = require('./_createAssigner'),
     keysIn = require('./keysIn');
@@ -78743,7 +81499,7 @@ var assignInWith = createAssigner(function(object, source, srcIndex, customizer)
 
 module.exports = assignInWith;
 
-},{"./_copyObject":344,"./_createAssigner":346,"./keysIn":381}],368:[function(require,module,exports){
+},{"./_copyObject":427,"./_createAssigner":429,"./keysIn":464}],451:[function(require,module,exports){
 /**
  * Creates a function that returns `value`.
  *
@@ -78771,7 +81527,7 @@ function constant(value) {
 
 module.exports = constant;
 
-},{}],369:[function(require,module,exports){
+},{}],452:[function(require,module,exports){
 /**
  * Performs a
  * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
@@ -78810,7 +81566,7 @@ function eq(value, other) {
 
 module.exports = eq;
 
-},{}],370:[function(require,module,exports){
+},{}],453:[function(require,module,exports){
 /**
  * This method returns the first argument it receives.
  *
@@ -78833,7 +81589,7 @@ function identity(value) {
 
 module.exports = identity;
 
-},{}],371:[function(require,module,exports){
+},{}],454:[function(require,module,exports){
 var baseIsArguments = require('./_baseIsArguments'),
     isObjectLike = require('./isObjectLike');
 
@@ -78871,7 +81627,7 @@ var isArguments = baseIsArguments(function() { return arguments; }()) ? baseIsAr
 
 module.exports = isArguments;
 
-},{"./_baseIsArguments":334,"./isObjectLike":378}],372:[function(require,module,exports){
+},{"./_baseIsArguments":417,"./isObjectLike":461}],455:[function(require,module,exports){
 /**
  * Checks if `value` is classified as an `Array` object.
  *
@@ -78899,7 +81655,7 @@ var isArray = Array.isArray;
 
 module.exports = isArray;
 
-},{}],373:[function(require,module,exports){
+},{}],456:[function(require,module,exports){
 var isFunction = require('./isFunction'),
     isLength = require('./isLength');
 
@@ -78934,7 +81690,7 @@ function isArrayLike(value) {
 
 module.exports = isArrayLike;
 
-},{"./isFunction":375,"./isLength":376}],374:[function(require,module,exports){
+},{"./isFunction":458,"./isLength":459}],457:[function(require,module,exports){
 var root = require('./_root'),
     stubFalse = require('./stubFalse');
 
@@ -78974,7 +81730,7 @@ var isBuffer = nativeIsBuffer || stubFalse;
 
 module.exports = isBuffer;
 
-},{"./_root":362,"./stubFalse":383}],375:[function(require,module,exports){
+},{"./_root":445,"./stubFalse":466}],458:[function(require,module,exports){
 var baseGetTag = require('./_baseGetTag'),
     isObject = require('./isObject');
 
@@ -79013,7 +81769,7 @@ function isFunction(value) {
 
 module.exports = isFunction;
 
-},{"./_baseGetTag":332,"./isObject":377}],376:[function(require,module,exports){
+},{"./_baseGetTag":415,"./isObject":460}],459:[function(require,module,exports){
 /** Used as references for various `Number` constants. */
 var MAX_SAFE_INTEGER = 9007199254740991;
 
@@ -79050,7 +81806,7 @@ function isLength(value) {
 
 module.exports = isLength;
 
-},{}],377:[function(require,module,exports){
+},{}],460:[function(require,module,exports){
 /**
  * Checks if `value` is the
  * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
@@ -79083,7 +81839,7 @@ function isObject(value) {
 
 module.exports = isObject;
 
-},{}],378:[function(require,module,exports){
+},{}],461:[function(require,module,exports){
 /**
  * Checks if `value` is object-like. A value is object-like if it's not `null`
  * and has a `typeof` result of "object".
@@ -79114,7 +81870,7 @@ function isObjectLike(value) {
 
 module.exports = isObjectLike;
 
-},{}],379:[function(require,module,exports){
+},{}],462:[function(require,module,exports){
 var baseIsTypedArray = require('./_baseIsTypedArray'),
     baseUnary = require('./_baseUnary'),
     nodeUtil = require('./_nodeUtil');
@@ -79143,7 +81899,7 @@ var isTypedArray = nodeIsTypedArray ? baseUnary(nodeIsTypedArray) : baseIsTypedA
 
 module.exports = isTypedArray;
 
-},{"./_baseIsTypedArray":337,"./_baseUnary":343,"./_nodeUtil":358}],380:[function(require,module,exports){
+},{"./_baseIsTypedArray":420,"./_baseUnary":426,"./_nodeUtil":441}],463:[function(require,module,exports){
 var arrayLikeKeys = require('./_arrayLikeKeys'),
     baseKeys = require('./_baseKeys'),
     isArrayLike = require('./isArrayLike');
@@ -79182,7 +81938,7 @@ function keys(object) {
 
 module.exports = keys;
 
-},{"./_arrayLikeKeys":328,"./_baseKeys":338,"./isArrayLike":373}],381:[function(require,module,exports){
+},{"./_arrayLikeKeys":411,"./_baseKeys":421,"./isArrayLike":456}],464:[function(require,module,exports){
 var arrayLikeKeys = require('./_arrayLikeKeys'),
     baseKeysIn = require('./_baseKeysIn'),
     isArrayLike = require('./isArrayLike');
@@ -79216,7 +81972,7 @@ function keysIn(object) {
 
 module.exports = keysIn;
 
-},{"./_arrayLikeKeys":328,"./_baseKeysIn":339,"./isArrayLike":373}],382:[function(require,module,exports){
+},{"./_arrayLikeKeys":411,"./_baseKeysIn":422,"./isArrayLike":456}],465:[function(require,module,exports){
 /**
  * This method returns `undefined`.
  *
@@ -79235,7 +81991,7 @@ function noop() {
 
 module.exports = noop;
 
-},{}],383:[function(require,module,exports){
+},{}],466:[function(require,module,exports){
 /**
  * This method returns `false`.
  *
@@ -79255,7 +82011,7 @@ function stubFalse() {
 
 module.exports = stubFalse;
 
-},{}],384:[function(require,module,exports){
+},{}],467:[function(require,module,exports){
 
 var looper = module.exports = function (fun) {
   (function next () {
@@ -79271,1108 +82027,7 @@ var looper = module.exports = function (fun) {
   })()
 }
 
-},{}],385:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const map = require('lodash.map')
-const filter = require('lodash.filter')
-const convert = require('./convert')
-const protocols = require('./protocols-table')
-const varint = require('varint')
-
-// export codec
-module.exports = {
-  stringToStringTuples: stringToStringTuples,
-  stringTuplesToString: stringTuplesToString,
-
-  tuplesToStringTuples: tuplesToStringTuples,
-  stringTuplesToTuples: stringTuplesToTuples,
-
-  bufferToTuples: bufferToTuples,
-  tuplesToBuffer: tuplesToBuffer,
-
-  bufferToString: bufferToString,
-  stringToBuffer: stringToBuffer,
-
-  fromString: fromString,
-  fromBuffer: fromBuffer,
-  validateBuffer: validateBuffer,
-  isValidBuffer: isValidBuffer,
-  cleanPath: cleanPath,
-
-  ParseError: ParseError,
-  protoFromTuple: protoFromTuple,
-
-  sizeForAddr: sizeForAddr
-}
-
-// string -> [[str name, str addr]... ]
-function stringToStringTuples (str) {
-  const tuples = []
-  const parts = str.split('/').slice(1) // skip first empty elem
-  if (parts.length === 1 && parts[0] === '') {
-    return []
-  }
-
-  for (let p = 0; p < parts.length; p++) {
-    const part = parts[p]
-    const proto = protocols(part)
-
-    if (proto.size === 0) {
-      tuples.push([part])
-      continue
-    }
-
-    p++ // advance addr part
-    if (p >= parts.length) {
-      throw ParseError('invalid address: ' + str)
-    }
-
-    tuples.push([part, parts[p]])
-  }
-
-  return tuples
-}
-
-// [[str name, str addr]... ] -> string
-function stringTuplesToString (tuples) {
-  const parts = []
-  map(tuples, function (tup) {
-    const proto = protoFromTuple(tup)
-    parts.push(proto.name)
-    if (tup.length > 1) {
-      parts.push(tup[1])
-    }
-  })
-
-  return '/' + parts.join('/')
-}
-
-// [[str name, str addr]... ] -> [[int code, Buffer]... ]
-function stringTuplesToTuples (tuples) {
-  return map(tuples, function (tup) {
-    if (!Array.isArray(tup)) {
-      tup = [tup]
-    }
-    const proto = protoFromTuple(tup)
-    if (tup.length > 1) {
-      return [proto.code, convert.toBuffer(proto.code, tup[1])]
-    }
-    return [proto.code]
-  })
-}
-
-// [[int code, Buffer]... ] -> [[str name, str addr]... ]
-function tuplesToStringTuples (tuples) {
-  return map(tuples, function (tup) {
-    const proto = protoFromTuple(tup)
-    if (tup.length > 1) {
-      return [proto.code, convert.toString(proto.code, tup[1])]
-    }
-    return [proto.code]
-  })
-}
-
-// [[int code, Buffer ]... ] -> Buffer
-function tuplesToBuffer (tuples) {
-  return fromBuffer(Buffer.concat(map(tuples, function (tup) {
-    const proto = protoFromTuple(tup)
-    let buf = Buffer.from(varint.encode(proto.code))
-
-    if (tup.length > 1) {
-      buf = Buffer.concat([buf, tup[1]]) // add address buffer
-    }
-
-    return buf
-  })))
-}
-
-function sizeForAddr (p, addr) {
-  if (p.size > 0) {
-    return p.size / 8
-  } else if (p.size === 0) {
-    return 0
-  } else {
-    const size = varint.decode(addr)
-    return size + varint.decode.bytes
-  }
-}
-
-// Buffer -> [[int code, Buffer ]... ]
-function bufferToTuples (buf) {
-  const tuples = []
-  let i = 0
-  while (i < buf.length) {
-    const code = varint.decode(buf, i)
-    const n = varint.decode.bytes
-
-    const p = protocols(code)
-
-    const size = sizeForAddr(p, buf.slice(i + n))
-
-    if (size === 0) {
-      tuples.push([code])
-      i += n
-      continue
-    }
-
-    const addr = buf.slice(i + n, i + n + size)
-
-    i += (size + n)
-
-    if (i > buf.length) { // did not end _exactly_ at buffer.length
-      throw ParseError('Invalid address buffer: ' + buf.toString('hex'))
-    }
-
-    // ok, tuple seems good.
-    tuples.push([code, addr])
-  }
-
-  return tuples
-}
-
-// Buffer -> String
-function bufferToString (buf) {
-  const a = bufferToTuples(buf)
-  const b = tuplesToStringTuples(a)
-  return stringTuplesToString(b)
-}
-
-// String -> Buffer
-function stringToBuffer (str) {
-  str = cleanPath(str)
-  const a = stringToStringTuples(str)
-  const b = stringTuplesToTuples(a)
-
-  return tuplesToBuffer(b)
-}
-
-// String -> Buffer
-function fromString (str) {
-  return stringToBuffer(str)
-}
-
-// Buffer -> Buffer
-function fromBuffer (buf) {
-  const err = validateBuffer(buf)
-  if (err) throw err
-  return Buffer.from(buf) // copy
-}
-
-function validateBuffer (buf) {
-  try {
-    bufferToTuples(buf) // try to parse. will throw if breaks
-  } catch (err) {
-    return err
-  }
-}
-
-function isValidBuffer (buf) {
-  return validateBuffer(buf) === undefined
-}
-
-function cleanPath (str) {
-  return '/' + filter(str.trim().split('/')).join('/')
-}
-
-function ParseError (str) {
-  return new Error('Error parsing address: ' + str)
-}
-
-function protoFromTuple (tup) {
-  const proto = protocols(tup[0])
-  return proto
-}
-
-}).call(this,require("buffer").Buffer)
-},{"./convert":386,"./protocols-table":388,"buffer":84,"lodash.filter":314,"lodash.map":318,"varint":655}],386:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const ip = require('ip')
-const ipAddress = require('ip-address')
-const protocols = require('./protocols-table')
-const bs58 = require('bs58')
-const varint = require('varint')
-
-module.exports = Convert
-
-// converts (serializes) addresses
-function Convert (proto, a) {
-  if (a instanceof Buffer) {
-    return Convert.toString(proto, a)
-  } else {
-    return Convert.toBuffer(proto, a)
-  }
-}
-
-Convert.toString = function convertToString (proto, buf) {
-  proto = protocols(proto)
-  switch (proto.code) {
-    case 4: // ipv4
-    case 41: // ipv6
-      return ip.toString(buf)
-
-    case 6: // tcp
-    case 17: // udp
-    case 33: // dccp
-    case 132: // sctp
-      return buf2port(buf)
-
-    case 54: // dns4
-    case 55: // dns6
-    case 56: // dnsaddr
-      return buf2str(buf)
-
-    case 421: // ipfs
-      return buf2mh(buf)
-    default:
-      return buf.toString('hex') // no clue. convert to hex
-  }
-}
-
-Convert.toBuffer = function convertToBuffer (proto, str) {
-  proto = protocols(proto)
-  switch (proto.code) {
-    case 4: // ipv4
-      return ip2buf(new ipAddress.Address4(str))
-    case 41: // ipv6
-      return ip2buf(new ipAddress.Address6(str))
-
-    case 6: // tcp
-    case 17: // udp
-    case 33: // dccp
-    case 132: // sctp
-      return port2buf(parseInt(str, 10))
-
-    case 54: // dns4
-    case 55: // dns6
-    case 56: // dnsaddr
-      return str2buf(str)
-
-    case 421: // ipfs
-      return mh2buf(str)
-    default:
-      return Buffer.from(str, 'hex') // no clue. convert from hex
-  }
-}
-
-function ip2buf (ipaddr) {
-  if (!ipaddr.isValid()) throw new Error('invalid ip address')
-  return ip.toBuffer(ipaddr.address)
-}
-
-function port2buf (port) {
-  const buf = Buffer.alloc(2)
-  buf.writeUInt16BE(port, 0)
-  return buf
-}
-
-function buf2port (buf) {
-  return buf.readUInt16BE(0)
-}
-
-function str2buf (str) {
-  const buf = Buffer.from(str)
-  const size = Buffer.from(varint.encode(buf.length))
-  return Buffer.concat([size, buf])
-}
-
-function buf2str (buf) {
-  const size = varint.decode(buf)
-  buf = buf.slice(varint.decode.bytes)
-
-  if (buf.length !== size) {
-    throw new Error('inconsistent lengths')
-  }
-
-  return buf.toString()
-}
-
-function mh2buf (hash) {
-  // the address is a varint prefixed multihash string representation
-  const mh = Buffer.from(bs58.decode(hash))
-  const size = Buffer.from(varint.encode(mh.length))
-  return Buffer.concat([size, mh])
-}
-
-function buf2mh (buf) {
-  const size = varint.decode(buf)
-  const address = buf.slice(varint.decode.bytes)
-
-  if (address.length !== size) {
-    throw new Error('inconsistent lengths')
-  }
-
-  return bs58.encode(address)
-}
-
-}).call(this,require("buffer").Buffer)
-},{"./protocols-table":388,"bs58":86,"buffer":84,"ip":167,"ip-address":157,"varint":655}],387:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const map = require('lodash.map')
-const extend = require('xtend')
-const codec = require('./codec')
-const protocols = require('./protocols-table')
-const varint = require('varint')
-const bs58 = require('bs58')
-const withIs = require('class-is')
-
-const NotImplemented = new Error('Sorry, Not Implemented Yet.')
-
-/**
- * Creates a [multiaddr](https://github.com/multiformats/multiaddr) from
- * a Buffer, String or another Multiaddr instance
- * public key.
- * @class Multiaddr
- * @param {(String|Buffer|Multiaddr)} addr - If String or Buffer, needs to adhere
- * to the address format of a [multiaddr](https://github.com/multiformats/multiaddr#string-format)
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- */
-const Multiaddr = withIs.proto(function (addr) {
-  if (!(this instanceof Multiaddr)) {
-    return new Multiaddr(addr)
-  }
-
-  // default
-  if (addr == null) {
-    addr = ''
-  }
-
-  if (addr instanceof Buffer) {
-    /**
-     * @type {Buffer} - The raw bytes representing this multiaddress
-     */
-    this.buffer = codec.fromBuffer(addr)
-  } else if (typeof addr === 'string' || addr instanceof String) {
-    this.buffer = codec.fromString(addr)
-  } else if (addr.buffer && addr.protos && addr.protoCodes) { // Multiaddr
-    this.buffer = codec.fromBuffer(addr.buffer) // validate + copy buffer
-  } else {
-    throw new Error('addr must be a string, Buffer, or another Multiaddr')
-  }
-}, { className: 'Multiaddr', symbolName: '@multiformats/js-multiaddr/multiaddr' })
-
-/**
- * Returns Multiaddr as a String
- *
- * @returns {String}
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').toString()
- * // '/ip4/127.0.0.1/tcp/4001'
- */
-Multiaddr.prototype.toString = function toString () {
-  return codec.bufferToString(this.buffer)
-}
-
-/**
- * Returns Multiaddr as a convinient options object to be used with net.createConnection
- *
- * @returns {{family: String, host: String, transport: String, port: String}}
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').toOptions()
- * // { family: 'ipv4', host: '127.0.0.1', transport: 'tcp', port: '4001' }
- */
-Multiaddr.prototype.toOptions = function toOptions () {
-  const opts = {}
-  const parsed = this.toString().split('/')
-  opts.family = parsed[1] === 'ip4' ? 'ipv4' : 'ipv6'
-  opts.host = parsed[2]
-  opts.transport = parsed[3]
-  opts.port = parsed[4]
-  return opts
-}
-
-/**
- * Returns Multiaddr as a human-readable string
- *
- * @returns {String}
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').inspect()
- * // '<Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>'
- */
-Multiaddr.prototype.inspect = function inspect () {
-  return '<Multiaddr ' +
-    this.buffer.toString('hex') + ' - ' +
-    codec.bufferToString(this.buffer) + '>'
-}
-
-/**
- * Returns the protocols the Multiaddr is defined with, as an array of objects, in
- * left-to-right order. Each object contains the protocol code, protocol name,
- * and the size of its address space in bits.
- * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
- *
- * @returns {Array.<Object>} protocols - All the protocols the address is composed of
- * @returns {Number} protocols[].code
- * @returns {Number} protocols[].size
- * @returns {String} protocols[].name
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').protos()
- * // [ { code: 4, size: 32, name: 'ip4' },
- * //   { code: 6, size: 16, name: 'tcp' } ]
- */
-Multiaddr.prototype.protos = function protos () {
-  return map(this.protoCodes(), function (code) {
-    return extend(protocols(code))
-    // copy to prevent users from modifying the internal objs.
-  })
-}
-
-/**
- * Returns the codes of the protocols in left-to-right order.
- * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
- *
- * @returns {Array.<Number>} protocol codes
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').protoCodes()
- * // [ 4, 6 ]
- */
-Multiaddr.prototype.protoCodes = function protoCodes () {
-  const codes = []
-  const buf = this.buffer
-  let i = 0
-  while (i < buf.length) {
-    const code = varint.decode(buf, i)
-    const n = varint.decode.bytes
-
-    const p = protocols(code)
-    const size = codec.sizeForAddr(p, buf.slice(i + n))
-
-    i += (size + n)
-    codes.push(code)
-  }
-
-  return codes
-}
-
-/**
- * Returns the names of the protocols in left-to-right order.
- * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
- *
- * @return {Array.<String>} protocol names
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').protoNames()
- * // [ 'ip4', 'tcp' ]
- */
-Multiaddr.prototype.protoNames = function protoNames () {
-  return map(this.protos(), function (proto) {
-    return proto.name
-  })
-}
-
-/**
- * Returns a tuple of parts
- *
- * @return {Array.<Array>} tuples
- * @return {Number} tuples[].0 code of protocol
- * @return {Buffer} tuples[].1 contents of address
- * @example
- * Multiaddr("/ip4/127.0.0.1/tcp/4001").tuples()
- * // [ [ 4, <Buffer 7f 00 00 01> ], [ 6, <Buffer 0f a1> ] ]
- */
-Multiaddr.prototype.tuples = function tuples () {
-  return codec.bufferToTuples(this.buffer)
-}
-
-/**
- * Returns a tuple of string/number parts
- *
- * @return {Array.<Array>} tuples
- * @return {Number} tuples[].0 code of protocol
- * @return {(String|Number)} tuples[].1 contents of address
- * @example
- * Multiaddr("/ip4/127.0.0.1/tcp/4001").stringTuples()
- * // [ [ 4, '127.0.0.1' ], [ 6, 4001 ] ]
- */
-Multiaddr.prototype.stringTuples = function stringTuples () {
-  const t = codec.bufferToTuples(this.buffer)
-  return codec.tuplesToStringTuples(t)
-}
-
-/**
- * Encapsulates a Multiaddr in another Multiaddr
- *
- * @param {Multiaddr} addr - Multiaddr to add into this Multiaddr
- * @return {Multiaddr}
- * @example
- * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
- * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
- *
- * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- *
- * const mh3 = mh1.encapsulate(mh2)
- * // <Multiaddr 0408080808060438047f000001060fa1 - /ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001>
- *
- * mh3.toString()
- * // '/ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001'
- */
-Multiaddr.prototype.encapsulate = function encapsulate (addr) {
-  addr = Multiaddr(addr)
-  return Multiaddr(this.toString() + addr.toString())
-}
-
-/**
- * Decapsulates a Multiaddr from another Multiaddr
- *
- * @param {Multiaddr} addr - Multiaddr to remove from this Multiaddr
- * @return {Multiaddr}
- * @example
- * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
- * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
- *
- * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- *
- * const mh3 = mh1.encapsulate(mh2)
- * // <Multiaddr 0408080808060438047f000001060fa1 - /ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001>
- *
- * mh3.decapsulate(mh2).toString()
- * // '/ip4/8.8.8.8/tcp/1080'
- */
-Multiaddr.prototype.decapsulate = function decapsulate (addr) {
-  addr = addr.toString()
-  const s = this.toString()
-  const i = s.lastIndexOf(addr)
-  if (i < 0) {
-    throw new Error('Address ' + this + ' does not contain subaddress: ' + addr)
-  }
-  return Multiaddr(s.slice(0, i))
-}
-
-/**
- * Extract the peerId if the multiaddr contains one
- *
- * @return {String|null} peerId - The id of the peer or null if invalid or missing from the ma
- * @example
- * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080/ipfs/QmValidBase58string')
- * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080/ipfs/QmValidBase58string>
- *
- * // should return QmValidBase58string or null if the id is missing or invalid
- * const peerId = mh1.getPeerId()
- */
-Multiaddr.prototype.getPeerId = function getPeerId () {
-  let b58str = null
-  try {
-    b58str = this.stringTuples().filter((tuple) => {
-      if (tuple[0] === protocols.names['ipfs'].code) {
-        return true
-      }
-    })[0][1]
-
-    bs58.decode(b58str)
-  } catch (e) {
-    b58str = null
-  }
-
-  return b58str
-}
-
-/**
- * Checks if two Multiaddrs are the same
- *
- * @param {Multiaddr} addr
- * @return {Bool}
- * @example
- * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
- * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
- *
- * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- *
- * mh1.equals(mh1)
- * // true
- *
- * mh1.equals(mh2)
- * // false
- */
-Multiaddr.prototype.equals = function equals (addr) {
-  return this.buffer.equals(addr.buffer)
-}
-
-/**
- * Gets a Multiaddrs node-friendly address object. Note that protocol information
- * is left out: in Node (and most network systems) the protocol is unknowable
- * given only the address.
- *
- * Has to be a ThinWaist Address, otherwise throws error
- *
- * @returns {{family: String, address: String, port: String}}
- * @throws {Error} Throws error if Multiaddr is not a Thin Waist address
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').nodeAddress()
- * // {family: 'IPv4', address: '127.0.0.1', port: '4001'}
- */
-Multiaddr.prototype.nodeAddress = function nodeAddress () {
-  if (!this.isThinWaistAddress()) {
-    throw new Error('Multiaddr must be "thin waist" address for nodeAddress.')
-  }
-
-  const codes = this.protoCodes()
-  const parts = this.toString().split('/').slice(1)
-  return {
-    family: (codes[0] === 41) ? 'IPv6' : 'IPv4',
-    address: parts[1], // ip addr
-    port: parts[3] // tcp or udp port
-  }
-}
-
-/**
- * Creates a Multiaddr from a node-friendly address object
- *
- * @param {String} addr
- * @param {String} transport
- * @returns {Multiaddr} multiaddr
- * @throws {Error} Throws error if addr is not truthy
- * @throws {Error} Throws error if transport is not truthy
- * @example
- * Multiaddr.fromNodeAddress({address: '127.0.0.1', port: '4001'}, 'tcp')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- */
-Multiaddr.fromNodeAddress = function fromNodeAddress (addr, transport) {
-  if (!addr) throw new Error('requires node address object')
-  if (!transport) throw new Error('requires transport protocol')
-  const ip = (addr.family === 'IPv6') ? 'ip6' : 'ip4'
-  return Multiaddr('/' + [ip, addr.address, transport, addr.port].join('/'))
-}
-
-// TODO find a better example, not sure about it's good enough
-/**
- * Returns if a Multiaddr is a Thin Waist address or not.
- *
- * Thin Waist is if a Multiaddr adheres to the standard combination of:
- *
- * `{IPv4, IPv6}/{TCP, UDP}`
- *
- * @param {Multiaddr} [addr] - Defaults to using `this` instance
- * @returns {Boolean} isThinWaistAddress
- * @example
- * const mh1 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- * const mh2 = Multiaddr('/ip4/192.168.2.1/tcp/5001')
- * // <Multiaddr 04c0a80201061389 - /ip4/192.168.2.1/tcp/5001>
- * const mh3 = mh1.encapsulate(mh2)
- * // <Multiaddr 047f000001060fa104c0a80201061389 - /ip4/127.0.0.1/tcp/4001/ip4/192.168.2.1/tcp/5001>
- * mh1.isThinWaistAddress()
- * // true
- * mh2.isThinWaistAddress()
- * // true
- * mh3.isThinWaistAddress()
- * // false
- */
-Multiaddr.prototype.isThinWaistAddress = function isThinWaistAddress (addr) {
-  const protos = (addr || this).protos()
-
-  if (protos.length !== 2) {
-    return false
-  }
-
-  if (protos[0].code !== 4 && protos[0].code !== 41) {
-    return false
-  }
-  if (protos[1].code !== 6 && protos[1].code !== 17) {
-    return false
-  }
-  return true
-}
-
-// TODO rename this to something else than "stupid string"
-/**
- * Converts a "stupid string" into a Multiaddr.
- *
- * Stupid string format:
- * ```
- * <proto><IPv>://<IP Addr>[:<proto port>]
- * udp4://1.2.3.4:5678
- * ```
- *
- * @param {String} [str] - String in the "stupid" format
- * @throws {NotImplemented}
- * @returns {undefined}
- * @todo Not Implemented yet
- */
-Multiaddr.prototype.fromStupidString = function fromStupidString (str) {
-  throw NotImplemented
-}
-
-/**
- * Object containing table, names and codes of all supported protocols.
- * To get the protocol values from a Multiaddr, you can use
- * [`.protos()`](#multiaddrprotos),
- * [`.protoCodes()`](#multiaddrprotocodes) or
- * [`.protoNames()`](#multiaddrprotonames)
- *
- * @instance
- * @returns {{table: Array, names: Object, codes: Object}}
- *
- */
-Multiaddr.protocols = protocols
-
-/**
- * Returns if something is a Multiaddr that is a name
- *
- * @param {Multiaddr} addr
- * @return {Bool} isName
- */
-Multiaddr.isName = function isName (addr) {
-  if (!Multiaddr.isMultiaddr(addr)) {
-    return false
-  }
-
-  // if a part of the multiaddr is resolvable, then return true
-  return addr.protos().some((proto) => proto.resolvable)
-}
-
-/**
- * Returns an array of multiaddrs, by resolving the multiaddr that is a name
- *
- * @param {Multiaddr} addr
- *
- * @param {Function} callback
- * @return {Bool} isName
- */
-Multiaddr.resolve = function resolve (addr, callback) {
-  if (!Multiaddr.isMultiaddr(addr) || !Multiaddr.isName(addr)) {
-    return callback(new Error('not a valid name'))
-  }
-
-  /*
-   * Needs more consideration from spec design:
-   *   - what to return
-   *   - how to achieve it in the browser?
-   */
-  return callback(new Error('not implemented yet'))
-}
-
-exports = module.exports = Multiaddr
-
-}).call(this,require("buffer").Buffer)
-},{"./codec":385,"./protocols-table":388,"bs58":86,"buffer":84,"class-is":92,"lodash.map":318,"varint":655,"xtend":663}],388:[function(require,module,exports){
-'use strict'
-
-const map = require('lodash.map')
-
-function Protocols (proto) {
-  if (typeof (proto) === 'number') {
-    if (Protocols.codes[proto]) {
-      return Protocols.codes[proto]
-    }
-
-    throw new Error('no protocol with code: ' + proto)
-  } else if (typeof (proto) === 'string' || proto instanceof String) {
-    if (Protocols.names[proto]) {
-      return Protocols.names[proto]
-    }
-
-    throw new Error('no protocol with name: ' + proto)
-  }
-
-  throw new Error('invalid protocol id type: ' + proto)
-}
-
-const V = -1
-Protocols.lengthPrefixedVarSize = V
-Protocols.V = V
-
-Protocols.table = [
-  [4, 32, 'ip4'],
-  [6, 16, 'tcp'],
-  [17, 16, 'udp'],
-  [33, 16, 'dccp'],
-  [41, 128, 'ip6'],
-  [54, V, 'dns4', 'resolvable'],
-  [55, V, 'dns6', 'resolvable'],
-  [56, V, 'dnsaddr', 'resolvable'],
-  [132, 16, 'sctp'],
-  // all of the below use varint for size
-  [302, 0, 'utp'],
-  [421, Protocols.lengthPrefixedVarSize, 'ipfs'],
-  [480, 0, 'http'],
-  [443, 0, 'https'],
-  [477, 0, 'ws'],
-  [478, 0, 'wss'],
-  [479, 0, 'p2p-websocket-star'],
-  [275, 0, 'p2p-webrtc-star'],
-  [276, 0, 'p2p-webrtc-direct'],
-  [290, 0, 'p2p-circuit']
-]
-
-Protocols.names = {}
-Protocols.codes = {}
-
-// populate tables
-map(Protocols.table, function (row) {
-  const proto = p.apply(null, row)
-  Protocols.codes[proto.code] = proto
-  Protocols.names[proto.name] = proto
-})
-
-Protocols.object = p
-
-function p (code, size, name, resolvable) {
-  return {
-    code: code,
-    size: size,
-    name: name,
-    resolvable: Boolean(resolvable)
-  }
-}
-
-module.exports = Protocols
-
-},{"lodash.map":318}],389:[function(require,module,exports){
-'use strict'
-
-const multiaddr = require('multiaddr')
-
-/*
- * Valid combinations
- */
-const DNS4 = base('dns4')
-const DNS6 = base('dns6')
-const _DNS = or(
-  base('dnsaddr'),
-  DNS4,
-  DNS6
-)
-
-const IP = or(base('ip4'), base('ip6'))
-const TCP = and(IP, base('tcp'))
-const UDP = and(IP, base('udp'))
-const UTP = and(UDP, base('utp'))
-
-const DNS = or(
-  and(_DNS, base('tcp')),
-  _DNS
-)
-
-const WebSockets = or(
-  and(TCP, base('ws')),
-  and(DNS, base('ws'))
-)
-
-const WebSocketsSecure = or(
-  and(TCP, base('wss')),
-  and(DNS, base('wss'))
-)
-
-const HTTP = or(
-  and(TCP, base('http')),
-  and(IP, base('http')),
-  and(DNS, base('http')),
-  and(DNS)
-)
-
-const HTTPS = or(
-  and(TCP, base('https')),
-  and(IP, base('https')),
-  and(DNS, base('https'))
-)
-
-const WebRTCStar = or(
-  and(WebSockets, base('p2p-webrtc-star'), base('ipfs')),
-  and(WebSocketsSecure, base('p2p-webrtc-star'), base('ipfs'))
-)
-
-const WebSocketStar = or(
-  and(WebSockets, base('p2p-websocket-star'), base('ipfs')),
-  and(WebSocketsSecure, base('p2p-websocket-star'), base('ipfs')),
-  and(WebSockets, base('p2p-websocket-star')),
-  and(WebSocketsSecure, base('p2p-websocket-star'))
-)
-
-const WebRTCDirect = or(
-  and(HTTP, base('p2p-webrtc-direct')),
-  and(HTTPS, base('p2p-webrtc-direct'))
-)
-
-const Reliable = or(
-  WebSockets,
-  WebSocketsSecure,
-  HTTP,
-  HTTPS,
-  WebRTCStar,
-  WebRTCDirect,
-  TCP,
-  UTP
-)
-
-const WebRTCCircuit = or(
-  and(Reliable, base('p2p-webrtc-circuit'), base('ipfs')),
-  and(base('p2p-webrtc-circuit'), base('ipfs'))
-)
-
-let _IPFS = or(
-  and(Reliable, base('ipfs')),
-  WebRTCStar,
-  base('ipfs')
-)
-
-const _Circuit = or(
-  and(_IPFS, base('p2p-circuit'), _IPFS),
-  and(_IPFS, base('p2p-circuit')),
-  and(base('p2p-circuit'), _IPFS),
-  and(Reliable, base('p2p-circuit')),
-  and(base('p2p-circuit'), Reliable),
-  base('p2p-circuit')
-)
-
-const CircuitRecursive = () => or(
-  and(_Circuit, CircuitRecursive),
-  _Circuit
-)
-
-const Circuit = CircuitRecursive()
-
-const IPFS = or(
-  and(Circuit, _IPFS, Circuit),
-  and(_IPFS, Circuit),
-  and(Circuit, _IPFS),
-  Circuit,
-  _IPFS
-)
-
-exports.DNS = DNS
-exports.DNS4 = DNS4
-exports.DNS6 = DNS6
-exports.IP = IP
-exports.TCP = TCP
-exports.UDP = UDP
-exports.UTP = UTP
-exports.HTTP = HTTP
-exports.HTTPS = HTTPS
-exports.WebSockets = WebSockets
-exports.WebSocketsSecure = WebSocketsSecure
-exports.WebSocketStar = WebSocketStar
-exports.WebRTCStar = WebRTCStar
-exports.WebRTCDirect = WebRTCDirect
-exports.WebRTCCircuit = WebRTCCircuit
-exports.Reliable = Reliable
-exports.Circuit = Circuit
-exports.IPFS = IPFS
-
-/*
- * Validation funcs
- */
-
-function and () {
-  const args = Array.from(arguments)
-
-  function matches (a) {
-    if (typeof a === 'string') {
-      a = multiaddr(a)
-    }
-    let out = partialMatch(a.protoNames())
-    if (out === null) {
-      return false
-    }
-    return out.length === 0
-  }
-
-  function partialMatch (a) {
-    if (a.length < args.length) {
-      return null
-    }
-    args.some((arg) => {
-      a = typeof arg === 'function'
-        ? arg().partialMatch(a)
-        : arg.partialMatch(a)
-
-      if (a === null) {
-        return true
-      }
-    })
-
-    return a
-  }
-
-  return {
-    toString: function () { return '{ ' + args.join(' ') + ' }' },
-    input: args,
-    matches: matches,
-    partialMatch: partialMatch
-  }
-}
-
-function or () {
-  const args = Array.from(arguments)
-
-  function matches (a) {
-    if (typeof a === 'string') {
-      a = multiaddr(a)
-    }
-    const out = partialMatch(a.protoNames())
-    if (out === null) {
-      return false
-    }
-    return out.length === 0
-  }
-
-  function partialMatch (a) {
-    let out = null
-    args.some((arg) => {
-      const res = typeof arg === 'function'
-        ? arg().partialMatch(a)
-        : arg.partialMatch(a)
-      if (res) {
-        out = res
-        return true
-      }
-    })
-
-    return out
-  }
-
-  const result = {
-    toString: function () { return '{ ' + args.join(' ') + ' }' },
-    input: args,
-    matches: matches,
-    partialMatch: partialMatch
-  }
-
-  return result
-}
-
-function base (n) {
-  const name = n
-
-  function matches (a) {
-    if (typeof a === 'string') {
-      a = multiaddr(a)
-    }
-
-    const pnames = a.protoNames()
-    if (pnames.length === 1 && pnames[0] === name) {
-      return true
-    }
-    return false
-  }
-
-  function partialMatch (protos) {
-    if (protos.length === 0) {
-      return null
-    }
-
-    if (protos[0] === name) {
-      return protos.slice(1)
-    }
-    return null
-  }
-
-  return {
-    toString: function () { return name },
-    matches: matches,
-    partialMatch: partialMatch
-  }
-}
-
-},{"multiaddr":387}],390:[function(require,module,exports){
+},{}],468:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 var inherits = require('inherits')
@@ -80521,7 +82176,7 @@ function fnI (a, b, c, d, m, k, s) {
 module.exports = MD5
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":84,"hash-base":148,"inherits":154}],391:[function(require,module,exports){
+},{"buffer":84,"hash-base":150,"inherits":158}],469:[function(require,module,exports){
 module.exports = assert;
 
 function assert(val, msg) {
@@ -80534,7 +82189,7 @@ assert.equal = function assertEqual(l, r, msg) {
     throw new Error(msg || ('Assertion failed: ' + l + ' != ' + r));
 };
 
-},{}],392:[function(require,module,exports){
+},{}],470:[function(require,module,exports){
 'use strict'
 
 const exp = Math.exp
@@ -80604,7 +82259,7 @@ function MovingAverage (timespan) {
   return ret
 }
 
-},{}],393:[function(require,module,exports){
+},{}],471:[function(require,module,exports){
 /**
  * Helpers.
  */
@@ -80758,7 +82413,7 @@ function plural(ms, n, name) {
   return Math.ceil(ms / n) + ' ' + name + 's';
 }
 
-},{}],394:[function(require,module,exports){
+},{}],472:[function(require,module,exports){
 'use strict'
 
 var pump = require('pump')
@@ -80790,7 +82445,7 @@ module.exports = function Msgpack5Stream (stream) {
   return dup
 }
 
-},{"duplexify":143,"length-prefixed-stream":175,"msgpack5":397,"pump":395,"through2":396}],395:[function(require,module,exports){
+},{"duplexify":143,"length-prefixed-stream":180,"msgpack5":475,"pump":473,"through2":474}],473:[function(require,module,exports){
 var once = require('once')
 var eos = require('end-of-stream')
 var fs = require('fs') // we only need fs to get the ReadStream and WriteStream prototypes
@@ -80872,7 +82527,7 @@ var pump = function () {
 
 module.exports = pump
 
-},{"end-of-stream":144,"fs":64,"once":471}],396:[function(require,module,exports){
+},{"end-of-stream":144,"fs":63,"once":546}],474:[function(require,module,exports){
 (function (process){
 var Transform = require('readable-stream/transform')
   , inherits  = require('util').inherits
@@ -80972,7 +82627,7 @@ module.exports.obj = through2(function (options, transform, flush) {
 })
 
 }).call(this,require('_process'))
-},{"_process":499,"readable-stream/transform":597,"util":652,"xtend":663}],397:[function(require,module,exports){
+},{"_process":578,"readable-stream/transform":677,"util":732,"xtend":773}],475:[function(require,module,exports){
 'use strict'
 
 var Buffer = require('safe-buffer').Buffer
@@ -81058,7 +82713,7 @@ function msgpack (options) {
 
 module.exports = msgpack
 
-},{"./lib/decoder":398,"./lib/encoder":399,"./lib/streams":400,"assert":19,"bl":58,"safe-buffer":601}],398:[function(require,module,exports){
+},{"./lib/decoder":476,"./lib/encoder":477,"./lib/streams":478,"assert":18,"bl":57,"safe-buffer":681}],476:[function(require,module,exports){
 var bl = require('bl')
 var util = require('util')
 
@@ -81457,7 +83112,7 @@ module.exports = function buildDecode (decodingTypes) {
 
 module.exports.IncompleteBufferError = IncompleteBufferError
 
-},{"bl":58,"util":652}],399:[function(require,module,exports){
+},{"bl":57,"util":732}],477:[function(require,module,exports){
 'use strict'
 
 var Buffer = require('safe-buffer').Buffer
@@ -81747,7 +83402,7 @@ function encodeFloat (obj, forceFloat64) {
   return buf
 }
 
-},{"bl":58,"safe-buffer":601}],400:[function(require,module,exports){
+},{"bl":57,"safe-buffer":681}],478:[function(require,module,exports){
 'use strict'
 
 var Transform = require('readable-stream').Transform
@@ -81834,538 +83489,7 @@ Decoder.prototype._transform = function (buf, enc, done) {
 module.exports.decoder = Decoder
 module.exports.encoder = Encoder
 
-},{"bl":58,"inherits":154,"readable-stream":596}],401:[function(require,module,exports){
-arguments[4][385][0].apply(exports,arguments)
-},{"./convert":402,"./protocols-table":404,"buffer":84,"dup":385,"lodash.filter":314,"lodash.map":318,"varint":655}],402:[function(require,module,exports){
-arguments[4][386][0].apply(exports,arguments)
-},{"./protocols-table":404,"bs58":86,"buffer":84,"dup":386,"ip":167,"ip-address":157,"varint":655}],403:[function(require,module,exports){
-(function (Buffer){
-'use strict'
-
-const map = require('lodash.map')
-const extend = require('xtend')
-const codec = require('./codec')
-const protocols = require('./protocols-table')
-const varint = require('varint')
-const bs58 = require('bs58')
-const withIs = require('class-is')
-
-const NotImplemented = new Error('Sorry, Not Implemented Yet.')
-
-/**
- * Creates a [multiaddr](https://github.com/multiformats/multiaddr) from
- * a Buffer, String or another Multiaddr instance
- * public key.
- * @class Multiaddr
- * @param {(String|Buffer|Multiaddr)} addr - If String or Buffer, needs to adhere
- * to the address format of a [multiaddr](https://github.com/multiformats/multiaddr#string-format)
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- */
-const Multiaddr = withIs.proto(function (addr) {
-  if (!(this instanceof Multiaddr)) {
-    return new Multiaddr(addr)
-  }
-
-  // default
-  if (addr == null) {
-    addr = ''
-  }
-
-  if (addr instanceof Buffer) {
-    /**
-     * @type {Buffer} - The raw bytes representing this multiaddress
-     */
-    this.buffer = codec.fromBuffer(addr)
-  } else if (typeof addr === 'string' || addr instanceof String) {
-    if (addr.length > 0 && addr.charAt(0) !== '/') {
-      throw new Error(`multiaddr "${addr}" must start with a "/"`)
-    }
-    this.buffer = codec.fromString(addr)
-  } else if (addr.buffer && addr.protos && addr.protoCodes) { // Multiaddr
-    this.buffer = codec.fromBuffer(addr.buffer) // validate + copy buffer
-  } else {
-    throw new Error('addr must be a string, Buffer, or another Multiaddr')
-  }
-}, { className: 'Multiaddr', symbolName: '@multiformats/js-multiaddr/multiaddr' })
-
-/**
- * Returns Multiaddr as a String
- *
- * @returns {String}
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').toString()
- * // '/ip4/127.0.0.1/tcp/4001'
- */
-Multiaddr.prototype.toString = function toString () {
-  return codec.bufferToString(this.buffer)
-}
-
-/**
- * Returns Multiaddr as a convinient options object to be used with net.createConnection
- *
- * @returns {{family: String, host: String, transport: String, port: String}}
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').toOptions()
- * // { family: 'ipv4', host: '127.0.0.1', transport: 'tcp', port: '4001' }
- */
-Multiaddr.prototype.toOptions = function toOptions () {
-  const opts = {}
-  const parsed = this.toString().split('/')
-  opts.family = parsed[1] === 'ip4' ? 'ipv4' : 'ipv6'
-  opts.host = parsed[2]
-  opts.transport = parsed[3]
-  opts.port = parsed[4]
-  return opts
-}
-
-/**
- * Returns Multiaddr as a human-readable string
- *
- * @returns {String}
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').inspect()
- * // '<Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>'
- */
-Multiaddr.prototype.inspect = function inspect () {
-  return '<Multiaddr ' +
-    this.buffer.toString('hex') + ' - ' +
-    codec.bufferToString(this.buffer) + '>'
-}
-
-/**
- * Returns the protocols the Multiaddr is defined with, as an array of objects, in
- * left-to-right order. Each object contains the protocol code, protocol name,
- * and the size of its address space in bits.
- * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
- *
- * @returns {Array.<Object>} protocols - All the protocols the address is composed of
- * @returns {Number} protocols[].code
- * @returns {Number} protocols[].size
- * @returns {String} protocols[].name
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').protos()
- * // [ { code: 4, size: 32, name: 'ip4' },
- * //   { code: 6, size: 16, name: 'tcp' } ]
- */
-Multiaddr.prototype.protos = function protos () {
-  return map(this.protoCodes(), function (code) {
-    return extend(protocols(code))
-    // copy to prevent users from modifying the internal objs.
-  })
-}
-
-/**
- * Returns the codes of the protocols in left-to-right order.
- * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
- *
- * @returns {Array.<Number>} protocol codes
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').protoCodes()
- * // [ 4, 6 ]
- */
-Multiaddr.prototype.protoCodes = function protoCodes () {
-  const codes = []
-  const buf = this.buffer
-  let i = 0
-  while (i < buf.length) {
-    const code = varint.decode(buf, i)
-    const n = varint.decode.bytes
-
-    const p = protocols(code)
-    const size = codec.sizeForAddr(p, buf.slice(i + n))
-
-    i += (size + n)
-    codes.push(code)
-  }
-
-  return codes
-}
-
-/**
- * Returns the names of the protocols in left-to-right order.
- * [See list of protocols](https://github.com/multiformats/multiaddr/blob/master/protocols.csv)
- *
- * @return {Array.<String>} protocol names
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').protoNames()
- * // [ 'ip4', 'tcp' ]
- */
-Multiaddr.prototype.protoNames = function protoNames () {
-  return map(this.protos(), function (proto) {
-    return proto.name
-  })
-}
-
-/**
- * Returns a tuple of parts
- *
- * @return {Array.<Array>} tuples
- * @return {Number} tuples[].0 code of protocol
- * @return {Buffer} tuples[].1 contents of address
- * @example
- * Multiaddr("/ip4/127.0.0.1/tcp/4001").tuples()
- * // [ [ 4, <Buffer 7f 00 00 01> ], [ 6, <Buffer 0f a1> ] ]
- */
-Multiaddr.prototype.tuples = function tuples () {
-  return codec.bufferToTuples(this.buffer)
-}
-
-/**
- * Returns a tuple of string/number parts
- *
- * @return {Array.<Array>} tuples
- * @return {Number} tuples[].0 code of protocol
- * @return {(String|Number)} tuples[].1 contents of address
- * @example
- * Multiaddr("/ip4/127.0.0.1/tcp/4001").stringTuples()
- * // [ [ 4, '127.0.0.1' ], [ 6, 4001 ] ]
- */
-Multiaddr.prototype.stringTuples = function stringTuples () {
-  const t = codec.bufferToTuples(this.buffer)
-  return codec.tuplesToStringTuples(t)
-}
-
-/**
- * Encapsulates a Multiaddr in another Multiaddr
- *
- * @param {Multiaddr} addr - Multiaddr to add into this Multiaddr
- * @return {Multiaddr}
- * @example
- * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
- * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
- *
- * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- *
- * const mh3 = mh1.encapsulate(mh2)
- * // <Multiaddr 0408080808060438047f000001060fa1 - /ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001>
- *
- * mh3.toString()
- * // '/ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001'
- */
-Multiaddr.prototype.encapsulate = function encapsulate (addr) {
-  addr = Multiaddr(addr)
-  return Multiaddr(this.toString() + addr.toString())
-}
-
-/**
- * Decapsulates a Multiaddr from another Multiaddr
- *
- * @param {Multiaddr} addr - Multiaddr to remove from this Multiaddr
- * @return {Multiaddr}
- * @example
- * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
- * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
- *
- * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- *
- * const mh3 = mh1.encapsulate(mh2)
- * // <Multiaddr 0408080808060438047f000001060fa1 - /ip4/8.8.8.8/tcp/1080/ip4/127.0.0.1/tcp/4001>
- *
- * mh3.decapsulate(mh2).toString()
- * // '/ip4/8.8.8.8/tcp/1080'
- */
-Multiaddr.prototype.decapsulate = function decapsulate (addr) {
-  addr = addr.toString()
-  const s = this.toString()
-  const i = s.lastIndexOf(addr)
-  if (i < 0) {
-    throw new Error('Address ' + this + ' does not contain subaddress: ' + addr)
-  }
-  return Multiaddr(s.slice(0, i))
-}
-
-/**
- * Extract the peerId if the multiaddr contains one
- *
- * @return {String|null} peerId - The id of the peer or null if invalid or missing from the ma
- * @example
- * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080/ipfs/QmValidBase58string')
- * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080/ipfs/QmValidBase58string>
- *
- * // should return QmValidBase58string or null if the id is missing or invalid
- * const peerId = mh1.getPeerId()
- */
-Multiaddr.prototype.getPeerId = function getPeerId () {
-  let b58str = null
-  try {
-    b58str = this.stringTuples().filter((tuple) => {
-      if (tuple[0] === protocols.names['ipfs'].code) {
-        return true
-      }
-    })[0][1]
-
-    bs58.decode(b58str)
-  } catch (e) {
-    b58str = null
-  }
-
-  return b58str
-}
-
-/**
- * Checks if two Multiaddrs are the same
- *
- * @param {Multiaddr} addr
- * @return {Bool}
- * @example
- * const mh1 = Multiaddr('/ip4/8.8.8.8/tcp/1080')
- * // <Multiaddr 0408080808060438 - /ip4/8.8.8.8/tcp/1080>
- *
- * const mh2 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- *
- * mh1.equals(mh1)
- * // true
- *
- * mh1.equals(mh2)
- * // false
- */
-Multiaddr.prototype.equals = function equals (addr) {
-  return this.buffer.equals(addr.buffer)
-}
-
-/**
- * Gets a Multiaddrs node-friendly address object. Note that protocol information
- * is left out: in Node (and most network systems) the protocol is unknowable
- * given only the address.
- *
- * Has to be a ThinWaist Address, otherwise throws error
- *
- * @returns {{family: String, address: String, port: String}}
- * @throws {Error} Throws error if Multiaddr is not a Thin Waist address
- * @example
- * Multiaddr('/ip4/127.0.0.1/tcp/4001').nodeAddress()
- * // {family: 'IPv4', address: '127.0.0.1', port: '4001'}
- */
-Multiaddr.prototype.nodeAddress = function nodeAddress () {
-  const codes = this.protoCodes()
-  const names = this.protoNames()
-  const parts = this.toString().split('/').slice(1)
-
-  if (parts.length < 4) {
-    throw new Error('multiaddr must have a valid format: "/{ip4, ip6, dns4, dns6}/{address}/{tcp, udp}/{port}".')
-  } else if (codes[0] !== 4 && codes[0] !== 41 && codes[0] !== 54 && codes[0] !== 55) {
-    throw new Error(`no protocol with name: "'${names[0]}'". Must have a valid family name: "{ip4, ip6, dns4, dns6}".`)
-  } else if (parts[2] !== 'tcp' && parts[2] !== 'udp') {
-    throw new Error(`no protocol with name: "'${names[1]}'". Must have a valid transport protocol: "{tcp, udp}".`)
-  }
-
-  return {
-    family: (codes[0] === 41 || codes[0] === 55) ? 6 : 4,
-    address: parts[1], // ip addr
-    port: parts[3] // tcp or udp port
-  }
-}
-
-/**
- * Creates a Multiaddr from a node-friendly address object
- *
- * @param {String} addr
- * @param {String} transport
- * @returns {Multiaddr} multiaddr
- * @throws {Error} Throws error if addr is not truthy
- * @throws {Error} Throws error if transport is not truthy
- * @example
- * Multiaddr.fromNodeAddress({address: '127.0.0.1', port: '4001'}, 'tcp')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- */
-Multiaddr.fromNodeAddress = function fromNodeAddress (addr, transport) {
-  if (!addr) throw new Error('requires node address object')
-  if (!transport) throw new Error('requires transport protocol')
-  const ip = (addr.family === 'IPv6') ? 'ip6' : 'ip4'
-  return Multiaddr('/' + [ip, addr.address, transport, addr.port].join('/'))
-}
-
-// TODO find a better example, not sure about it's good enough
-/**
- * Returns if a Multiaddr is a Thin Waist address or not.
- *
- * Thin Waist is if a Multiaddr adheres to the standard combination of:
- *
- * `{IPv4, IPv6}/{TCP, UDP}`
- *
- * @param {Multiaddr} [addr] - Defaults to using `this` instance
- * @returns {Boolean} isThinWaistAddress
- * @example
- * const mh1 = Multiaddr('/ip4/127.0.0.1/tcp/4001')
- * // <Multiaddr 047f000001060fa1 - /ip4/127.0.0.1/tcp/4001>
- * const mh2 = Multiaddr('/ip4/192.168.2.1/tcp/5001')
- * // <Multiaddr 04c0a80201061389 - /ip4/192.168.2.1/tcp/5001>
- * const mh3 = mh1.encapsulate(mh2)
- * // <Multiaddr 047f000001060fa104c0a80201061389 - /ip4/127.0.0.1/tcp/4001/ip4/192.168.2.1/tcp/5001>
- * mh1.isThinWaistAddress()
- * // true
- * mh2.isThinWaistAddress()
- * // true
- * mh3.isThinWaistAddress()
- * // false
- */
-Multiaddr.prototype.isThinWaistAddress = function isThinWaistAddress (addr) {
-  const protos = (addr || this).protos()
-
-  if (protos.length !== 2) {
-    return false
-  }
-
-  if (protos[0].code !== 4 && protos[0].code !== 41) {
-    return false
-  }
-  if (protos[1].code !== 6 && protos[1].code !== 17) {
-    return false
-  }
-  return true
-}
-
-// TODO rename this to something else than "stupid string"
-/**
- * Converts a "stupid string" into a Multiaddr.
- *
- * Stupid string format:
- * ```
- * <proto><IPv>://<IP Addr>[:<proto port>]
- * udp4://1.2.3.4:5678
- * ```
- *
- * @param {String} [str] - String in the "stupid" format
- * @throws {NotImplemented}
- * @returns {undefined}
- * @todo Not Implemented yet
- */
-Multiaddr.prototype.fromStupidString = function fromStupidString (str) {
-  throw NotImplemented
-}
-
-/**
- * Object containing table, names and codes of all supported protocols.
- * To get the protocol values from a Multiaddr, you can use
- * [`.protos()`](#multiaddrprotos),
- * [`.protoCodes()`](#multiaddrprotocodes) or
- * [`.protoNames()`](#multiaddrprotonames)
- *
- * @instance
- * @returns {{table: Array, names: Object, codes: Object}}
- *
- */
-Multiaddr.protocols = protocols
-
-/**
- * Returns if something is a Multiaddr that is a name
- *
- * @param {Multiaddr} addr
- * @return {Bool} isName
- */
-Multiaddr.isName = function isName (addr) {
-  if (!Multiaddr.isMultiaddr(addr)) {
-    return false
-  }
-
-  // if a part of the multiaddr is resolvable, then return true
-  return addr.protos().some((proto) => proto.resolvable)
-}
-
-/**
- * Returns an array of multiaddrs, by resolving the multiaddr that is a name
- *
- * @param {Multiaddr} addr
- *
- * @param {Function} callback
- * @return {Bool} isName
- */
-Multiaddr.resolve = function resolve (addr, callback) {
-  if (!Multiaddr.isMultiaddr(addr) || !Multiaddr.isName(addr)) {
-    return callback(new Error('not a valid name'))
-  }
-
-  /*
-   * Needs more consideration from spec design:
-   *   - what to return
-   *   - how to achieve it in the browser?
-   */
-  return callback(new Error('not implemented yet'))
-}
-
-exports = module.exports = Multiaddr
-
-}).call(this,require("buffer").Buffer)
-},{"./codec":401,"./protocols-table":404,"bs58":86,"buffer":84,"class-is":92,"lodash.map":318,"varint":655,"xtend":663}],404:[function(require,module,exports){
-'use strict'
-
-const map = require('lodash.map')
-
-function Protocols (proto) {
-  if (typeof (proto) === 'number') {
-    if (Protocols.codes[proto]) {
-      return Protocols.codes[proto]
-    }
-
-    throw new Error('no protocol with code: ' + proto)
-  } else if (typeof (proto) === 'string' || proto instanceof String) {
-    if (Protocols.names[proto]) {
-      return Protocols.names[proto]
-    }
-
-    throw new Error('no protocol with name: ' + proto)
-  }
-
-  throw new Error('invalid protocol id type: ' + proto)
-}
-
-const V = -1
-Protocols.lengthPrefixedVarSize = V
-Protocols.V = V
-
-Protocols.table = [
-  [4, 32, 'ip4'],
-  [6, 16, 'tcp'],
-  [17, 16, 'udp'],
-  [33, 16, 'dccp'],
-  [41, 128, 'ip6'],
-  [54, V, 'dns4', 'resolvable'],
-  [55, V, 'dns6', 'resolvable'],
-  [56, V, 'dnsaddr', 'resolvable'],
-  [132, 16, 'sctp'],
-  // all of the below use varint for size
-  [302, 0, 'utp'],
-  [421, Protocols.lengthPrefixedVarSize, 'ipfs'],
-  [480, 0, 'http'],
-  [443, 0, 'https'],
-  [477, 0, 'ws'],
-  [478, 0, 'wss'],
-  [479, 0, 'p2p-websocket-star'],
-  [275, 0, 'p2p-webrtc-star'],
-  [276, 0, 'p2p-webrtc-direct'],
-  [277, 0, 'p2p-webrtc-circuit'],
-  [290, 0, 'p2p-circuit']
-]
-
-Protocols.names = {}
-Protocols.codes = {}
-
-// populate tables
-map(Protocols.table, function (row) {
-  const proto = p.apply(null, row)
-  Protocols.codes[proto.code] = proto
-  Protocols.names[proto.name] = proto
-})
-
-Protocols.object = p
-
-function p (code, size, name, resolvable) {
-  return {
-    code: code,
-    size: size,
-    name: name,
-    resolvable: Boolean(resolvable)
-  }
-}
-
-module.exports = Protocols
-
-},{"lodash.map":318}],405:[function(require,module,exports){
+},{"bl":57,"inherits":158,"readable-stream":676}],479:[function(require,module,exports){
 /* eslint quote-props: off */
 /* eslint key-spacing: off */
 'use strict'
@@ -83391,7 +84515,7 @@ exports.defaultLengths = Object.freeze({
   0xb3e0: 0x80
 })
 
-},{}],406:[function(require,module,exports){
+},{}],480:[function(require,module,exports){
 (function (Buffer){
 /**
  * Multihash implementation in JavaScript.
@@ -83620,7 +84744,7 @@ exports.prefix = function prefix (multihash) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"./constants":405,"bs58":86,"buffer":84,"varint":655}],407:[function(require,module,exports){
+},{"./constants":479,"bs58":86,"buffer":84,"varint":735}],481:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -83659,7 +84783,7 @@ module.exports = (table) => {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"./utils":411,"blakejs":61,"buffer":84}],408:[function(require,module,exports){
+},{"./utils":485,"blakejs":60,"buffer":84}],482:[function(require,module,exports){
 (function (Buffer){
 /* global self */
 
@@ -83723,7 +84847,7 @@ module.exports = {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":84,"nodeify":469}],409:[function(require,module,exports){
+},{"buffer":84,"nodeify":543}],483:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -83768,7 +84892,7 @@ module.exports = {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"./blake":407,"./crypto-sha1-2":408,"./utils":411,"buffer":84,"js-sha3":171,"murmurhash3js":424}],410:[function(require,module,exports){
+},{"./blake":481,"./crypto-sha1-2":482,"./utils":485,"buffer":84,"js-sha3":176,"murmurhash3js":498}],484:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -83913,7 +85037,7 @@ Multihashing.functions = {
 crypto.addBlake(Multihashing.functions)
 
 }).call(this,require("buffer").Buffer)
-},{"./crypto":409,"buffer":84,"multihashes":406}],411:[function(require,module,exports){
+},{"./crypto":483,"buffer":84,"multihashes":480}],485:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -83960,17 +85084,17 @@ exports.fromNumberTo32BitBuf = (doWork, other) => (input) => {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"async/setImmediate":50,"buffer":84}],412:[function(require,module,exports){
-arguments[4][176][0].apply(exports,arguments)
-},{"./debug":413,"_process":499,"dup":176}],413:[function(require,module,exports){
-arguments[4][177][0].apply(exports,arguments)
-},{"dup":177,"ms":393}],414:[function(require,module,exports){
+},{"async/setImmediate":49,"buffer":84}],486:[function(require,module,exports){
+arguments[4][203][0].apply(exports,arguments)
+},{"./debug":487,"_process":578,"dup":203}],487:[function(require,module,exports){
+arguments[4][204][0].apply(exports,arguments)
+},{"dup":204,"ms":471}],488:[function(require,module,exports){
 'use strict'
 
 exports = module.exports
 exports.PROTOCOL_ID = '/multistream/1.0.0'
 
-},{}],415:[function(require,module,exports){
+},{}],489:[function(require,module,exports){
 'use strict'
 
 const varint = require('varint')
@@ -84119,7 +85243,7 @@ function collectLs (conn) {
 
 module.exports = Dialer
 
-},{"../select":422,"../util":423,"./../constants":414,"interface-connection":156,"once":471,"pull-length-prefixed":525,"pull-stream":533,"varint":655}],416:[function(require,module,exports){
+},{"../select":496,"../util":497,"./../constants":488,"interface-connection":160,"once":546,"pull-length-prefixed":604,"pull-stream":612,"varint":735}],490:[function(require,module,exports){
 'use strict'
 
 exports.Listener = exports.listener = require('./listener')
@@ -84127,7 +85251,7 @@ exports.Dialer = exports.dialer = require('./dialer')
 exports.matchSemver = require('./listener/match-semver')
 exports.matchExact = require('./listener/match-exact')
 
-},{"./dialer":415,"./listener":417,"./listener/match-exact":419,"./listener/match-semver":420}],417:[function(require,module,exports){
+},{"./dialer":489,"./listener":491,"./listener/match-exact":493,"./listener/match-semver":494}],491:[function(require,module,exports){
 'use strict'
 
 const pull = require('pull-stream')
@@ -84240,7 +85364,7 @@ class Listener {
 
 module.exports = Listener
 
-},{"../select":422,"./../constants":414,"./../util":423,"./ls-handler":418,"./match-exact":419,"./select-handler":421,"assert":19,"interface-connection":156,"lodash.isfunction":317,"pull-stream":533}],418:[function(require,module,exports){
+},{"../select":496,"./../constants":488,"./../util":497,"./ls-handler":492,"./match-exact":493,"./select-handler":495,"assert":18,"interface-connection":160,"lodash.isfunction":400,"pull-stream":612}],492:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -84280,7 +85404,7 @@ function lsHandler (self, conn) {
 module.exports = lsHandler
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":84,"pull-length-prefixed":525,"pull-stream":533,"varint":655}],419:[function(require,module,exports){
+},{"buffer":84,"pull-length-prefixed":604,"pull-stream":612,"varint":735}],493:[function(require,module,exports){
 'use strict'
 
 /**
@@ -84299,7 +85423,7 @@ function matchExact (myProtocol, senderProtocol, callback) {
 
 module.exports = matchExact
 
-},{}],420:[function(require,module,exports){
+},{}],494:[function(require,module,exports){
 'use strict'
 
 const semver = require('semver')
@@ -84333,7 +85457,7 @@ function matchSemver (myProtocol, senderProtocol, callback) {
 
 module.exports = matchSemver
 
-},{"semver":613}],421:[function(require,module,exports){
+},{"semver":693}],495:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -84413,7 +85537,7 @@ function matcher (protocol, handlers, callback) {
 module.exports = selectHandler
 
 }).call(this,require("buffer").Buffer)
-},{"../util.js":423,"async/some":51,"buffer":84,"interface-connection":156,"pull-handshake":522,"pull-length-prefixed":525}],422:[function(require,module,exports){
+},{"../util.js":497,"async/some":50,"buffer":84,"interface-connection":160,"pull-handshake":601,"pull-length-prefixed":604}],496:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -84452,7 +85576,7 @@ function select (multicodec, callback, log) {
 module.exports = select
 
 }).call(this,require("buffer").Buffer)
-},{"./util":423,"buffer":84,"pull-handshake":522,"pull-length-prefixed":525}],423:[function(require,module,exports){
+},{"./util":497,"buffer":84,"pull-handshake":601,"pull-length-prefixed":604}],497:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -84520,10 +85644,10 @@ exports.log.listener = () => {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":84,"debug":412,"pull-length-prefixed":525,"pull-stream":533}],424:[function(require,module,exports){
+},{"buffer":84,"debug":486,"pull-length-prefixed":604,"pull-stream":612}],498:[function(require,module,exports){
 module.exports = require('./lib/murmurHash3js');
 
-},{"./lib/murmurHash3js":425}],425:[function(require,module,exports){
+},{"./lib/murmurHash3js":499}],499:[function(require,module,exports){
 /* jshint -W086: true */
 // +----------------------------------------------------------------------+
 // | murmurHash3js.js v3.0.1 // https://github.com/pid/murmurHash3js
@@ -85087,7 +86211,7 @@ module.exports = require('./lib/murmurHash3js');
     }
 })(this);
 
-},{}],426:[function(require,module,exports){
+},{}],500:[function(require,module,exports){
 /**
  * Advanced Encryption Standard (AES) implementation.
  *
@@ -86180,7 +87304,7 @@ function _createCipher(options) {
   return cipher;
 }
 
-},{"./cipher":430,"./cipherModes":431,"./forge":435,"./util":467}],427:[function(require,module,exports){
+},{"./cipher":504,"./cipherModes":505,"./forge":509,"./util":541}],501:[function(require,module,exports){
 /**
  * A Javascript implementation of AES Cipher Suites for TLS.
  *
@@ -86466,7 +87590,7 @@ function compareMacs(key, mac1, mac2) {
   return mac1 === mac2;
 }
 
-},{"./aes":426,"./forge":435,"./tls":466}],428:[function(require,module,exports){
+},{"./aes":500,"./forge":509,"./tls":540}],502:[function(require,module,exports){
 /**
  * Javascript implementation of Abstract Syntax Notation Number One.
  *
@@ -87876,7 +89000,7 @@ asn1.prettyPrint = function(obj, level, indentation) {
   return rval;
 };
 
-},{"./forge":435,"./oids":446,"./util":467}],429:[function(require,module,exports){
+},{"./forge":509,"./oids":520,"./util":541}],503:[function(require,module,exports){
 (function (Buffer){
 /**
  * Base-N/Base-X encoding/decoding functions.
@@ -88066,7 +89190,7 @@ function _encodeWithByteBuffer(input, alphabet) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":64}],430:[function(require,module,exports){
+},{"buffer":63}],504:[function(require,module,exports){
 /**
  * Cipher base API.
  *
@@ -88298,7 +89422,7 @@ BlockCipher.prototype.finish = function(pad) {
   return true;
 };
 
-},{"./forge":435,"./util":467}],431:[function(require,module,exports){
+},{"./forge":509,"./util":541}],505:[function(require,module,exports){
 /**
  * Supported cipher modes.
  *
@@ -89287,7 +90411,7 @@ function from64To32(num) {
   return [(num / 0x100000000) | 0, num & 0xFFFFFFFF];
 }
 
-},{"./forge":435,"./util":467}],432:[function(require,module,exports){
+},{"./forge":509,"./util":541}],506:[function(require,module,exports){
 /**
  * Debugging support for web applications.
  *
@@ -89367,7 +90491,7 @@ forge.debug.clear = function(cat, name) {
   }
 };
 
-},{"./forge":435}],433:[function(require,module,exports){
+},{"./forge":509}],507:[function(require,module,exports){
 /**
  * DES (Data Encryption Standard) implementation.
  *
@@ -89864,7 +90988,7 @@ function _createCipher(options) {
   return cipher;
 }
 
-},{"./cipher":430,"./cipherModes":431,"./forge":435,"./util":467}],434:[function(require,module,exports){
+},{"./cipher":504,"./cipherModes":505,"./forge":509,"./util":541}],508:[function(require,module,exports){
 (function (Buffer){
 /**
  * JavaScript implementation of Ed25519.
@@ -90864,7 +91988,7 @@ function M(o, a, b) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"./forge":435,"./jsbn":438,"./random":458,"./sha512":463,"./util":467,"buffer":64}],435:[function(require,module,exports){
+},{"./forge":509,"./jsbn":512,"./random":532,"./sha512":537,"./util":541,"buffer":63}],509:[function(require,module,exports){
 /**
  * Node.js module for Forge.
  *
@@ -90879,7 +92003,7 @@ module.exports = {
   }
 };
 
-},{}],436:[function(require,module,exports){
+},{}],510:[function(require,module,exports){
 /**
  * Hash-based Message Authentication Code implementation. Requires a message
  * digest object that can be obtained, for example, from forge.md.sha1 or
@@ -91027,7 +92151,7 @@ hmac.create = function() {
   return ctx;
 };
 
-},{"./forge":435,"./md":442,"./util":467}],437:[function(require,module,exports){
+},{"./forge":509,"./md":516,"./util":541}],511:[function(require,module,exports){
 /**
  * Node.js module for Forge.
  *
@@ -91064,7 +92188,7 @@ require('./task');
 require('./tls');
 require('./util');
 
-},{"./aes":426,"./aesCipherSuites":427,"./asn1":428,"./cipher":430,"./debug":432,"./des":433,"./ed25519":434,"./forge":435,"./hmac":436,"./kem":439,"./log":440,"./md.all":441,"./mgf1":445,"./pbkdf2":448,"./pem":449,"./pkcs1":450,"./pkcs12":451,"./pkcs7":452,"./pki":454,"./prime":455,"./prng":456,"./pss":457,"./random":458,"./rc2":459,"./ssh":464,"./task":465,"./tls":466,"./util":467}],438:[function(require,module,exports){
+},{"./aes":500,"./aesCipherSuites":501,"./asn1":502,"./cipher":504,"./debug":506,"./des":507,"./ed25519":508,"./forge":509,"./hmac":510,"./kem":513,"./log":514,"./md.all":515,"./mgf1":519,"./pbkdf2":522,"./pem":523,"./pkcs1":524,"./pkcs12":525,"./pkcs7":526,"./pki":528,"./prime":529,"./prng":530,"./pss":531,"./random":532,"./rc2":533,"./ssh":538,"./task":539,"./tls":540,"./util":541}],512:[function(require,module,exports){
 // Copyright (c) 2005  Tom Wu
 // All Rights Reserved.
 // See "LICENSE" for details.
@@ -92330,7 +93454,7 @@ BigInteger.prototype.isProbablePrime = bnIsProbablePrime;
 //long longValue()
 //static BigInteger valueOf(long val)
 
-},{"./forge":435}],439:[function(require,module,exports){
+},{"./forge":509}],513:[function(require,module,exports){
 /**
  * Javascript implementation of RSA-KEM.
  *
@@ -92500,7 +93624,7 @@ function _createKDF(kdf, md, counterStart, digestLength) {
   };
 }
 
-},{"./forge":435,"./jsbn":438,"./random":458,"./util":467}],440:[function(require,module,exports){
+},{"./forge":509,"./jsbn":512,"./random":532,"./util":541}],514:[function(require,module,exports){
 /**
  * Cross-browser support for logging in a web application.
  *
@@ -92819,7 +93943,7 @@ if(sConsoleLogger !== null) {
 // provide public access to console logger
 forge.log.consoleLogger = sConsoleLogger;
 
-},{"./forge":435,"./util":467}],441:[function(require,module,exports){
+},{"./forge":509,"./util":541}],515:[function(require,module,exports){
 /**
  * Node.js module for all known Forge message digests.
  *
@@ -92834,7 +93958,7 @@ require('./sha1');
 require('./sha256');
 require('./sha512');
 
-},{"./md":442,"./md5":443,"./sha1":461,"./sha256":462,"./sha512":463}],442:[function(require,module,exports){
+},{"./md":516,"./md5":517,"./sha1":535,"./sha256":536,"./sha512":537}],516:[function(require,module,exports){
 /**
  * Node.js module for Forge message digests.
  *
@@ -92847,7 +93971,7 @@ var forge = require('./forge');
 module.exports = forge.md = forge.md || {};
 forge.md.algorithms = forge.md.algorithms || {};
 
-},{"./forge":435}],443:[function(require,module,exports){
+},{"./forge":509}],517:[function(require,module,exports){
 /**
  * Message Digest Algorithm 5 with 128-bit digest (MD5) implementation.
  *
@@ -93138,7 +94262,7 @@ function _update(s, w, bytes) {
   }
 }
 
-},{"./forge":435,"./md":442,"./util":467}],444:[function(require,module,exports){
+},{"./forge":509,"./md":516,"./util":541}],518:[function(require,module,exports){
 /**
  * Node.js module for Forge mask generation functions.
  *
@@ -93152,7 +94276,7 @@ require('./mgf1');
 module.exports = forge.mgf = forge.mgf || {};
 forge.mgf.mgf1 = forge.mgf1;
 
-},{"./forge":435,"./mgf1":445}],445:[function(require,module,exports){
+},{"./forge":509,"./mgf1":519}],519:[function(require,module,exports){
 /**
  * Javascript implementation of mask generation function MGF1.
  *
@@ -93211,7 +94335,7 @@ mgf1.create = function(md) {
   return mgf;
 };
 
-},{"./forge":435,"./util":467}],446:[function(require,module,exports){
+},{"./forge":509,"./util":541}],520:[function(require,module,exports){
 /**
  * Object IDs for ASN.1.
  *
@@ -93374,7 +94498,7 @@ _IN('1.3.6.1.5.5.7.3.3', 'codeSigning');
 _IN('1.3.6.1.5.5.7.3.4', 'emailProtection');
 _IN('1.3.6.1.5.5.7.3.8', 'timeStamping');
 
-},{"./forge":435}],447:[function(require,module,exports){
+},{"./forge":509}],521:[function(require,module,exports){
 /**
  * Password-based encryption functions.
  *
@@ -94399,7 +95523,7 @@ function createPbkdf2Params(salt, countBytes, dkLen, prfAlgorithm) {
   return params;
 }
 
-},{"./aes":426,"./asn1":428,"./des":433,"./forge":435,"./md":442,"./oids":446,"./pbkdf2":448,"./pem":449,"./random":458,"./rc2":459,"./rsa":460,"./util":467}],448:[function(require,module,exports){
+},{"./aes":500,"./asn1":502,"./des":507,"./forge":509,"./md":516,"./oids":520,"./pbkdf2":522,"./pem":523,"./random":532,"./rc2":533,"./rsa":534,"./util":541}],522:[function(require,module,exports){
 (function (Buffer){
 /**
  * Password-Based Key-Derivation Function #2 implementation.
@@ -94614,7 +95738,7 @@ module.exports = forge.pbkdf2 = pkcs5.pbkdf2 = function(
 };
 
 }).call(this,require("buffer").Buffer)
-},{"./forge":435,"./hmac":436,"./md":442,"./util":467,"buffer":64,"crypto":64}],449:[function(require,module,exports){
+},{"./forge":509,"./hmac":510,"./md":516,"./util":541,"buffer":63,"crypto":63}],523:[function(require,module,exports){
 /**
  * Javascript implementation of basic PEM (Privacy Enhanced Mail) algorithms.
  *
@@ -94846,7 +95970,7 @@ function ltrim(str) {
   return str.replace(/^\s+/, '');
 }
 
-},{"./forge":435,"./util":467}],450:[function(require,module,exports){
+},{"./forge":509,"./util":541}],524:[function(require,module,exports){
 /**
  * Partial implementation of PKCS#1 v2.2: RSA-OEAP
  *
@@ -95124,7 +96248,7 @@ function rsa_mgf1(seed, maskLength, hash) {
   return t.substring(0, maskLength);
 }
 
-},{"./forge":435,"./random":458,"./sha1":461,"./util":467}],451:[function(require,module,exports){
+},{"./forge":509,"./random":532,"./sha1":535,"./util":541}],525:[function(require,module,exports){
 /**
  * Javascript implementation of PKCS#12.
  *
@@ -96200,7 +97324,7 @@ p12.toPkcs12Asn1 = function(key, cert, password, options) {
  */
 p12.generateKey = forge.pbe.generatePkcs12Key;
 
-},{"./asn1":428,"./forge":435,"./hmac":436,"./oids":446,"./pbe":447,"./pkcs7asn1":453,"./random":458,"./rsa":460,"./sha1":461,"./util":467,"./x509":468}],452:[function(require,module,exports){
+},{"./asn1":502,"./forge":509,"./hmac":510,"./oids":520,"./pbe":521,"./pkcs7asn1":527,"./random":532,"./rsa":534,"./sha1":535,"./util":541,"./x509":542}],526:[function(require,module,exports){
 /**
  * Javascript implementation of PKCS#7 v1.5.
  *
@@ -97445,7 +98569,7 @@ function _decryptContent(msg) {
   }
 }
 
-},{"./aes":426,"./asn1":428,"./des":433,"./forge":435,"./oids":446,"./pem":449,"./pkcs7asn1":453,"./random":458,"./util":467,"./x509":468}],453:[function(require,module,exports){
+},{"./aes":500,"./asn1":502,"./des":507,"./forge":509,"./oids":520,"./pem":523,"./pkcs7asn1":527,"./random":532,"./util":541,"./x509":542}],527:[function(require,module,exports){
 /**
  * Javascript implementation of ASN.1 validators for PKCS#7 v1.5.
  *
@@ -97856,7 +98980,7 @@ p7v.recipientInfoValidator = {
   }]
 };
 
-},{"./asn1":428,"./forge":435,"./util":467}],454:[function(require,module,exports){
+},{"./asn1":502,"./forge":509,"./util":541}],528:[function(require,module,exports){
 /**
  * Javascript implementation of a basic Public Key Infrastructure, including
  * support for RSA public and private keys.
@@ -97960,7 +99084,7 @@ pki.privateKeyInfoToPem = function(pki, maxline) {
   return forge.pem.encode(msg, {maxline: maxline});
 };
 
-},{"./asn1":428,"./forge":435,"./oids":446,"./pbe":447,"./pbkdf2":448,"./pem":449,"./pkcs12":451,"./pss":457,"./rsa":460,"./util":467,"./x509":468}],455:[function(require,module,exports){
+},{"./asn1":502,"./forge":509,"./oids":520,"./pbe":521,"./pbkdf2":522,"./pem":523,"./pkcs12":525,"./pss":531,"./rsa":534,"./util":541,"./x509":542}],529:[function(require,module,exports){
 /**
  * Prime number generation API.
  *
@@ -98259,7 +99383,7 @@ function getMillerRabinTests(bits) {
 
 })();
 
-},{"./forge":435,"./jsbn":438,"./random":458,"./util":467}],456:[function(require,module,exports){
+},{"./forge":509,"./jsbn":512,"./random":532,"./util":541}],530:[function(require,module,exports){
 (function (process){
 /**
  * A javascript implementation of a cryptographically-secure
@@ -98683,7 +99807,7 @@ prng.create = function(plugin) {
 };
 
 }).call(this,require('_process'))
-},{"./forge":435,"./util":467,"_process":499,"crypto":64}],457:[function(require,module,exports){
+},{"./forge":509,"./util":541,"_process":578,"crypto":63}],531:[function(require,module,exports){
 /**
  * Javascript implementation of PKCS#1 PSS signature padding.
  *
@@ -98926,7 +100050,7 @@ pss.create = function(options) {
   return pssobj;
 };
 
-},{"./forge":435,"./random":458,"./util":467}],458:[function(require,module,exports){
+},{"./forge":509,"./random":532,"./util":541}],532:[function(require,module,exports){
 /**
  * An API for getting cryptographically-secure random bytes. The bytes are
  * generated using the Fortuna algorithm devised by Bruce Schneier and
@@ -99119,7 +100243,7 @@ module.exports = forge.random;
 
 })();
 
-},{"./aes":426,"./forge":435,"./prng":456,"./sha256":462,"./util":467}],459:[function(require,module,exports){
+},{"./aes":500,"./forge":509,"./prng":530,"./sha256":536,"./util":541}],533:[function(require,module,exports){
 /**
  * RC2 implementation.
  *
@@ -99531,7 +100655,7 @@ forge.rc2.createDecryptionCipher = function(key, bits) {
   return createCipher(key, bits, false);
 };
 
-},{"./forge":435,"./util":467}],460:[function(require,module,exports){
+},{"./forge":509,"./util":541}],534:[function(require,module,exports){
 /**
  * Javascript implementation of basic RSA algorithms.
  *
@@ -101329,7 +102453,7 @@ function _base64ToBigInt(b64) {
   return new BigInteger(forge.util.bytesToHex(forge.util.decode64(b64)), 16);
 }
 
-},{"./asn1":428,"./forge":435,"./jsbn":438,"./oids":446,"./pkcs1":450,"./prime":455,"./random":458,"./util":467}],461:[function(require,module,exports){
+},{"./asn1":502,"./forge":509,"./jsbn":512,"./oids":520,"./pkcs1":524,"./prime":529,"./random":532,"./util":541}],535:[function(require,module,exports){
 /**
  * Secure Hash Algorithm with 160-bit digest (SHA-1) implementation.
  *
@@ -101650,7 +102774,7 @@ function _update(s, w, bytes) {
   }
 }
 
-},{"./forge":435,"./md":442,"./util":467}],462:[function(require,module,exports){
+},{"./forge":509,"./md":516,"./util":541}],536:[function(require,module,exports){
 /**
  * Secure Hash Algorithm with 256-bit digest (SHA-256) implementation.
  *
@@ -101979,7 +103103,7 @@ function _update(s, w, bytes) {
   }
 }
 
-},{"./forge":435,"./md":442,"./util":467}],463:[function(require,module,exports){
+},{"./forge":509,"./md":516,"./util":541}],537:[function(require,module,exports){
 /**
  * Secure Hash Algorithm with a 1024-bit block size implementation.
  *
@@ -102542,7 +103666,7 @@ function _update(s, w, bytes) {
   }
 }
 
-},{"./forge":435,"./md":442,"./util":467}],464:[function(require,module,exports){
+},{"./forge":509,"./md":516,"./util":541}],538:[function(require,module,exports){
 /**
  * Functions to output keys in SSH-friendly formats.
  *
@@ -102780,7 +103904,7 @@ function _sha1() {
   return sha.digest();
 }
 
-},{"./aes":426,"./forge":435,"./hmac":436,"./md5":443,"./sha1":461,"./util":467}],465:[function(require,module,exports){
+},{"./aes":500,"./forge":509,"./hmac":510,"./md5":517,"./sha1":535,"./util":541}],539:[function(require,module,exports){
 /**
  * Support for concurrent task management and synchronization in web
  * applications.
@@ -103507,7 +104631,7 @@ forge.task.createCondition = function() {
   return cond;
 };
 
-},{"./debug":432,"./forge":435,"./log":440,"./util":467}],466:[function(require,module,exports){
+},{"./debug":506,"./forge":509,"./log":514,"./util":541}],540:[function(require,module,exports){
 /**
  * A Javascript implementation of Transport Layer Security (TLS).
  *
@@ -107778,7 +108902,7 @@ forge.tls.createSessionCache = tls.createSessionCache;
  */
 forge.tls.createConnection = tls.createConnection;
 
-},{"./asn1":428,"./forge":435,"./hmac":436,"./md5":443,"./pem":449,"./pki":454,"./random":458,"./sha1":461,"./util":467}],467:[function(require,module,exports){
+},{"./asn1":502,"./forge":509,"./hmac":510,"./md5":517,"./pem":523,"./pki":528,"./random":532,"./sha1":535,"./util":541}],541:[function(require,module,exports){
 (function (process,Buffer,setImmediate){
 /**
  * Utility functions for web applications.
@@ -110760,7 +111884,7 @@ util.estimateCores = function(options, callback) {
 };
 
 }).call(this,require('_process'),require("buffer").Buffer,require("timers").setImmediate)
-},{"./baseN":429,"./forge":435,"_process":499,"buffer":64,"timers":644}],468:[function(require,module,exports){
+},{"./baseN":503,"./forge":509,"_process":578,"buffer":63,"timers":724}],542:[function(require,module,exports){
 /**
  * Javascript implementation of X.509 and related components (such as
  * Certification Signing Requests) of a Public Key Infrastructure.
@@ -114033,7 +115157,7 @@ pki.verifyCertificateChain = function(caStore, chain, verify) {
   return true;
 };
 
-},{"./aes":426,"./asn1":428,"./des":433,"./forge":435,"./md":442,"./mgf":444,"./oids":446,"./pem":449,"./pss":457,"./rsa":460,"./util":467}],469:[function(require,module,exports){
+},{"./aes":500,"./asn1":502,"./des":507,"./forge":509,"./md":516,"./mgf":518,"./oids":520,"./pem":523,"./pss":531,"./rsa":534,"./util":541}],543:[function(require,module,exports){
 (function (process,setImmediate){
 var Promise = require('promise');
 var isPromise = require('is-promise');
@@ -114090,7 +115214,7 @@ function NodeifyPromise(fn) {
 NodeifyPromise.prototype = Object.create(Promise.prototype);
 NodeifyPromise.prototype.constructor = NodeifyPromise;
 }).call(this,require('_process'),require("timers").setImmediate)
-},{"_process":499,"is-promise":169,"promise":470,"timers":644}],470:[function(require,module,exports){
+},{"_process":578,"is-promise":174,"promise":544,"timers":724}],544:[function(require,module,exports){
 (function (process){
 var isPromise = require('is-promise')
 
@@ -114191,7 +115315,111 @@ Promise.use = function (extension) {
   extensions.push(extension);
 };
 }).call(this,require('_process'))
-},{"_process":499,"is-promise":169}],471:[function(require,module,exports){
+},{"_process":578,"is-promise":174}],545:[function(require,module,exports){
+'use strict';
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var extend = require('xtend');
+var EventEmitter = require('events');
+
+var ObservableStore = function (_EventEmitter) {
+  _inherits(ObservableStore, _EventEmitter);
+
+  function ObservableStore() {
+    var initState = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+    _classCallCheck(this, ObservableStore);
+
+    // set init state
+    var _this = _possibleConstructorReturn(this, (ObservableStore.__proto__ || Object.getPrototypeOf(ObservableStore)).call(this));
+
+    _this._state = initState;
+    return _this;
+  }
+
+  // wrapper around internal getState
+
+
+  _createClass(ObservableStore, [{
+    key: 'getState',
+    value: function getState() {
+      return this._getState();
+    }
+
+    // wrapper around internal putState
+
+  }, {
+    key: 'putState',
+    value: function putState(newState) {
+      this._putState(newState);
+      this.emit('update', newState);
+    }
+  }, {
+    key: 'updateState',
+    value: function updateState(partialState) {
+      // if non-null object, merge
+      if (partialState && (typeof partialState === 'undefined' ? 'undefined' : _typeof(partialState)) === 'object') {
+        var state = this.getState();
+        var newState = Object.assign({}, state, partialState);
+        this.putState(newState);
+        // if not object, use new value
+      } else {
+        this.putState(partialState);
+      }
+    }
+
+    // subscribe to changes
+
+  }, {
+    key: 'subscribe',
+    value: function subscribe(handler) {
+      this.on('update', handler);
+    }
+
+    // unsubscribe to changes
+
+  }, {
+    key: 'unsubscribe',
+    value: function unsubscribe(handler) {
+      this.removeListener('update', handler);
+    }
+
+    //
+    // private
+    //
+
+    // read from persistence
+
+  }, {
+    key: '_getState',
+    value: function _getState() {
+      return this._state;
+    }
+
+    // write to persistence
+
+  }, {
+    key: '_putState',
+    value: function _putState(newState) {
+      this._state = newState;
+    }
+  }]);
+
+  return ObservableStore;
+}(EventEmitter);
+
+module.exports = ObservableStore;
+
+},{"events":146,"xtend":773}],546:[function(require,module,exports){
 var wrappy = require('wrappy')
 module.exports = wrappy(once)
 module.exports.strict = wrappy(onceStrict)
@@ -114235,7 +115463,7 @@ function onceStrict (fn) {
   return f
 }
 
-},{"wrappy":661}],472:[function(require,module,exports){
+},{"wrappy":770}],547:[function(require,module,exports){
 exports.endianness = function () { return 'LE' };
 
 exports.hostname = function () {
@@ -114286,47 +115514,47 @@ exports.homedir = function () {
 	return '/'
 };
 
-},{}],473:[function(require,module,exports){
+},{}],548:[function(require,module,exports){
+arguments[4][183][0].apply(exports,arguments)
+},{"browserify-aes":67,"dup":183}],549:[function(require,module,exports){
+arguments[4][184][0].apply(exports,arguments)
+},{"./ciphers":548,"dup":184}],550:[function(require,module,exports){
+arguments[4][185][0].apply(exports,arguments)
+},{"../nodeify":563,"../webcrypto.js":567,"./lengths":551,"buffer":84,"dup":185}],551:[function(require,module,exports){
+arguments[4][186][0].apply(exports,arguments)
+},{"dup":186}],552:[function(require,module,exports){
+arguments[4][187][0].apply(exports,arguments)
+},{"./aes":549,"./hmac":550,"./keys":557,"./pbkdf2":564,"./random-bytes":565,"dup":187}],553:[function(require,module,exports){
+arguments[4][188][0].apply(exports,arguments)
+},{"../nodeify":563,"../util":566,"../webcrypto.js":567,"asn1.js":4,"buffer":84,"dup":188}],554:[function(require,module,exports){
+arguments[4][189][0].apply(exports,arguments)
+},{"./ed25519":555,"./keys.proto":559,"bs58":86,"buffer":84,"dup":189,"multihashing-async":484,"protons":592}],555:[function(require,module,exports){
+arguments[4][190][0].apply(exports,arguments)
+},{"async/setImmediate":49,"buffer":84,"dup":190,"tweetnacl":726}],556:[function(require,module,exports){
 arguments[4][191][0].apply(exports,arguments)
-},{"browserify-aes":67,"dup":191}],474:[function(require,module,exports){
+},{"./ecdh":553,"dup":191}],557:[function(require,module,exports){
 arguments[4][192][0].apply(exports,arguments)
-},{"./ciphers":473,"dup":192}],475:[function(require,module,exports){
+},{"../random-bytes":565,"./ed25519-class":554,"./ephemeral-keys":556,"./key-stretcher":558,"./keys.proto":559,"./rsa-class":561,"buffer":84,"dup":192,"libp2p-crypto-secp256k1":182,"node-forge":511,"protons":592}],558:[function(require,module,exports){
 arguments[4][193][0].apply(exports,arguments)
-},{"../nodeify":488,"../webcrypto.js":492,"./lengths":476,"buffer":84,"dup":193}],476:[function(require,module,exports){
+},{"../hmac":550,"async/whilst":53,"buffer":84,"dup":193}],559:[function(require,module,exports){
 arguments[4][194][0].apply(exports,arguments)
-},{"dup":194}],477:[function(require,module,exports){
+},{"dup":194}],560:[function(require,module,exports){
 arguments[4][195][0].apply(exports,arguments)
-},{"./aes":474,"./hmac":475,"./keys":482,"./pbkdf2":489,"./random-bytes":490,"dup":195}],478:[function(require,module,exports){
+},{"../nodeify":563,"../webcrypto.js":567,"./rsa-utils":562,"buffer":84,"dup":195}],561:[function(require,module,exports){
 arguments[4][196][0].apply(exports,arguments)
-},{"../nodeify":488,"../util":491,"../webcrypto.js":492,"asn1.js":5,"buffer":84,"dup":196}],479:[function(require,module,exports){
+},{"./keys.proto":559,"./rsa":560,"async/setImmediate":49,"bs58":86,"dup":196,"multihashing-async":484,"node-forge":511,"protons":592}],562:[function(require,module,exports){
 arguments[4][197][0].apply(exports,arguments)
-},{"./ed25519":480,"./keys.proto":484,"bs58":86,"buffer":84,"dup":197,"multihashing-async":410,"protons":513}],480:[function(require,module,exports){
+},{"./../util":566,"asn1.js":4,"dup":197}],563:[function(require,module,exports){
 arguments[4][198][0].apply(exports,arguments)
-},{"async/setImmediate":50,"buffer":84,"dup":198,"tweetnacl":646}],481:[function(require,module,exports){
+},{"dup":198}],564:[function(require,module,exports){
 arguments[4][199][0].apply(exports,arguments)
-},{"./ecdh":478,"dup":199}],482:[function(require,module,exports){
+},{"dup":199,"node-forge":511}],565:[function(require,module,exports){
 arguments[4][200][0].apply(exports,arguments)
-},{"../random-bytes":490,"./ed25519-class":479,"./ephemeral-keys":481,"./key-stretcher":483,"./keys.proto":484,"./rsa-class":486,"buffer":84,"dup":200,"libp2p-crypto-secp256k1":190,"node-forge":437,"protons":513}],483:[function(require,module,exports){
+},{"./keys/rsa":560,"dup":200}],566:[function(require,module,exports){
 arguments[4][201][0].apply(exports,arguments)
-},{"../hmac":475,"async/whilst":54,"buffer":84,"dup":201}],484:[function(require,module,exports){
+},{"asn1.js":4,"buffer":84,"dup":201}],567:[function(require,module,exports){
 arguments[4][202][0].apply(exports,arguments)
-},{"dup":202}],485:[function(require,module,exports){
-arguments[4][203][0].apply(exports,arguments)
-},{"../nodeify":488,"../webcrypto.js":492,"./rsa-utils":487,"buffer":84,"dup":203}],486:[function(require,module,exports){
-arguments[4][204][0].apply(exports,arguments)
-},{"./keys.proto":484,"./rsa":485,"async/setImmediate":50,"bs58":86,"dup":204,"multihashing-async":410,"node-forge":437,"protons":513}],487:[function(require,module,exports){
-arguments[4][205][0].apply(exports,arguments)
-},{"./../util":491,"asn1.js":5,"dup":205}],488:[function(require,module,exports){
-arguments[4][206][0].apply(exports,arguments)
-},{"dup":206}],489:[function(require,module,exports){
-arguments[4][207][0].apply(exports,arguments)
-},{"dup":207,"node-forge":437}],490:[function(require,module,exports){
-arguments[4][208][0].apply(exports,arguments)
-},{"./keys/rsa":485,"dup":208}],491:[function(require,module,exports){
-arguments[4][209][0].apply(exports,arguments)
-},{"asn1.js":5,"buffer":84,"dup":209}],492:[function(require,module,exports){
-arguments[4][210][0].apply(exports,arguments)
-},{"dup":210,"webcrypto-shim":658}],493:[function(require,module,exports){
+},{"dup":202,"webcrypto-shim":767}],568:[function(require,module,exports){
 (function (Buffer){
 /*
  * Id is an object representation of a peer Id. a peer Id is a multihash
@@ -114618,201 +115846,21 @@ function toB64Opt (val) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"assert":19,"async/waterfall":53,"buffer":84,"libp2p-crypto":477,"multihashes":406}],494:[function(require,module,exports){
-'use strict'
-
-const PeerId = require('peer-id')
-const ensureMultiaddr = require('./utils').ensureMultiaddr
-const MultiaddrSet = require('./multiaddr-set')
-const assert = require('assert')
-
-// Peer represents a peer on the IPFS network
-class PeerInfo {
-  constructor (peerId) {
-    assert(peerId, 'Missing peerId. Use Peer.create(cb) to create one')
-
-    this.id = peerId
-    this.multiaddrs = new MultiaddrSet()
-    this.protocols = new Set()
-    this._connectedMultiaddr = undefined
-  }
-
-  // only stores the current multiaddr being used
-  connect (ma) {
-    ma = ensureMultiaddr(ma)
-    if (!this.multiaddrs.has(ma) && ma.toString() !== `/ipfs/${this.id.toB58String()}`) {
-      throw new Error('can\'t be connected to missing multiaddr from set')
-    }
-    this._connectedMultiaddr = ma
-  }
-
-  disconnect () {
-    this._connectedMultiaddr = undefined
-  }
-
-  isConnected () {
-    return this._connectedMultiaddr
-  }
-}
-
-PeerInfo.create = (peerId, callback) => {
-  if (typeof peerId === 'function') {
-    callback = peerId
-    peerId = null
-
-    PeerId.create((err, id) => {
-      if (err) {
-        return callback(err)
-      }
-
-      callback(null, new PeerInfo(id))
-    })
-    return
-  }
-
-  // Already a PeerId instance
-  if (typeof peerId.toJSON === 'function') {
-    callback(null, new PeerInfo(peerId))
-  } else {
-    PeerId.createFromJSON(peerId, (err, id) => callback(err, new PeerInfo(id)))
-  }
-}
-
-PeerInfo.isPeerInfo = (peerInfo) => {
-  return Boolean(typeof peerInfo === 'object' &&
-    peerInfo.id &&
-    peerInfo.multiaddrs)
-}
-
-module.exports = PeerInfo
-
-},{"./multiaddr-set":495,"./utils":496,"assert":19,"peer-id":493}],495:[function(require,module,exports){
-'use strict'
-
-const ensureMultiaddr = require('./utils').ensureMultiaddr
-const uniqBy = require('lodash.uniqby')
-
-// Because JavaScript doesn't let you overload the compare in Set()..
-class MultiaddrSet {
-  constructor (multiaddrs) {
-    this._multiaddrs = multiaddrs || []
-    this._observedMultiaddrs = []
-  }
-
-  add (ma) {
-    ma = ensureMultiaddr(ma)
-
-    if (!this.has(ma)) {
-      this._multiaddrs.push(ma)
-    }
-  }
-
-  // addSafe - prevent multiaddr explosion™
-  // Multiaddr explosion is when you dial to a bunch of nodes and every node
-  // gives you a different observed address and you start storing them all to
-  // share with other peers. This seems like a good idea until you realize that
-  // most of those addresses are unique to the subnet that peer is in and so,
-  // they are completely worthless for all the other peers. This method is
-  // exclusively used by identify.
-  addSafe (ma) {
-    ma = ensureMultiaddr(ma)
-
-    const check = this._observedMultiaddrs.some((m, i) => {
-      if (m.equals(ma)) {
-        this.add(ma)
-        this._observedMultiaddrs.splice(i, 1)
-        return true
-      }
-    })
-    if (!check) {
-      this._observedMultiaddrs.push(ma)
-    }
-  }
-
-  toArray () {
-    return this._multiaddrs.slice()
-  }
-
-  get size () {
-    return this._multiaddrs.length
-  }
-
-  forEach (fn) {
-    return this._multiaddrs.forEach(fn)
-  }
-
-  filterBy (maFmt) {
-    if (typeof maFmt !== 'object' ||
-      typeof maFmt.matches !== 'function' ||
-      typeof maFmt.partialMatch !== 'function' ||
-      typeof maFmt.toString !== 'function') return []
-
-    return this._multiaddrs.filter((ma) => maFmt.matches(ma))
-  }
-
-  has (ma) {
-    ma = ensureMultiaddr(ma)
-    return this._multiaddrs.some((m) => m.equals(ma))
-  }
-
-  delete (ma) {
-    ma = ensureMultiaddr(ma)
-
-    this._multiaddrs.some((m, i) => {
-      if (m.equals(ma)) {
-        this._multiaddrs.splice(i, 1)
-        return true
-      }
-    })
-  }
-
-  // replaces selected existing multiaddrs with new ones
-  replace (existing, fresh) {
-    if (!Array.isArray(existing)) {
-      existing = [existing]
-    }
-    if (!Array.isArray(fresh)) {
-      fresh = [fresh]
-    }
-    existing.forEach((m) => this.delete(m))
-    fresh.forEach((m) => this.add(m))
-  }
-
-  clear () {
-    this._multiaddrs = []
-  }
-
-  // this only really helps make ip6 and ip4 multiaddrs distinct if they are
-  // different
-  // TODO this is not an ideal solution, probably this code should just be
-  // in libp2p-tcp
-  distinct () {
-    return uniqBy(this._multiaddrs, (ma) => {
-      return [ma.toOptions().port, ma.toOptions().transport].join()
-    })
-  }
-}
-
-module.exports = MultiaddrSet
-
-},{"./utils":496,"lodash.uniqby":324}],496:[function(require,module,exports){
-'use strict'
-
-const multiaddr = require('multiaddr')
-
-function ensureMultiaddr (ma) {
-  if (multiaddr.isMultiaddr(ma)) {
-    return ma
-  }
-
-  return multiaddr(ma)
-}
-
-module.exports = {
-  ensureMultiaddr: ensureMultiaddr
-}
-
-},{"multiaddr":403}],497:[function(require,module,exports){
+},{"assert":18,"async/waterfall":52,"buffer":84,"libp2p-crypto":552,"multihashes":480}],569:[function(require,module,exports){
+arguments[4][212][0].apply(exports,arguments)
+},{"./convert":570,"./protocols-table":572,"buffer":84,"dup":212,"lodash.filter":397,"lodash.map":401,"varint":735}],570:[function(require,module,exports){
+arguments[4][213][0].apply(exports,arguments)
+},{"./protocols-table":572,"bs58":86,"buffer":84,"dup":213,"ip":171,"ip-address":161,"varint":735}],571:[function(require,module,exports){
+arguments[4][214][0].apply(exports,arguments)
+},{"./codec":569,"./protocols-table":572,"bs58":86,"buffer":84,"class-is":92,"dup":214,"lodash.map":401,"varint":735,"xtend":773}],572:[function(require,module,exports){
+arguments[4][364][0].apply(exports,arguments)
+},{"dup":364,"lodash.map":401}],573:[function(require,module,exports){
+arguments[4][220][0].apply(exports,arguments)
+},{"./multiaddr-set":574,"./utils":575,"assert":18,"dup":220,"peer-id":568}],574:[function(require,module,exports){
+arguments[4][221][0].apply(exports,arguments)
+},{"./utils":575,"dup":221,"lodash.uniqby":407}],575:[function(require,module,exports){
+arguments[4][222][0].apply(exports,arguments)
+},{"dup":222,"multiaddr":571}],576:[function(require,module,exports){
 'use strict';
 
 const processFn = (fn, opts) => function () {
@@ -114898,7 +115946,7 @@ module.exports = (obj, opts) => {
 	return ret;
 };
 
-},{}],498:[function(require,module,exports){
+},{}],577:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -114946,7 +115994,7 @@ function nextTick(fn, arg1, arg2, arg3) {
 
 
 }).call(this,require('_process'))
-},{"_process":499}],499:[function(require,module,exports){
+},{"_process":578}],578:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -115132,7 +116180,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],500:[function(require,module,exports){
+},{}],579:[function(require,module,exports){
 'use strict'
 
 var nextTick = require('./lib/next-tick')
@@ -115233,7 +116281,7 @@ function Handler(onFulfilled, onRejected, resolve, reject){
   this.reject = reject
 }
 
-},{"./lib/next-tick":502}],501:[function(require,module,exports){
+},{"./lib/next-tick":581}],580:[function(require,module,exports){
 'use strict'
 
 //This file contains then/promise specific extensions to the core promise API
@@ -115332,7 +116380,7 @@ Promise.prototype.nodeify = function (callback) {
     })
   })
 }
-},{"./core.js":500,"./lib/next-tick":502}],502:[function(require,module,exports){
+},{"./core.js":579,"./lib/next-tick":581}],581:[function(require,module,exports){
 (function (process,setImmediate){
 'use strict'
 
@@ -115345,7 +116393,7 @@ if (typeof setImmediate === 'function') { // IE >= 10 & node.js >= 0.10
 }
 
 }).call(this,require('_process'),require("timers").setImmediate)
-},{"_process":499,"timers":644}],503:[function(require,module,exports){
+},{"_process":578,"timers":724}],582:[function(require,module,exports){
 var parse = require('./parse')
 var stringify = require('./stringify')
 
@@ -115353,7 +116401,7 @@ module.exports = parse
 module.exports.parse = parse
 module.exports.stringify = stringify
 
-},{"./parse":504,"./stringify":505}],504:[function(require,module,exports){
+},{"./parse":583,"./stringify":584}],583:[function(require,module,exports){
 var tokenize = require('./tokenize')
 var MAX_RANGE = 0x1FFFFFFF
 
@@ -116063,7 +117111,7 @@ var parse = function (buf) {
 
 module.exports = parse
 
-},{"./tokenize":506}],505:[function(require,module,exports){
+},{"./tokenize":585}],584:[function(require,module,exports){
 var onfield = function (f, result) {
   var prefix = f.repeated ? 'repeated' : f.required ? 'required' : 'optional'
   if (f.type === 'map') prefix = 'map<' + f.map.from + ',' + f.map.to + '>'
@@ -116257,7 +117305,7 @@ module.exports = function (schema) {
   return result.map(indent('')).join('\n')
 }
 
-},{}],506:[function(require,module,exports){
+},{}],585:[function(require,module,exports){
 module.exports = function (sch) {
   var noComments = function (line) {
     var i = line.indexOf('//')
@@ -116296,7 +117344,7 @@ module.exports = function (sch) {
     .filter(noMultilineComments())
 }
 
-},{}],507:[function(require,module,exports){
+},{}],586:[function(require,module,exports){
 /* eslint max-depth: 1 */
 'use strict'
 
@@ -116530,7 +117578,7 @@ var defaultValue = function (f, def) {
 
 module.exports = compileDecode
 
-},{"./utils":512,"varint":655}],508:[function(require,module,exports){
+},{"./utils":591,"varint":735}],587:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -116664,7 +117712,7 @@ function compileEncode (m, resolve, enc, oneofs, encodingLength) {
 module.exports = compileEncode
 
 }).call(this,require("buffer").Buffer)
-},{"./utils":512,"buffer":84,"varint":655}],509:[function(require,module,exports){
+},{"./utils":591,"buffer":84,"varint":735}],588:[function(require,module,exports){
 'use strict'
 
 var defined = require('./utils').defined
@@ -116768,7 +117816,7 @@ function compileEncodingLength (m, enc, oneofs) {
 
 module.exports = compileEncodingLength
 
-},{"./utils":512,"varint":655}],510:[function(require,module,exports){
+},{"./utils":591,"varint":735}],589:[function(require,module,exports){
 'use strict'
 
 var varint = require('varint')
@@ -117063,7 +118111,7 @@ exports.float = (function () {
   return encoder(5, encode, decode, encodingLength)
 })()
 
-},{"safe-buffer":601,"signed-varint":623,"varint":655}],511:[function(require,module,exports){
+},{"safe-buffer":681,"signed-varint":703,"varint":735}],590:[function(require,module,exports){
 'use strict'
 
 var encodings = require('./encodings')
@@ -117230,14 +118278,14 @@ module.exports = function (schema, extraEncodings) {
   }))
 }
 
-},{"./decode":507,"./encode":508,"./encoding-length":509,"./encodings":510,"varint":655}],512:[function(require,module,exports){
+},{"./decode":586,"./encode":587,"./encoding-length":588,"./encodings":589,"varint":735}],591:[function(require,module,exports){
 'use strict'
 
 exports.defined = function (val) {
   return val !== null && val !== undefined && (typeof val !== 'number' || !isNaN(val))
 }
 
-},{}],513:[function(require,module,exports){
+},{}],592:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -117280,7 +118328,7 @@ module.exports = function (proto, opts) {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":168,"./compile":511,"protocol-buffers-schema":503}],514:[function(require,module,exports){
+},{"../../is-buffer/index.js":172,"./compile":590,"protocol-buffers-schema":582}],593:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 
@@ -117378,7 +118426,7 @@ module.exports = function block (size, opts) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":84,"pull-through":564}],515:[function(require,module,exports){
+},{"buffer":84,"pull-through":643}],594:[function(require,module,exports){
 var noop = function () {}
 
 function abortAll(ary, abort, cb) {
@@ -117421,7 +118469,7 @@ module.exports = function (streams) {
 
 
 
-},{}],516:[function(require,module,exports){
+},{}],595:[function(require,module,exports){
 module.exports = function Catch (onError) {
     onError = onError || function noop () {}
     var errd
@@ -117444,7 +118492,7 @@ module.exports = function Catch (onError) {
     }
 }
 
-},{}],517:[function(require,module,exports){
+},{}],596:[function(require,module,exports){
 
 var Source = require('./source')
 var Sink = require('./sink')
@@ -117467,14 +118515,14 @@ module.exports = function () {
 
 }
 
-},{"./sink":519,"./source":520}],518:[function(require,module,exports){
+},{"./sink":598,"./source":599}],597:[function(require,module,exports){
 
 exports.source = require('./source')
 exports.through = require('./through')
 exports.sink = require('./sink')
 exports.duplex = require('./duplex')
 
-},{"./duplex":517,"./sink":519,"./source":520,"./through":521}],519:[function(require,module,exports){
+},{"./duplex":596,"./sink":598,"./source":599,"./through":600}],598:[function(require,module,exports){
 module.exports = function (stream) {
   var read, started = false, id = Math.random()
 
@@ -117495,7 +118543,7 @@ module.exports = function (stream) {
   return consume
 }
 
-},{}],520:[function(require,module,exports){
+},{}],599:[function(require,module,exports){
 
 module.exports = function () {
   var _read, _cb, abortCb, _end
@@ -117527,7 +118575,7 @@ module.exports = function () {
 }
 
 
-},{}],521:[function(require,module,exports){
+},{}],600:[function(require,module,exports){
 
 module.exports = function () {
   var read, reader, cb, abort, stream
@@ -117557,7 +118605,7 @@ module.exports = function () {
   return delayed
 }
 
-},{}],522:[function(require,module,exports){
+},{}],601:[function(require,module,exports){
 var Reader = require('pull-reader')
 var Writer = require('pull-pushable')
 var cat = require('pull-cat')
@@ -117608,7 +118656,7 @@ module.exports = function (opts, _cb) {
   }
 }
 
-},{"pull-cat":515,"pull-pair":526,"pull-pushable":529,"pull-reader":530}],523:[function(require,module,exports){
+},{"pull-cat":594,"pull-pair":605,"pull-pushable":608,"pull-reader":609}],602:[function(require,module,exports){
 'use strict'
 
 const varint = require('varint')
@@ -117733,7 +118781,7 @@ function readMessage (reader, size, cb) {
   })
 }
 
-},{"pull-pushable":529,"pull-reader":530,"safe-buffer":601,"varint":655}],524:[function(require,module,exports){
+},{"pull-pushable":608,"pull-reader":609,"safe-buffer":681,"varint":735}],603:[function(require,module,exports){
 'use strict'
 
 const Buffer = require('safe-buffer').Buffer
@@ -117795,7 +118843,7 @@ function createPool () {
   return Buffer.alloc(poolSize)
 }
 
-},{"safe-buffer":601,"varint":655}],525:[function(require,module,exports){
+},{"safe-buffer":681,"varint":735}],604:[function(require,module,exports){
 'use strict'
 
 const encode = require('./encode')
@@ -117805,7 +118853,7 @@ exports.encode = encode
 exports.decode = d.decode
 exports.decodeFromReader = d.decodeFromReader
 
-},{"./decode":523,"./encode":524}],526:[function(require,module,exports){
+},{"./decode":602,"./encode":603}],605:[function(require,module,exports){
 'use strict'
 
 //a pair of pull streams where one drains from the other
@@ -117837,7 +118885,7 @@ module.exports = function () {
 }
 
 
-},{}],527:[function(require,module,exports){
+},{}],606:[function(require,module,exports){
 'use strict'
 
 const lp = require('pull-length-prefixed')
@@ -117860,7 +118908,7 @@ module.exports.decode = (proto) => {
 
 module.exports.pull = pro
 
-},{"./pull":528,"pull-length-prefixed":525,"pull-stream":533}],528:[function(require,module,exports){
+},{"./pull":607,"pull-length-prefixed":604,"pull-stream":612}],607:[function(require,module,exports){
 'use strict'
 
 const pull = require('pull-stream')
@@ -117873,7 +118921,7 @@ module.exports.decode = (proto) => {
   return pull.map(enc => proto.decode(enc))
 }
 
-},{"pull-stream":533}],529:[function(require,module,exports){
+},{"pull-stream":612}],608:[function(require,module,exports){
 module.exports = pullPushable
 
 function pullPushable (separated, onClose) {
@@ -117961,7 +119009,7 @@ function pullPushable (separated, onClose) {
   }
 }
 
-},{}],530:[function(require,module,exports){
+},{}],609:[function(require,module,exports){
 'use strict'
 var State = require('./state')
 
@@ -118085,7 +119133,7 @@ module.exports = function (timeout) {
 
 
 
-},{"./state":531}],531:[function(require,module,exports){
+},{"./state":610}],610:[function(require,module,exports){
 (function (Buffer){
 
 module.exports = function () {
@@ -118162,7 +119210,7 @@ module.exports = function () {
 
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":84}],532:[function(require,module,exports){
+},{"buffer":84}],611:[function(require,module,exports){
 (function (process,setImmediate){
 
 var Stream = require('stream')
@@ -118316,7 +119364,7 @@ function duplex (reader, read) {
 }
 
 }).call(this,require('_process'),require("timers").setImmediate)
-},{"_process":499,"stream":625,"timers":644}],533:[function(require,module,exports){
+},{"_process":578,"stream":705,"timers":724}],612:[function(require,module,exports){
 'use strict'
 
 var sources  = require('./sources')
@@ -118337,7 +119385,7 @@ for(var k in sinks)
   exports[k] = sinks[k]
 
 
-},{"./pull":534,"./sinks":539,"./sources":546,"./throughs":555}],534:[function(require,module,exports){
+},{"./pull":613,"./sinks":618,"./sources":625,"./throughs":634}],613:[function(require,module,exports){
 'use strict'
 
 module.exports = function pull (a) {
@@ -118388,7 +119436,7 @@ module.exports = function pull (a) {
   return read
 }
 
-},{}],535:[function(require,module,exports){
+},{}],614:[function(require,module,exports){
 'use strict'
 
 var reduce = require('./reduce')
@@ -118400,7 +119448,7 @@ module.exports = function collect (cb) {
   }, [], cb)
 }
 
-},{"./reduce":542}],536:[function(require,module,exports){
+},{"./reduce":621}],615:[function(require,module,exports){
 'use strict'
 
 var reduce = require('./reduce')
@@ -118411,7 +119459,7 @@ module.exports = function concat (cb) {
   }, '', cb)
 }
 
-},{"./reduce":542}],537:[function(require,module,exports){
+},{"./reduce":621}],616:[function(require,module,exports){
 'use strict'
 
 module.exports = function drain (op, done) {
@@ -118461,7 +119509,7 @@ module.exports = function drain (op, done) {
   return sink
 }
 
-},{}],538:[function(require,module,exports){
+},{}],617:[function(require,module,exports){
 'use strict'
 
 function id (e) { return e }
@@ -118491,7 +119539,7 @@ module.exports = function find (test, cb) {
 
 
 
-},{"../util/prop":562,"./drain":537}],539:[function(require,module,exports){
+},{"../util/prop":641,"./drain":616}],618:[function(require,module,exports){
 'use strict'
 
 module.exports = {
@@ -118505,7 +119553,7 @@ module.exports = {
 }
 
 
-},{"./collect":535,"./concat":536,"./drain":537,"./find":538,"./log":540,"./on-end":541,"./reduce":542}],540:[function(require,module,exports){
+},{"./collect":614,"./concat":615,"./drain":616,"./find":617,"./log":619,"./on-end":620,"./reduce":621}],619:[function(require,module,exports){
 'use strict'
 
 var drain = require('./drain')
@@ -118516,7 +119564,7 @@ module.exports = function log (done) {
   }, done)
 }
 
-},{"./drain":537}],541:[function(require,module,exports){
+},{"./drain":616}],620:[function(require,module,exports){
 'use strict'
 
 var drain = require('./drain')
@@ -118525,7 +119573,7 @@ module.exports = function onEnd (done) {
   return drain(null, done)
 }
 
-},{"./drain":537}],542:[function(require,module,exports){
+},{"./drain":616}],621:[function(require,module,exports){
 'use strict'
 
 var drain = require('./drain')
@@ -118549,7 +119597,7 @@ module.exports = function reduce (reducer, acc, cb ) {
     return sink
 }
 
-},{"./drain":537}],543:[function(require,module,exports){
+},{"./drain":616}],622:[function(require,module,exports){
 'use strict'
 
 module.exports = function count (max) {
@@ -118564,7 +119612,7 @@ module.exports = function count (max) {
 
 
 
-},{}],544:[function(require,module,exports){
+},{}],623:[function(require,module,exports){
 'use strict'
 //a stream that ends immediately.
 module.exports = function empty () {
@@ -118573,7 +119621,7 @@ module.exports = function empty () {
   }
 }
 
-},{}],545:[function(require,module,exports){
+},{}],624:[function(require,module,exports){
 'use strict'
 //a stream that errors immediately.
 module.exports = function error (err) {
@@ -118583,7 +119631,7 @@ module.exports = function error (err) {
 }
 
 
-},{}],546:[function(require,module,exports){
+},{}],625:[function(require,module,exports){
 'use strict'
 module.exports = {
   keys: require('./keys'),
@@ -118595,7 +119643,7 @@ module.exports = {
   error: require('./error')
 }
 
-},{"./count":543,"./empty":544,"./error":545,"./infinite":547,"./keys":548,"./once":549,"./values":550}],547:[function(require,module,exports){
+},{"./count":622,"./empty":623,"./error":624,"./infinite":626,"./keys":627,"./once":628,"./values":629}],626:[function(require,module,exports){
 'use strict'
 module.exports = function infinite (generate) {
   generate = generate || Math.random
@@ -118607,7 +119655,7 @@ module.exports = function infinite (generate) {
 
 
 
-},{}],548:[function(require,module,exports){
+},{}],627:[function(require,module,exports){
 'use strict'
 var values = require('./values')
 module.exports = function (object) {
@@ -118616,7 +119664,7 @@ module.exports = function (object) {
 
 
 
-},{"./values":550}],549:[function(require,module,exports){
+},{"./values":629}],628:[function(require,module,exports){
 'use strict'
 var abortCb = require('../util/abort-cb')
 
@@ -118634,7 +119682,7 @@ module.exports = function once (value, onAbort) {
 
 
 
-},{"../util/abort-cb":561}],550:[function(require,module,exports){
+},{"../util/abort-cb":640}],629:[function(require,module,exports){
 'use strict'
 var abortCb = require('../util/abort-cb')
 
@@ -118659,7 +119707,7 @@ module.exports = function values (array, onAbort) {
   }
 }
 
-},{"../util/abort-cb":561}],551:[function(require,module,exports){
+},{"../util/abort-cb":640}],630:[function(require,module,exports){
 'use strict'
 
 function id (e) { return e }
@@ -118713,7 +119761,7 @@ module.exports = function asyncMap (map) {
 
 
 
-},{"../util/prop":562}],552:[function(require,module,exports){
+},{"../util/prop":641}],631:[function(require,module,exports){
 'use strict'
 
 var tester = require('../util/tester')
@@ -118724,7 +119772,7 @@ module.exports = function filterNot (test) {
   return filter(function (data) { return !test(data) })
 }
 
-},{"../util/tester":563,"./filter":553}],553:[function(require,module,exports){
+},{"../util/tester":642,"./filter":632}],632:[function(require,module,exports){
 'use strict'
 
 var tester = require('../util/tester')
@@ -118750,7 +119798,7 @@ module.exports = function filter (test) {
 }
 
 
-},{"../util/tester":563}],554:[function(require,module,exports){
+},{"../util/tester":642}],633:[function(require,module,exports){
 'use strict'
 
 var values = require('../sources/values')
@@ -118799,7 +119847,7 @@ module.exports = function flatten () {
 }
 
 
-},{"../sources/once":549,"../sources/values":550}],555:[function(require,module,exports){
+},{"../sources/once":628,"../sources/values":629}],634:[function(require,module,exports){
 'use strict'
 
 module.exports = {
@@ -118817,7 +119865,7 @@ module.exports = {
 
 
 
-},{"./async-map":551,"./filter":553,"./filter-not":552,"./flatten":554,"./map":556,"./non-unique":557,"./take":558,"./through":559,"./unique":560}],556:[function(require,module,exports){
+},{"./async-map":630,"./filter":632,"./filter-not":631,"./flatten":633,"./map":635,"./non-unique":636,"./take":637,"./through":638,"./unique":639}],635:[function(require,module,exports){
 'use strict'
 
 function id (e) { return e }
@@ -118842,7 +119890,7 @@ module.exports = function map (mapper) {
   }
 }
 
-},{"../util/prop":562}],557:[function(require,module,exports){
+},{"../util/prop":641}],636:[function(require,module,exports){
 'use strict'
 
 var unique = require('./unique')
@@ -118852,7 +119900,7 @@ module.exports = function nonUnique (field) {
   return unique(field, true)
 }
 
-},{"./unique":560}],558:[function(require,module,exports){
+},{"./unique":639}],637:[function(require,module,exports){
 'use strict'
 
 //read a number of items and then stop.
@@ -118895,7 +119943,7 @@ module.exports = function take (test, opts) {
   }
 }
 
-},{}],559:[function(require,module,exports){
+},{}],638:[function(require,module,exports){
 'use strict'
 
 //a pass through stream that doesn't change the value.
@@ -118920,7 +119968,7 @@ module.exports = function through (op, onEnd) {
   }
 }
 
-},{}],560:[function(require,module,exports){
+},{}],639:[function(require,module,exports){
 'use strict'
 
 function id (e) { return e }
@@ -118940,7 +119988,7 @@ module.exports = function unique (field, invert) {
 }
 
 
-},{"../util/prop":562,"./filter":553}],561:[function(require,module,exports){
+},{"../util/prop":641,"./filter":632}],640:[function(require,module,exports){
 module.exports = function abortCb(cb, abort, onAbort) {
   cb(abort)
   onAbort && onAbort(abort === true ? null: abort)
@@ -118948,7 +119996,7 @@ module.exports = function abortCb(cb, abort, onAbort) {
 }
 
 
-},{}],562:[function(require,module,exports){
+},{}],641:[function(require,module,exports){
 module.exports = function prop (key) {
   return key && (
     'string' == typeof key
@@ -118959,7 +120007,7 @@ module.exports = function prop (key) {
   )
 }
 
-},{}],563:[function(require,module,exports){
+},{}],642:[function(require,module,exports){
 var prop = require('./prop')
 
 function id (e) { return e }
@@ -118972,7 +120020,7 @@ module.exports = function tester (test) {
   )
 }
 
-},{"./prop":562}],564:[function(require,module,exports){
+},{"./prop":641}],643:[function(require,module,exports){
 var looper = require('looper')
 
 module.exports = function (writer, ender) {
@@ -119043,7 +120091,7 @@ module.exports = function (writer, ender) {
 }
 
 
-},{"looper":384}],565:[function(require,module,exports){
+},{"looper":467}],644:[function(require,module,exports){
 'use strict';
 
 //load websocket library if we are not in the browser
@@ -119083,7 +120131,7 @@ module.exports = function (addr, opts) {
 
 module.exports.connect = module.exports
 
-},{"./duplex":566,"./web-socket":572,"./ws-url":573}],566:[function(require,module,exports){
+},{"./duplex":645,"./web-socket":651,"./ws-url":652}],645:[function(require,module,exports){
 var source = require('./source')
 var sink = require('./sink')
 
@@ -119108,7 +120156,7 @@ function duplex (ws, opts) {
 };
 
 
-},{"./sink":570,"./source":571}],567:[function(require,module,exports){
+},{"./sink":649,"./source":650}],646:[function(require,module,exports){
 var exports = module.exports = require('./duplex')
 
 exports.source = require('./source');
@@ -119116,7 +120164,7 @@ exports.sink = require('./sink');
 exports.createServer = require('./server')
 exports.connect = require('./client')
 
-},{"./client":565,"./duplex":566,"./server":64,"./sink":570,"./source":571}],568:[function(require,module,exports){
+},{"./client":644,"./duplex":645,"./server":63,"./sink":649,"./source":650}],647:[function(require,module,exports){
 module.exports = function(socket, callback) {
   var remove = socket && (socket.removeEventListener || socket.removeListener);
 
@@ -119149,7 +120197,7 @@ module.exports = function(socket, callback) {
   socket.addEventListener('error', handleErr);
 };
 
-},{}],569:[function(require,module,exports){
+},{}],648:[function(require,module,exports){
 var ws = require('./')
 var WebSocket = require('ws')
 var url = require('url')
@@ -119218,7 +120266,7 @@ module.exports = !WebSocket.Server ? null : function (opts, onConnection) {
 
 
 
-},{"./":567,"events":145,"http":626,"https":150,"url":647,"ws":64}],570:[function(require,module,exports){
+},{"./":646,"events":146,"http":706,"https":152,"url":727,"ws":63}],649:[function(require,module,exports){
 (function (process,setImmediate){
 var ready = require('./ready');
 
@@ -119276,7 +120324,7 @@ module.exports = function(socket, opts) {
 }
 
 }).call(this,require('_process'),require("timers").setImmediate)
-},{"./ready":568,"_process":499,"timers":644}],571:[function(require,module,exports){
+},{"./ready":647,"_process":578,"timers":724}],650:[function(require,module,exports){
 /**
   ### `source(socket)`
 
@@ -119364,11 +120412,11 @@ module.exports = function(socket, cb) {
   return read;
 };
 
-},{"safe-buffer":601}],572:[function(require,module,exports){
+},{"safe-buffer":681}],651:[function(require,module,exports){
 
 module.exports = 'undefined' === typeof WebSocket ? require('ws') : WebSocket
 
-},{"ws":64}],573:[function(require,module,exports){
+},{"ws":63}],652:[function(require,module,exports){
 var rurl = require('relative-url')
 var map = {http:'ws', https:'wss'}
 var def = 'ws'
@@ -119378,7 +120426,7 @@ module.exports = function (url, location) {
 
 
 
-},{"relative-url":599}],574:[function(require,module,exports){
+},{"relative-url":679}],653:[function(require,module,exports){
 (function (process){
 var once = require('once')
 var eos = require('end-of-stream')
@@ -119464,7 +120512,7 @@ var pump = function () {
 module.exports = pump
 
 }).call(this,require('_process'))
-},{"_process":499,"end-of-stream":144,"fs":64,"once":471}],575:[function(require,module,exports){
+},{"_process":578,"end-of-stream":144,"fs":63,"once":546}],654:[function(require,module,exports){
 (function (process,setImmediate){
 // vim:ts=4:sts=4:sw=4:
 /*!
@@ -121516,7 +122564,7 @@ return Q;
 });
 
 }).call(this,require('_process'),require("timers").setImmediate)
-},{"_process":499,"timers":644}],576:[function(require,module,exports){
+},{"_process":578,"timers":724}],655:[function(require,module,exports){
 'use strict';
 
 var replace = String.prototype.replace;
@@ -121536,7 +122584,7 @@ module.exports = {
     RFC3986: 'RFC3986'
 };
 
-},{}],577:[function(require,module,exports){
+},{}],656:[function(require,module,exports){
 'use strict';
 
 var stringify = require('./stringify');
@@ -121549,7 +122597,7 @@ module.exports = {
     stringify: stringify
 };
 
-},{"./formats":576,"./parse":578,"./stringify":579}],578:[function(require,module,exports){
+},{"./formats":655,"./parse":657,"./stringify":658}],657:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -121725,7 +122773,7 @@ module.exports = function (str, opts) {
     return utils.compact(obj);
 };
 
-},{"./utils":580}],579:[function(require,module,exports){
+},{"./utils":659}],658:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -121937,7 +122985,7 @@ module.exports = function (object, opts) {
     return joined.length > 0 ? prefix + joined : '';
 };
 
-},{"./formats":576,"./utils":580}],580:[function(require,module,exports){
+},{"./formats":655,"./utils":659}],659:[function(require,module,exports){
 'use strict';
 
 var has = Object.prototype.hasOwnProperty;
@@ -122152,7 +123200,7 @@ module.exports = {
     merge: merge
 };
 
-},{}],581:[function(require,module,exports){
+},{}],660:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -122238,7 +123286,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],582:[function(require,module,exports){
+},{}],661:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -122325,13 +123373,13 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],583:[function(require,module,exports){
+},{}],662:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":581,"./encode":582}],584:[function(require,module,exports){
+},{"./decode":660,"./encode":661}],663:[function(require,module,exports){
 'use strict';
 
 class QuickLRU {
@@ -122447,7 +123495,41 @@ class QuickLRU {
 
 module.exports = QuickLRU;
 
-},{}],585:[function(require,module,exports){
+},{}],664:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var rafThrottle = function rafThrottle(callback) {
+  var requestId = void 0;
+
+  var later = function later(context, args) {
+    return function () {
+      requestId = null;
+      callback.apply(context, args);
+    };
+  };
+
+  var throttled = function throttled() {
+    if (requestId === null || requestId === undefined) {
+      for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
+
+      requestId = requestAnimationFrame(later(this, args));
+    }
+  };
+
+  throttled.cancel = function () {
+    return cancelAnimationFrame(requestId);
+  };
+
+  return throttled;
+};
+
+exports.default = rafThrottle;
+},{}],665:[function(require,module,exports){
 (function (process,global){
 'use strict'
 
@@ -122489,10 +123571,10 @@ function randomBytes (size, cb) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":499,"safe-buffer":601}],586:[function(require,module,exports){
+},{"_process":578,"safe-buffer":681}],666:[function(require,module,exports){
 module.exports = require('./lib/_stream_duplex.js');
 
-},{"./lib/_stream_duplex.js":587}],587:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":667}],667:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -122624,7 +123706,7 @@ Duplex.prototype._destroy = function (err, cb) {
 
   pna.nextTick(cb, err);
 };
-},{"./_stream_readable":589,"./_stream_writable":591,"core-util-is":93,"inherits":154,"process-nextick-args":498}],588:[function(require,module,exports){
+},{"./_stream_readable":669,"./_stream_writable":671,"core-util-is":93,"inherits":158,"process-nextick-args":577}],668:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -122672,7 +123754,7 @@ function PassThrough(options) {
 PassThrough.prototype._transform = function (chunk, encoding, cb) {
   cb(null, chunk);
 };
-},{"./_stream_transform":590,"core-util-is":93,"inherits":154}],589:[function(require,module,exports){
+},{"./_stream_transform":670,"core-util-is":93,"inherits":158}],669:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -123694,7 +124776,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_stream_duplex":587,"./internal/streams/BufferList":592,"./internal/streams/destroy":593,"./internal/streams/stream":594,"_process":499,"core-util-is":93,"events":145,"inherits":154,"isarray":170,"process-nextick-args":498,"safe-buffer":601,"string_decoder/":632,"util":64}],590:[function(require,module,exports){
+},{"./_stream_duplex":667,"./internal/streams/BufferList":672,"./internal/streams/destroy":673,"./internal/streams/stream":674,"_process":578,"core-util-is":93,"events":146,"inherits":158,"isarray":175,"process-nextick-args":577,"safe-buffer":681,"string_decoder/":712,"util":63}],670:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -123909,7 +124991,7 @@ function done(stream, er, data) {
 
   return stream.push(null);
 }
-},{"./_stream_duplex":587,"core-util-is":93,"inherits":154}],591:[function(require,module,exports){
+},{"./_stream_duplex":667,"core-util-is":93,"inherits":158}],671:[function(require,module,exports){
 (function (process,global,setImmediate){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -124599,7 +125681,7 @@ Writable.prototype._destroy = function (err, cb) {
   cb(err);
 };
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
-},{"./_stream_duplex":587,"./internal/streams/destroy":593,"./internal/streams/stream":594,"_process":499,"core-util-is":93,"inherits":154,"process-nextick-args":498,"safe-buffer":601,"timers":644,"util-deprecate":649}],592:[function(require,module,exports){
+},{"./_stream_duplex":667,"./internal/streams/destroy":673,"./internal/streams/stream":674,"_process":578,"core-util-is":93,"inherits":158,"process-nextick-args":577,"safe-buffer":681,"timers":724,"util-deprecate":729}],672:[function(require,module,exports){
 'use strict';
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -124679,7 +125761,7 @@ if (util && util.inspect && util.inspect.custom) {
     return this.constructor.name + ' ' + obj;
   };
 }
-},{"safe-buffer":601,"util":64}],593:[function(require,module,exports){
+},{"safe-buffer":681,"util":63}],673:[function(require,module,exports){
 'use strict';
 
 /*<replacement>*/
@@ -124754,13 +125836,13 @@ module.exports = {
   destroy: destroy,
   undestroy: undestroy
 };
-},{"process-nextick-args":498}],594:[function(require,module,exports){
+},{"process-nextick-args":577}],674:[function(require,module,exports){
 module.exports = require('events').EventEmitter;
 
-},{"events":145}],595:[function(require,module,exports){
+},{"events":146}],675:[function(require,module,exports){
 module.exports = require('./readable').PassThrough
 
-},{"./readable":596}],596:[function(require,module,exports){
+},{"./readable":676}],676:[function(require,module,exports){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = exports;
 exports.Readable = exports;
@@ -124769,13 +125851,13 @@ exports.Duplex = require('./lib/_stream_duplex.js');
 exports.Transform = require('./lib/_stream_transform.js');
 exports.PassThrough = require('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":587,"./lib/_stream_passthrough.js":588,"./lib/_stream_readable.js":589,"./lib/_stream_transform.js":590,"./lib/_stream_writable.js":591}],597:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":667,"./lib/_stream_passthrough.js":668,"./lib/_stream_readable.js":669,"./lib/_stream_transform.js":670,"./lib/_stream_writable.js":671}],677:[function(require,module,exports){
 module.exports = require('./readable').Transform
 
-},{"./readable":596}],598:[function(require,module,exports){
+},{"./readable":676}],678:[function(require,module,exports){
 module.exports = require('./lib/_stream_writable.js');
 
-},{"./lib/_stream_writable.js":591}],599:[function(require,module,exports){
+},{"./lib/_stream_writable.js":671}],679:[function(require,module,exports){
 
 //normalize a ws url.
 var URL = require('url')
@@ -124873,7 +125955,7 @@ module.exports = function (url, location, protocolMap, defaultProtocol) {
 
 
 
-},{"url":647}],600:[function(require,module,exports){
+},{"url":727}],680:[function(require,module,exports){
 'use strict'
 var Buffer = require('buffer').Buffer
 var inherits = require('inherits')
@@ -125038,7 +126120,7 @@ function fn5 (a, b, c, d, e, m, k, s) {
 
 module.exports = RIPEMD160
 
-},{"buffer":84,"hash-base":148,"inherits":154}],601:[function(require,module,exports){
+},{"buffer":84,"hash-base":150,"inherits":158}],681:[function(require,module,exports){
 /* eslint-disable node/no-deprecated-api */
 var buffer = require('buffer')
 var Buffer = buffer.Buffer
@@ -125102,11 +126184,11 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   return buffer.SlowBuffer(size)
 }
 
-},{"buffer":84}],602:[function(require,module,exports){
+},{"buffer":84}],682:[function(require,module,exports){
 'use strict'
 module.exports = require('./lib')(require('./lib/js'))
 
-},{"./lib":605,"./lib/js":611}],603:[function(require,module,exports){
+},{"./lib":685,"./lib/js":691}],683:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 var toString = Object.prototype.toString
@@ -125154,7 +126236,7 @@ exports.isNumberInInterval = function (number, x, y, message) {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":168}],604:[function(require,module,exports){
+},{"../../is-buffer/index.js":172}],684:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var bip66 = require('bip66')
@@ -125349,7 +126431,7 @@ exports.signatureImportLax = function (sig) {
   return { r: r, s: s }
 }
 
-},{"bip66":57,"safe-buffer":601}],605:[function(require,module,exports){
+},{"bip66":56,"safe-buffer":681}],685:[function(require,module,exports){
 'use strict'
 var assert = require('./assert')
 var der = require('./der')
@@ -125596,7 +126678,7 @@ module.exports = function (secp256k1) {
   }
 }
 
-},{"./assert":603,"./der":604,"./messages.json":612}],606:[function(require,module,exports){
+},{"./assert":683,"./der":684,"./messages.json":692}],686:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var optimized = require('./optimized')
@@ -126260,7 +127342,7 @@ BN.tmp.words = new Array(10)
 
 module.exports = BN
 
-},{"./optimized":607,"safe-buffer":601}],607:[function(require,module,exports){
+},{"./optimized":687,"safe-buffer":681}],687:[function(require,module,exports){
 'use strict'
 exports.umulTo10x10 = function (num1, num2, out) {
   var a = num1.words
@@ -126834,7 +127916,7 @@ exports.umulTo10x10 = function (num1, num2, out) {
   return out
 }
 
-},{}],608:[function(require,module,exports){
+},{}],688:[function(require,module,exports){
 'use strict'
 var BN = require('./bn')
 
@@ -127015,7 +128097,7 @@ Object.defineProperty(ECJPoint.prototype, 'inf', {
 
 module.exports = ECJPoint
 
-},{"./bn":606}],609:[function(require,module,exports){
+},{"./bn":686}],689:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var BN = require('./bn')
@@ -127199,7 +128281,7 @@ ECPoint.prototype._getNAFPoints = function (wnd) {
 
 module.exports = ECPoint
 
-},{"./bn":606,"./ecjpoint":608,"safe-buffer":601}],610:[function(require,module,exports){
+},{"./bn":686,"./ecjpoint":688,"safe-buffer":681}],690:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var BN = require('./bn')
@@ -127317,7 +128399,7 @@ ECPointG.prototype.mulAdd = function (k1, p2, k2) {
 
 module.exports = new ECPointG()
 
-},{"./bn":606,"./ecjpoint":608,"./ecpoint":609,"safe-buffer":601}],611:[function(require,module,exports){
+},{"./bn":686,"./ecjpoint":688,"./ecpoint":689,"safe-buffer":681}],691:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var createHash = require('create-hash')
@@ -127559,7 +128641,7 @@ exports.ecdhUnsafe = function (publicKey, privateKey, compressed) {
   return point.mul(scalar).toPublicKey(compressed)
 }
 
-},{"../messages.json":612,"./bn":606,"./ecpoint":609,"./ecpointg":610,"create-hash":94,"drbg.js/hmac":132,"safe-buffer":601}],612:[function(require,module,exports){
+},{"../messages.json":692,"./bn":686,"./ecpoint":689,"./ecpointg":690,"create-hash":94,"drbg.js/hmac":132,"safe-buffer":681}],692:[function(require,module,exports){
 module.exports={
   "COMPRESSED_TYPE_INVALID": "compressed should be a boolean",
   "EC_PRIVATE_KEY_TYPE_INVALID": "private key should be a Buffer",
@@ -127598,7 +128680,7 @@ module.exports={
   "TWEAK_LENGTH_INVALID": "tweak length is invalid"
 }
 
-},{}],613:[function(require,module,exports){
+},{}],693:[function(require,module,exports){
 (function (process){
 exports = module.exports = SemVer;
 
@@ -128926,7 +130008,7 @@ function coerce(version) {
 }
 
 }).call(this,require('_process'))
-},{"_process":499}],614:[function(require,module,exports){
+},{"_process":578}],694:[function(require,module,exports){
 (function (process,global){
 (function (global, undefined) {
     "use strict";
@@ -129116,7 +130198,7 @@ function coerce(version) {
 }(typeof self === "undefined" ? typeof global === "undefined" ? this : global : self));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":499}],615:[function(require,module,exports){
+},{"_process":578}],695:[function(require,module,exports){
 var Buffer = require('safe-buffer').Buffer
 
 // prototype class for hash functions
@@ -129199,7 +130281,7 @@ Hash.prototype._update = function () {
 
 module.exports = Hash
 
-},{"safe-buffer":601}],616:[function(require,module,exports){
+},{"safe-buffer":681}],696:[function(require,module,exports){
 var exports = module.exports = function SHA (algorithm) {
   algorithm = algorithm.toLowerCase()
 
@@ -129216,7 +130298,7 @@ exports.sha256 = require('./sha256')
 exports.sha384 = require('./sha384')
 exports.sha512 = require('./sha512')
 
-},{"./sha":617,"./sha1":618,"./sha224":619,"./sha256":620,"./sha384":621,"./sha512":622}],617:[function(require,module,exports){
+},{"./sha":697,"./sha1":698,"./sha224":699,"./sha256":700,"./sha384":701,"./sha512":702}],697:[function(require,module,exports){
 /*
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-0, as defined
  * in FIPS PUB 180-1
@@ -129312,7 +130394,7 @@ Sha.prototype._hash = function () {
 
 module.exports = Sha
 
-},{"./hash":615,"inherits":154,"safe-buffer":601}],618:[function(require,module,exports){
+},{"./hash":695,"inherits":158,"safe-buffer":681}],698:[function(require,module,exports){
 /*
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-1, as defined
  * in FIPS PUB 180-1
@@ -129413,7 +130495,7 @@ Sha1.prototype._hash = function () {
 
 module.exports = Sha1
 
-},{"./hash":615,"inherits":154,"safe-buffer":601}],619:[function(require,module,exports){
+},{"./hash":695,"inherits":158,"safe-buffer":681}],699:[function(require,module,exports){
 /**
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-256, as defined
  * in FIPS 180-2
@@ -129468,7 +130550,7 @@ Sha224.prototype._hash = function () {
 
 module.exports = Sha224
 
-},{"./hash":615,"./sha256":620,"inherits":154,"safe-buffer":601}],620:[function(require,module,exports){
+},{"./hash":695,"./sha256":700,"inherits":158,"safe-buffer":681}],700:[function(require,module,exports){
 /**
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-256, as defined
  * in FIPS 180-2
@@ -129605,7 +130687,7 @@ Sha256.prototype._hash = function () {
 
 module.exports = Sha256
 
-},{"./hash":615,"inherits":154,"safe-buffer":601}],621:[function(require,module,exports){
+},{"./hash":695,"inherits":158,"safe-buffer":681}],701:[function(require,module,exports){
 var inherits = require('inherits')
 var SHA512 = require('./sha512')
 var Hash = require('./hash')
@@ -129664,7 +130746,7 @@ Sha384.prototype._hash = function () {
 
 module.exports = Sha384
 
-},{"./hash":615,"./sha512":622,"inherits":154,"safe-buffer":601}],622:[function(require,module,exports){
+},{"./hash":695,"./sha512":702,"inherits":158,"safe-buffer":681}],702:[function(require,module,exports){
 var inherits = require('inherits')
 var Hash = require('./hash')
 var Buffer = require('safe-buffer').Buffer
@@ -129926,7 +131008,7 @@ Sha512.prototype._hash = function () {
 
 module.exports = Sha512
 
-},{"./hash":615,"inherits":154,"safe-buffer":601}],623:[function(require,module,exports){
+},{"./hash":695,"inherits":158,"safe-buffer":681}],703:[function(require,module,exports){
 var varint = require('varint')
 exports.encode = function encode (v, b, o) {
   v = v >= 0 ? v*2 : v*-2 - 1
@@ -129944,7 +131026,7 @@ exports.encodingLength = function (v) {
   return varint.encodingLength(v >= 0 ? v*2 : v*-2 - 1)
 }
 
-},{"varint":655}],624:[function(require,module,exports){
+},{"varint":735}],704:[function(require,module,exports){
 /* globals window, exports, define */
 
 (function(window) {
@@ -130191,7 +131273,7 @@ exports.encodingLength = function (v) {
     }
 })(typeof window === 'undefined' ? this : window);
 
-},{}],625:[function(require,module,exports){
+},{}],705:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -130320,7 +131402,7 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":145,"inherits":154,"readable-stream/duplex.js":586,"readable-stream/passthrough.js":595,"readable-stream/readable.js":596,"readable-stream/transform.js":597,"readable-stream/writable.js":598}],626:[function(require,module,exports){
+},{"events":146,"inherits":158,"readable-stream/duplex.js":666,"readable-stream/passthrough.js":675,"readable-stream/readable.js":676,"readable-stream/transform.js":677,"readable-stream/writable.js":678}],706:[function(require,module,exports){
 (function (global){
 var ClientRequest = require('./lib/request')
 var response = require('./lib/response')
@@ -130408,7 +131490,7 @@ http.METHODS = [
 	'UNSUBSCRIBE'
 ]
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./lib/request":628,"./lib/response":629,"builtin-status-codes":90,"url":647,"xtend":663}],627:[function(require,module,exports){
+},{"./lib/request":708,"./lib/response":709,"builtin-status-codes":90,"url":727,"xtend":773}],707:[function(require,module,exports){
 (function (global){
 exports.fetch = isFunction(global.fetch) && isFunction(global.ReadableStream)
 
@@ -130485,7 +131567,7 @@ function isFunction (value) {
 xhr = null // Help gc
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],628:[function(require,module,exports){
+},{}],708:[function(require,module,exports){
 (function (process,global,Buffer){
 var capability = require('./capability')
 var inherits = require('inherits')
@@ -130816,7 +131898,7 @@ var unsafeHeaders = [
 ]
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"./capability":627,"./response":629,"_process":499,"buffer":84,"inherits":154,"readable-stream":596,"to-arraybuffer":645}],629:[function(require,module,exports){
+},{"./capability":707,"./response":709,"_process":578,"buffer":84,"inherits":158,"readable-stream":676,"to-arraybuffer":725}],709:[function(require,module,exports){
 (function (process,global,Buffer){
 var capability = require('./capability')
 var inherits = require('inherits')
@@ -131044,7 +132126,7 @@ IncomingMessage.prototype._onXHRProgress = function () {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"./capability":627,"_process":499,"buffer":84,"inherits":154,"readable-stream":596}],630:[function(require,module,exports){
+},{"./capability":707,"_process":578,"buffer":84,"inherits":158,"readable-stream":676}],710:[function(require,module,exports){
 module.exports = shift
 
 function shift (stream) {
@@ -131066,7 +132148,7 @@ function getStateLength (state) {
   return state.length
 }
 
-},{}],631:[function(require,module,exports){
+},{}],711:[function(require,module,exports){
 (function (process){
 var pull = require('pull-stream/pull')
 var looper = require('looper')
@@ -131307,7 +132389,7 @@ exports.transform = function (stream) {
 
 
 }).call(this,require('_process'))
-},{"_process":499,"looper":384,"pull-stream/pull":534}],632:[function(require,module,exports){
+},{"_process":578,"looper":467,"pull-stream/pull":613}],712:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -131604,7 +132686,7 @@ function simpleWrite(buf) {
 function simpleEnd(buf) {
   return buf && buf.length ? this.write(buf) : '';
 }
-},{"safe-buffer":601}],633:[function(require,module,exports){
+},{"safe-buffer":681}],713:[function(require,module,exports){
 const pify = require('pify')
 const ThroughStream = require('readable-stream').PassThrough
 const debounce = require('lodash.debounce')
@@ -131675,7 +132757,7 @@ function createSubstreamer(parentStream, opts) {
   return next
 }
 
-},{"end-of-stream":144,"lodash.debounce":313,"pify":497,"readable-stream":596}],634:[function(require,module,exports){
+},{"end-of-stream":144,"lodash.debounce":396,"pify":576,"readable-stream":676}],714:[function(require,module,exports){
 'use strict'
 
 var Promise = require('promise')
@@ -131722,11 +132804,11 @@ function Delayed(resolve, fn, self, args) {
   this.self = self || null
   this.args = args || null
 }
-},{"promise":501}],635:[function(require,module,exports){
+},{"promise":580}],715:[function(require,module,exports){
 arguments[4][135][0].apply(exports,arguments)
-},{"dup":135}],636:[function(require,module,exports){
+},{"dup":135}],716:[function(require,module,exports){
 arguments[4][136][0].apply(exports,arguments)
-},{"./_stream_readable":637,"./_stream_writable":639,"_process":499,"core-util-is":93,"dup":136,"inherits":154}],637:[function(require,module,exports){
+},{"./_stream_readable":717,"./_stream_writable":719,"_process":578,"core-util-is":93,"dup":136,"inherits":158}],717:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -132712,7 +133794,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,require('_process'))
-},{"_process":499,"buffer":84,"core-util-is":93,"events":145,"inherits":154,"isarray":635,"stream":625,"string_decoder/":641}],638:[function(require,module,exports){
+},{"_process":578,"buffer":84,"core-util-is":93,"events":146,"inherits":158,"isarray":715,"stream":705,"string_decoder/":721}],718:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -132924,7 +134006,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":636,"core-util-is":93,"inherits":154}],639:[function(require,module,exports){
+},{"./_stream_duplex":716,"core-util-is":93,"inherits":158}],719:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -133314,14 +134396,14 @@ function endWritable(stream, state, cb) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":636,"_process":499,"buffer":84,"core-util-is":93,"inherits":154,"stream":625}],640:[function(require,module,exports){
+},{"./_stream_duplex":716,"_process":578,"buffer":84,"core-util-is":93,"inherits":158,"stream":705}],720:[function(require,module,exports){
 module.exports = require("./lib/_stream_transform.js")
 
-},{"./lib/_stream_transform.js":638}],641:[function(require,module,exports){
+},{"./lib/_stream_transform.js":718}],721:[function(require,module,exports){
 arguments[4][142][0].apply(exports,arguments)
-},{"buffer":84,"dup":142}],642:[function(require,module,exports){
-arguments[4][396][0].apply(exports,arguments)
-},{"_process":499,"dup":396,"readable-stream/transform":640,"util":652,"xtend":663}],643:[function(require,module,exports){
+},{"buffer":84,"dup":142}],722:[function(require,module,exports){
+arguments[4][474][0].apply(exports,arguments)
+},{"_process":578,"dup":474,"readable-stream/transform":720,"util":732,"xtend":773}],723:[function(require,module,exports){
 'use strict'
 
 const throttle = require('lodash.throttle')
@@ -133380,7 +134462,7 @@ function getTimeElapsed (prevTime) {
   return Math.floor(a / 1000)
 }
 
-},{"lodash.throttle":323}],644:[function(require,module,exports){
+},{"lodash.throttle":406}],724:[function(require,module,exports){
 (function (setImmediate,clearImmediate){
 var nextTick = require('process/browser.js').nextTick;
 var apply = Function.prototype.apply;
@@ -133459,7 +134541,7 @@ exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate :
   delete immediateIds[id];
 };
 }).call(this,require("timers").setImmediate,require("timers").clearImmediate)
-},{"process/browser.js":499,"timers":644}],645:[function(require,module,exports){
+},{"process/browser.js":578,"timers":724}],725:[function(require,module,exports){
 var Buffer = require('buffer').Buffer
 
 module.exports = function (buf) {
@@ -133488,7 +134570,7 @@ module.exports = function (buf) {
 	}
 }
 
-},{"buffer":84}],646:[function(require,module,exports){
+},{"buffer":84}],726:[function(require,module,exports){
 (function(nacl) {
 'use strict';
 
@@ -135867,7 +136949,7 @@ nacl.setPRNG = function(fn) {
 
 })(typeof module !== 'undefined' && module.exports ? module.exports : (self.nacl = self.nacl || {}));
 
-},{"crypto":64}],647:[function(require,module,exports){
+},{"crypto":63}],727:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -136601,7 +137683,7 @@ Url.prototype.parseHost = function() {
   if (host) this.hostname = host;
 };
 
-},{"./util":648,"punycode":85,"querystring":583}],648:[function(require,module,exports){
+},{"./util":728,"punycode":85,"querystring":662}],728:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -136619,7 +137701,7 @@ module.exports = {
   }
 };
 
-},{}],649:[function(require,module,exports){
+},{}],729:[function(require,module,exports){
 (function (global){
 
 /**
@@ -136690,16 +137772,16 @@ function config (name) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],650:[function(require,module,exports){
-arguments[4][154][0].apply(exports,arguments)
-},{"dup":154}],651:[function(require,module,exports){
+},{}],730:[function(require,module,exports){
+arguments[4][158][0].apply(exports,arguments)
+},{"dup":158}],731:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],652:[function(require,module,exports){
+},{}],732:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -137289,7 +138371,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":651,"_process":499,"inherits":650}],653:[function(require,module,exports){
+},{"./support/isBuffer":731,"_process":578,"inherits":730}],733:[function(require,module,exports){
 module.exports = read
 
 var MSB = 0x80
@@ -137320,7 +138402,7 @@ function read(buf, offset) {
   return res
 }
 
-},{}],654:[function(require,module,exports){
+},{}],734:[function(require,module,exports){
 module.exports = encode
 
 var MSB = 0x80
@@ -137348,14 +138430,14 @@ function encode(num, out, offset) {
   return out
 }
 
-},{}],655:[function(require,module,exports){
+},{}],735:[function(require,module,exports){
 module.exports = {
     encode: require('./encode.js')
   , decode: require('./decode.js')
   , encodingLength: require('./length.js')
 }
 
-},{"./decode.js":653,"./encode.js":654,"./length.js":656}],656:[function(require,module,exports){
+},{"./decode.js":733,"./encode.js":734,"./length.js":736}],736:[function(require,module,exports){
 
 var N1 = Math.pow(2,  7)
 var N2 = Math.pow(2, 14)
@@ -137382,7 +138464,1857 @@ module.exports = function (value) {
   )
 }
 
-},{}],657:[function(require,module,exports){
+},{}],737:[function(require,module,exports){
+var createElement = require("./vdom/create-element.js")
+
+module.exports = createElement
+
+},{"./vdom/create-element.js":742}],738:[function(require,module,exports){
+var diff = require("./vtree/diff.js")
+
+module.exports = diff
+
+},{"./vtree/diff.js":765}],739:[function(require,module,exports){
+var h = require("./virtual-hyperscript/index.js")
+
+module.exports = h
+
+},{"./virtual-hyperscript/index.js":750}],740:[function(require,module,exports){
+var patch = require("./vdom/patch.js")
+
+module.exports = patch
+
+},{"./vdom/patch.js":745}],741:[function(require,module,exports){
+var isObject = require("is-object")
+var isHook = require("../vnode/is-vhook.js")
+
+module.exports = applyProperties
+
+function applyProperties(node, props, previous) {
+    for (var propName in props) {
+        var propValue = props[propName]
+
+        if (propValue === undefined) {
+            removeProperty(node, propName, propValue, previous);
+        } else if (isHook(propValue)) {
+            removeProperty(node, propName, propValue, previous)
+            if (propValue.hook) {
+                propValue.hook(node,
+                    propName,
+                    previous ? previous[propName] : undefined)
+            }
+        } else {
+            if (isObject(propValue)) {
+                patchObject(node, props, previous, propName, propValue);
+            } else {
+                node[propName] = propValue
+            }
+        }
+    }
+}
+
+function removeProperty(node, propName, propValue, previous) {
+    if (previous) {
+        var previousValue = previous[propName]
+
+        if (!isHook(previousValue)) {
+            if (propName === "attributes") {
+                for (var attrName in previousValue) {
+                    node.removeAttribute(attrName)
+                }
+            } else if (propName === "style") {
+                for (var i in previousValue) {
+                    node.style[i] = ""
+                }
+            } else if (typeof previousValue === "string") {
+                node[propName] = ""
+            } else {
+                node[propName] = null
+            }
+        } else if (previousValue.unhook) {
+            previousValue.unhook(node, propName, propValue)
+        }
+    }
+}
+
+function patchObject(node, props, previous, propName, propValue) {
+    var previousValue = previous ? previous[propName] : undefined
+
+    // Set attributes
+    if (propName === "attributes") {
+        for (var attrName in propValue) {
+            var attrValue = propValue[attrName]
+
+            if (attrValue === undefined) {
+                node.removeAttribute(attrName)
+            } else {
+                node.setAttribute(attrName, attrValue)
+            }
+        }
+
+        return
+    }
+
+    if(previousValue && isObject(previousValue) &&
+        getPrototype(previousValue) !== getPrototype(propValue)) {
+        node[propName] = propValue
+        return
+    }
+
+    if (!isObject(node[propName])) {
+        node[propName] = {}
+    }
+
+    var replacer = propName === "style" ? "" : undefined
+
+    for (var k in propValue) {
+        var value = propValue[k]
+        node[propName][k] = (value === undefined) ? replacer : value
+    }
+}
+
+function getPrototype(value) {
+    if (Object.getPrototypeOf) {
+        return Object.getPrototypeOf(value)
+    } else if (value.__proto__) {
+        return value.__proto__
+    } else if (value.constructor) {
+        return value.constructor.prototype
+    }
+}
+
+},{"../vnode/is-vhook.js":756,"is-object":173}],742:[function(require,module,exports){
+var document = require("global/document")
+
+var applyProperties = require("./apply-properties")
+
+var isVNode = require("../vnode/is-vnode.js")
+var isVText = require("../vnode/is-vtext.js")
+var isWidget = require("../vnode/is-widget.js")
+var handleThunk = require("../vnode/handle-thunk.js")
+
+module.exports = createElement
+
+function createElement(vnode, opts) {
+    var doc = opts ? opts.document || document : document
+    var warn = opts ? opts.warn : null
+
+    vnode = handleThunk(vnode).a
+
+    if (isWidget(vnode)) {
+        return vnode.init()
+    } else if (isVText(vnode)) {
+        return doc.createTextNode(vnode.text)
+    } else if (!isVNode(vnode)) {
+        if (warn) {
+            warn("Item is not a valid virtual dom node", vnode)
+        }
+        return null
+    }
+
+    var node = (vnode.namespace === null) ?
+        doc.createElement(vnode.tagName) :
+        doc.createElementNS(vnode.namespace, vnode.tagName)
+
+    var props = vnode.properties
+    applyProperties(node, props)
+
+    var children = vnode.children
+
+    for (var i = 0; i < children.length; i++) {
+        var childNode = createElement(children[i], opts)
+        if (childNode) {
+            node.appendChild(childNode)
+        }
+    }
+
+    return node
+}
+
+},{"../vnode/handle-thunk.js":754,"../vnode/is-vnode.js":757,"../vnode/is-vtext.js":758,"../vnode/is-widget.js":759,"./apply-properties":741,"global/document":149}],743:[function(require,module,exports){
+// Maps a virtual DOM tree onto a real DOM tree in an efficient manner.
+// We don't want to read all of the DOM nodes in the tree so we use
+// the in-order tree indexing to eliminate recursion down certain branches.
+// We only recurse into a DOM node if we know that it contains a child of
+// interest.
+
+var noChild = {}
+
+module.exports = domIndex
+
+function domIndex(rootNode, tree, indices, nodes) {
+    if (!indices || indices.length === 0) {
+        return {}
+    } else {
+        indices.sort(ascending)
+        return recurse(rootNode, tree, indices, nodes, 0)
+    }
+}
+
+function recurse(rootNode, tree, indices, nodes, rootIndex) {
+    nodes = nodes || {}
+
+
+    if (rootNode) {
+        if (indexInRange(indices, rootIndex, rootIndex)) {
+            nodes[rootIndex] = rootNode
+        }
+
+        var vChildren = tree.children
+
+        if (vChildren) {
+
+            var childNodes = rootNode.childNodes
+
+            for (var i = 0; i < tree.children.length; i++) {
+                rootIndex += 1
+
+                var vChild = vChildren[i] || noChild
+                var nextIndex = rootIndex + (vChild.count || 0)
+
+                // skip recursion down the tree if there are no nodes down here
+                if (indexInRange(indices, rootIndex, nextIndex)) {
+                    recurse(childNodes[i], vChild, indices, nodes, rootIndex)
+                }
+
+                rootIndex = nextIndex
+            }
+        }
+    }
+
+    return nodes
+}
+
+// Binary search for an index in the interval [left, right]
+function indexInRange(indices, left, right) {
+    if (indices.length === 0) {
+        return false
+    }
+
+    var minIndex = 0
+    var maxIndex = indices.length - 1
+    var currentIndex
+    var currentItem
+
+    while (minIndex <= maxIndex) {
+        currentIndex = ((maxIndex + minIndex) / 2) >> 0
+        currentItem = indices[currentIndex]
+
+        if (minIndex === maxIndex) {
+            return currentItem >= left && currentItem <= right
+        } else if (currentItem < left) {
+            minIndex = currentIndex + 1
+        } else  if (currentItem > right) {
+            maxIndex = currentIndex - 1
+        } else {
+            return true
+        }
+    }
+
+    return false;
+}
+
+function ascending(a, b) {
+    return a > b ? 1 : -1
+}
+
+},{}],744:[function(require,module,exports){
+var applyProperties = require("./apply-properties")
+
+var isWidget = require("../vnode/is-widget.js")
+var VPatch = require("../vnode/vpatch.js")
+
+var updateWidget = require("./update-widget")
+
+module.exports = applyPatch
+
+function applyPatch(vpatch, domNode, renderOptions) {
+    var type = vpatch.type
+    var vNode = vpatch.vNode
+    var patch = vpatch.patch
+
+    switch (type) {
+        case VPatch.REMOVE:
+            return removeNode(domNode, vNode)
+        case VPatch.INSERT:
+            return insertNode(domNode, patch, renderOptions)
+        case VPatch.VTEXT:
+            return stringPatch(domNode, vNode, patch, renderOptions)
+        case VPatch.WIDGET:
+            return widgetPatch(domNode, vNode, patch, renderOptions)
+        case VPatch.VNODE:
+            return vNodePatch(domNode, vNode, patch, renderOptions)
+        case VPatch.ORDER:
+            reorderChildren(domNode, patch)
+            return domNode
+        case VPatch.PROPS:
+            applyProperties(domNode, patch, vNode.properties)
+            return domNode
+        case VPatch.THUNK:
+            return replaceRoot(domNode,
+                renderOptions.patch(domNode, patch, renderOptions))
+        default:
+            return domNode
+    }
+}
+
+function removeNode(domNode, vNode) {
+    var parentNode = domNode.parentNode
+
+    if (parentNode) {
+        parentNode.removeChild(domNode)
+    }
+
+    destroyWidget(domNode, vNode);
+
+    return null
+}
+
+function insertNode(parentNode, vNode, renderOptions) {
+    var newNode = renderOptions.render(vNode, renderOptions)
+
+    if (parentNode) {
+        parentNode.appendChild(newNode)
+    }
+
+    return parentNode
+}
+
+function stringPatch(domNode, leftVNode, vText, renderOptions) {
+    var newNode
+
+    if (domNode.nodeType === 3) {
+        domNode.replaceData(0, domNode.length, vText.text)
+        newNode = domNode
+    } else {
+        var parentNode = domNode.parentNode
+        newNode = renderOptions.render(vText, renderOptions)
+
+        if (parentNode && newNode !== domNode) {
+            parentNode.replaceChild(newNode, domNode)
+        }
+    }
+
+    return newNode
+}
+
+function widgetPatch(domNode, leftVNode, widget, renderOptions) {
+    var updating = updateWidget(leftVNode, widget)
+    var newNode
+
+    if (updating) {
+        newNode = widget.update(leftVNode, domNode) || domNode
+    } else {
+        newNode = renderOptions.render(widget, renderOptions)
+    }
+
+    var parentNode = domNode.parentNode
+
+    if (parentNode && newNode !== domNode) {
+        parentNode.replaceChild(newNode, domNode)
+    }
+
+    if (!updating) {
+        destroyWidget(domNode, leftVNode)
+    }
+
+    return newNode
+}
+
+function vNodePatch(domNode, leftVNode, vNode, renderOptions) {
+    var parentNode = domNode.parentNode
+    var newNode = renderOptions.render(vNode, renderOptions)
+
+    if (parentNode && newNode !== domNode) {
+        parentNode.replaceChild(newNode, domNode)
+    }
+
+    return newNode
+}
+
+function destroyWidget(domNode, w) {
+    if (typeof w.destroy === "function" && isWidget(w)) {
+        w.destroy(domNode)
+    }
+}
+
+function reorderChildren(domNode, moves) {
+    var childNodes = domNode.childNodes
+    var keyMap = {}
+    var node
+    var remove
+    var insert
+
+    for (var i = 0; i < moves.removes.length; i++) {
+        remove = moves.removes[i]
+        node = childNodes[remove.from]
+        if (remove.key) {
+            keyMap[remove.key] = node
+        }
+        domNode.removeChild(node)
+    }
+
+    var length = childNodes.length
+    for (var j = 0; j < moves.inserts.length; j++) {
+        insert = moves.inserts[j]
+        node = keyMap[insert.key]
+        // this is the weirdest bug i've ever seen in webkit
+        domNode.insertBefore(node, insert.to >= length++ ? null : childNodes[insert.to])
+    }
+}
+
+function replaceRoot(oldRoot, newRoot) {
+    if (oldRoot && newRoot && oldRoot !== newRoot && oldRoot.parentNode) {
+        oldRoot.parentNode.replaceChild(newRoot, oldRoot)
+    }
+
+    return newRoot;
+}
+
+},{"../vnode/is-widget.js":759,"../vnode/vpatch.js":762,"./apply-properties":741,"./update-widget":746}],745:[function(require,module,exports){
+var document = require("global/document")
+var isArray = require("x-is-array")
+
+var render = require("./create-element")
+var domIndex = require("./dom-index")
+var patchOp = require("./patch-op")
+module.exports = patch
+
+function patch(rootNode, patches, renderOptions) {
+    renderOptions = renderOptions || {}
+    renderOptions.patch = renderOptions.patch && renderOptions.patch !== patch
+        ? renderOptions.patch
+        : patchRecursive
+    renderOptions.render = renderOptions.render || render
+
+    return renderOptions.patch(rootNode, patches, renderOptions)
+}
+
+function patchRecursive(rootNode, patches, renderOptions) {
+    var indices = patchIndices(patches)
+
+    if (indices.length === 0) {
+        return rootNode
+    }
+
+    var index = domIndex(rootNode, patches.a, indices)
+    var ownerDocument = rootNode.ownerDocument
+
+    if (!renderOptions.document && ownerDocument !== document) {
+        renderOptions.document = ownerDocument
+    }
+
+    for (var i = 0; i < indices.length; i++) {
+        var nodeIndex = indices[i]
+        rootNode = applyPatch(rootNode,
+            index[nodeIndex],
+            patches[nodeIndex],
+            renderOptions)
+    }
+
+    return rootNode
+}
+
+function applyPatch(rootNode, domNode, patchList, renderOptions) {
+    if (!domNode) {
+        return rootNode
+    }
+
+    var newNode
+
+    if (isArray(patchList)) {
+        for (var i = 0; i < patchList.length; i++) {
+            newNode = patchOp(patchList[i], domNode, renderOptions)
+
+            if (domNode === rootNode) {
+                rootNode = newNode
+            }
+        }
+    } else {
+        newNode = patchOp(patchList, domNode, renderOptions)
+
+        if (domNode === rootNode) {
+            rootNode = newNode
+        }
+    }
+
+    return rootNode
+}
+
+function patchIndices(patches) {
+    var indices = []
+
+    for (var key in patches) {
+        if (key !== "a") {
+            indices.push(Number(key))
+        }
+    }
+
+    return indices
+}
+
+},{"./create-element":742,"./dom-index":743,"./patch-op":744,"global/document":149,"x-is-array":771}],746:[function(require,module,exports){
+var isWidget = require("../vnode/is-widget.js")
+
+module.exports = updateWidget
+
+function updateWidget(a, b) {
+    if (isWidget(a) && isWidget(b)) {
+        if ("name" in a && "name" in b) {
+            return a.id === b.id
+        } else {
+            return a.init === b.init
+        }
+    }
+
+    return false
+}
+
+},{"../vnode/is-widget.js":759}],747:[function(require,module,exports){
+'use strict';
+
+module.exports = AttributeHook;
+
+function AttributeHook(namespace, value) {
+    if (!(this instanceof AttributeHook)) {
+        return new AttributeHook(namespace, value);
+    }
+
+    this.namespace = namespace;
+    this.value = value;
+}
+
+AttributeHook.prototype.hook = function (node, prop, prev) {
+    if (prev && prev.type === 'AttributeHook' &&
+        prev.value === this.value &&
+        prev.namespace === this.namespace) {
+        return;
+    }
+
+    node.setAttributeNS(this.namespace, prop, this.value);
+};
+
+AttributeHook.prototype.unhook = function (node, prop, next) {
+    if (next && next.type === 'AttributeHook' &&
+        next.namespace === this.namespace) {
+        return;
+    }
+
+    var colonPosition = prop.indexOf(':');
+    var localName = colonPosition > -1 ? prop.substr(colonPosition + 1) : prop;
+    node.removeAttributeNS(this.namespace, localName);
+};
+
+AttributeHook.prototype.type = 'AttributeHook';
+
+},{}],748:[function(require,module,exports){
+'use strict';
+
+var EvStore = require('ev-store');
+
+module.exports = EvHook;
+
+function EvHook(value) {
+    if (!(this instanceof EvHook)) {
+        return new EvHook(value);
+    }
+
+    this.value = value;
+}
+
+EvHook.prototype.hook = function (node, propertyName) {
+    var es = EvStore(node);
+    var propName = propertyName.substr(3);
+
+    es[propName] = this.value;
+};
+
+EvHook.prototype.unhook = function(node, propertyName) {
+    var es = EvStore(node);
+    var propName = propertyName.substr(3);
+
+    es[propName] = undefined;
+};
+
+},{"ev-store":145}],749:[function(require,module,exports){
+'use strict';
+
+module.exports = SoftSetHook;
+
+function SoftSetHook(value) {
+    if (!(this instanceof SoftSetHook)) {
+        return new SoftSetHook(value);
+    }
+
+    this.value = value;
+}
+
+SoftSetHook.prototype.hook = function (node, propertyName) {
+    if (node[propertyName] !== this.value) {
+        node[propertyName] = this.value;
+    }
+};
+
+},{}],750:[function(require,module,exports){
+'use strict';
+
+var isArray = require('x-is-array');
+
+var VNode = require('../vnode/vnode.js');
+var VText = require('../vnode/vtext.js');
+var isVNode = require('../vnode/is-vnode');
+var isVText = require('../vnode/is-vtext');
+var isWidget = require('../vnode/is-widget');
+var isHook = require('../vnode/is-vhook');
+var isVThunk = require('../vnode/is-thunk');
+
+var parseTag = require('./parse-tag.js');
+var softSetHook = require('./hooks/soft-set-hook.js');
+var evHook = require('./hooks/ev-hook.js');
+
+module.exports = h;
+
+function h(tagName, properties, children) {
+    var childNodes = [];
+    var tag, props, key, namespace;
+
+    if (!children && isChildren(properties)) {
+        children = properties;
+        props = {};
+    }
+
+    props = props || properties || {};
+    tag = parseTag(tagName, props);
+
+    // support keys
+    if (props.hasOwnProperty('key')) {
+        key = props.key;
+        props.key = undefined;
+    }
+
+    // support namespace
+    if (props.hasOwnProperty('namespace')) {
+        namespace = props.namespace;
+        props.namespace = undefined;
+    }
+
+    // fix cursor bug
+    if (tag === 'INPUT' &&
+        !namespace &&
+        props.hasOwnProperty('value') &&
+        props.value !== undefined &&
+        !isHook(props.value)
+    ) {
+        props.value = softSetHook(props.value);
+    }
+
+    transformProperties(props);
+
+    if (children !== undefined && children !== null) {
+        addChild(children, childNodes, tag, props);
+    }
+
+
+    return new VNode(tag, props, childNodes, key, namespace);
+}
+
+function addChild(c, childNodes, tag, props) {
+    if (typeof c === 'string') {
+        childNodes.push(new VText(c));
+    } else if (typeof c === 'number') {
+        childNodes.push(new VText(String(c)));
+    } else if (isChild(c)) {
+        childNodes.push(c);
+    } else if (isArray(c)) {
+        for (var i = 0; i < c.length; i++) {
+            addChild(c[i], childNodes, tag, props);
+        }
+    } else if (c === null || c === undefined) {
+        return;
+    } else {
+        throw UnexpectedVirtualElement({
+            foreignObject: c,
+            parentVnode: {
+                tagName: tag,
+                properties: props
+            }
+        });
+    }
+}
+
+function transformProperties(props) {
+    for (var propName in props) {
+        if (props.hasOwnProperty(propName)) {
+            var value = props[propName];
+
+            if (isHook(value)) {
+                continue;
+            }
+
+            if (propName.substr(0, 3) === 'ev-') {
+                // add ev-foo support
+                props[propName] = evHook(value);
+            }
+        }
+    }
+}
+
+function isChild(x) {
+    return isVNode(x) || isVText(x) || isWidget(x) || isVThunk(x);
+}
+
+function isChildren(x) {
+    return typeof x === 'string' || isArray(x) || isChild(x);
+}
+
+function UnexpectedVirtualElement(data) {
+    var err = new Error();
+
+    err.type = 'virtual-hyperscript.unexpected.virtual-element';
+    err.message = 'Unexpected virtual child passed to h().\n' +
+        'Expected a VNode / Vthunk / VWidget / string but:\n' +
+        'got:\n' +
+        errorString(data.foreignObject) +
+        '.\n' +
+        'The parent vnode is:\n' +
+        errorString(data.parentVnode)
+        '\n' +
+        'Suggested fix: change your `h(..., [ ... ])` callsite.';
+    err.foreignObject = data.foreignObject;
+    err.parentVnode = data.parentVnode;
+
+    return err;
+}
+
+function errorString(obj) {
+    try {
+        return JSON.stringify(obj, null, '    ');
+    } catch (e) {
+        return String(obj);
+    }
+}
+
+},{"../vnode/is-thunk":755,"../vnode/is-vhook":756,"../vnode/is-vnode":757,"../vnode/is-vtext":758,"../vnode/is-widget":759,"../vnode/vnode.js":761,"../vnode/vtext.js":763,"./hooks/ev-hook.js":748,"./hooks/soft-set-hook.js":749,"./parse-tag.js":751,"x-is-array":771}],751:[function(require,module,exports){
+'use strict';
+
+var split = require('browser-split');
+
+var classIdSplit = /([\.#]?[a-zA-Z0-9\u007F-\uFFFF_:-]+)/;
+var notClassId = /^\.|#/;
+
+module.exports = parseTag;
+
+function parseTag(tag, props) {
+    if (!tag) {
+        return 'DIV';
+    }
+
+    var noId = !(props.hasOwnProperty('id'));
+
+    var tagParts = split(tag, classIdSplit);
+    var tagName = null;
+
+    if (notClassId.test(tagParts[1])) {
+        tagName = 'DIV';
+    }
+
+    var classes, part, type, i;
+
+    for (i = 0; i < tagParts.length; i++) {
+        part = tagParts[i];
+
+        if (!part) {
+            continue;
+        }
+
+        type = part.charAt(0);
+
+        if (!tagName) {
+            tagName = part;
+        } else if (type === '.') {
+            classes = classes || [];
+            classes.push(part.substring(1, part.length));
+        } else if (type === '#' && noId) {
+            props.id = part.substring(1, part.length);
+        }
+    }
+
+    if (classes) {
+        if (props.className) {
+            classes.push(props.className);
+        }
+
+        props.className = classes.join(' ');
+    }
+
+    return props.namespace ? tagName : tagName.toUpperCase();
+}
+
+},{"browser-split":64}],752:[function(require,module,exports){
+'use strict';
+
+var DEFAULT_NAMESPACE = null;
+var EV_NAMESPACE = 'http://www.w3.org/2001/xml-events';
+var XLINK_NAMESPACE = 'http://www.w3.org/1999/xlink';
+var XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
+
+// http://www.w3.org/TR/SVGTiny12/attributeTable.html
+// http://www.w3.org/TR/SVG/attindex.html
+var SVG_PROPERTIES = {
+    'about': DEFAULT_NAMESPACE,
+    'accent-height': DEFAULT_NAMESPACE,
+    'accumulate': DEFAULT_NAMESPACE,
+    'additive': DEFAULT_NAMESPACE,
+    'alignment-baseline': DEFAULT_NAMESPACE,
+    'alphabetic': DEFAULT_NAMESPACE,
+    'amplitude': DEFAULT_NAMESPACE,
+    'arabic-form': DEFAULT_NAMESPACE,
+    'ascent': DEFAULT_NAMESPACE,
+    'attributeName': DEFAULT_NAMESPACE,
+    'attributeType': DEFAULT_NAMESPACE,
+    'azimuth': DEFAULT_NAMESPACE,
+    'bandwidth': DEFAULT_NAMESPACE,
+    'baseFrequency': DEFAULT_NAMESPACE,
+    'baseProfile': DEFAULT_NAMESPACE,
+    'baseline-shift': DEFAULT_NAMESPACE,
+    'bbox': DEFAULT_NAMESPACE,
+    'begin': DEFAULT_NAMESPACE,
+    'bias': DEFAULT_NAMESPACE,
+    'by': DEFAULT_NAMESPACE,
+    'calcMode': DEFAULT_NAMESPACE,
+    'cap-height': DEFAULT_NAMESPACE,
+    'class': DEFAULT_NAMESPACE,
+    'clip': DEFAULT_NAMESPACE,
+    'clip-path': DEFAULT_NAMESPACE,
+    'clip-rule': DEFAULT_NAMESPACE,
+    'clipPathUnits': DEFAULT_NAMESPACE,
+    'color': DEFAULT_NAMESPACE,
+    'color-interpolation': DEFAULT_NAMESPACE,
+    'color-interpolation-filters': DEFAULT_NAMESPACE,
+    'color-profile': DEFAULT_NAMESPACE,
+    'color-rendering': DEFAULT_NAMESPACE,
+    'content': DEFAULT_NAMESPACE,
+    'contentScriptType': DEFAULT_NAMESPACE,
+    'contentStyleType': DEFAULT_NAMESPACE,
+    'cursor': DEFAULT_NAMESPACE,
+    'cx': DEFAULT_NAMESPACE,
+    'cy': DEFAULT_NAMESPACE,
+    'd': DEFAULT_NAMESPACE,
+    'datatype': DEFAULT_NAMESPACE,
+    'defaultAction': DEFAULT_NAMESPACE,
+    'descent': DEFAULT_NAMESPACE,
+    'diffuseConstant': DEFAULT_NAMESPACE,
+    'direction': DEFAULT_NAMESPACE,
+    'display': DEFAULT_NAMESPACE,
+    'divisor': DEFAULT_NAMESPACE,
+    'dominant-baseline': DEFAULT_NAMESPACE,
+    'dur': DEFAULT_NAMESPACE,
+    'dx': DEFAULT_NAMESPACE,
+    'dy': DEFAULT_NAMESPACE,
+    'edgeMode': DEFAULT_NAMESPACE,
+    'editable': DEFAULT_NAMESPACE,
+    'elevation': DEFAULT_NAMESPACE,
+    'enable-background': DEFAULT_NAMESPACE,
+    'end': DEFAULT_NAMESPACE,
+    'ev:event': EV_NAMESPACE,
+    'event': DEFAULT_NAMESPACE,
+    'exponent': DEFAULT_NAMESPACE,
+    'externalResourcesRequired': DEFAULT_NAMESPACE,
+    'fill': DEFAULT_NAMESPACE,
+    'fill-opacity': DEFAULT_NAMESPACE,
+    'fill-rule': DEFAULT_NAMESPACE,
+    'filter': DEFAULT_NAMESPACE,
+    'filterRes': DEFAULT_NAMESPACE,
+    'filterUnits': DEFAULT_NAMESPACE,
+    'flood-color': DEFAULT_NAMESPACE,
+    'flood-opacity': DEFAULT_NAMESPACE,
+    'focusHighlight': DEFAULT_NAMESPACE,
+    'focusable': DEFAULT_NAMESPACE,
+    'font-family': DEFAULT_NAMESPACE,
+    'font-size': DEFAULT_NAMESPACE,
+    'font-size-adjust': DEFAULT_NAMESPACE,
+    'font-stretch': DEFAULT_NAMESPACE,
+    'font-style': DEFAULT_NAMESPACE,
+    'font-variant': DEFAULT_NAMESPACE,
+    'font-weight': DEFAULT_NAMESPACE,
+    'format': DEFAULT_NAMESPACE,
+    'from': DEFAULT_NAMESPACE,
+    'fx': DEFAULT_NAMESPACE,
+    'fy': DEFAULT_NAMESPACE,
+    'g1': DEFAULT_NAMESPACE,
+    'g2': DEFAULT_NAMESPACE,
+    'glyph-name': DEFAULT_NAMESPACE,
+    'glyph-orientation-horizontal': DEFAULT_NAMESPACE,
+    'glyph-orientation-vertical': DEFAULT_NAMESPACE,
+    'glyphRef': DEFAULT_NAMESPACE,
+    'gradientTransform': DEFAULT_NAMESPACE,
+    'gradientUnits': DEFAULT_NAMESPACE,
+    'handler': DEFAULT_NAMESPACE,
+    'hanging': DEFAULT_NAMESPACE,
+    'height': DEFAULT_NAMESPACE,
+    'horiz-adv-x': DEFAULT_NAMESPACE,
+    'horiz-origin-x': DEFAULT_NAMESPACE,
+    'horiz-origin-y': DEFAULT_NAMESPACE,
+    'id': DEFAULT_NAMESPACE,
+    'ideographic': DEFAULT_NAMESPACE,
+    'image-rendering': DEFAULT_NAMESPACE,
+    'in': DEFAULT_NAMESPACE,
+    'in2': DEFAULT_NAMESPACE,
+    'initialVisibility': DEFAULT_NAMESPACE,
+    'intercept': DEFAULT_NAMESPACE,
+    'k': DEFAULT_NAMESPACE,
+    'k1': DEFAULT_NAMESPACE,
+    'k2': DEFAULT_NAMESPACE,
+    'k3': DEFAULT_NAMESPACE,
+    'k4': DEFAULT_NAMESPACE,
+    'kernelMatrix': DEFAULT_NAMESPACE,
+    'kernelUnitLength': DEFAULT_NAMESPACE,
+    'kerning': DEFAULT_NAMESPACE,
+    'keyPoints': DEFAULT_NAMESPACE,
+    'keySplines': DEFAULT_NAMESPACE,
+    'keyTimes': DEFAULT_NAMESPACE,
+    'lang': DEFAULT_NAMESPACE,
+    'lengthAdjust': DEFAULT_NAMESPACE,
+    'letter-spacing': DEFAULT_NAMESPACE,
+    'lighting-color': DEFAULT_NAMESPACE,
+    'limitingConeAngle': DEFAULT_NAMESPACE,
+    'local': DEFAULT_NAMESPACE,
+    'marker-end': DEFAULT_NAMESPACE,
+    'marker-mid': DEFAULT_NAMESPACE,
+    'marker-start': DEFAULT_NAMESPACE,
+    'markerHeight': DEFAULT_NAMESPACE,
+    'markerUnits': DEFAULT_NAMESPACE,
+    'markerWidth': DEFAULT_NAMESPACE,
+    'mask': DEFAULT_NAMESPACE,
+    'maskContentUnits': DEFAULT_NAMESPACE,
+    'maskUnits': DEFAULT_NAMESPACE,
+    'mathematical': DEFAULT_NAMESPACE,
+    'max': DEFAULT_NAMESPACE,
+    'media': DEFAULT_NAMESPACE,
+    'mediaCharacterEncoding': DEFAULT_NAMESPACE,
+    'mediaContentEncodings': DEFAULT_NAMESPACE,
+    'mediaSize': DEFAULT_NAMESPACE,
+    'mediaTime': DEFAULT_NAMESPACE,
+    'method': DEFAULT_NAMESPACE,
+    'min': DEFAULT_NAMESPACE,
+    'mode': DEFAULT_NAMESPACE,
+    'name': DEFAULT_NAMESPACE,
+    'nav-down': DEFAULT_NAMESPACE,
+    'nav-down-left': DEFAULT_NAMESPACE,
+    'nav-down-right': DEFAULT_NAMESPACE,
+    'nav-left': DEFAULT_NAMESPACE,
+    'nav-next': DEFAULT_NAMESPACE,
+    'nav-prev': DEFAULT_NAMESPACE,
+    'nav-right': DEFAULT_NAMESPACE,
+    'nav-up': DEFAULT_NAMESPACE,
+    'nav-up-left': DEFAULT_NAMESPACE,
+    'nav-up-right': DEFAULT_NAMESPACE,
+    'numOctaves': DEFAULT_NAMESPACE,
+    'observer': DEFAULT_NAMESPACE,
+    'offset': DEFAULT_NAMESPACE,
+    'opacity': DEFAULT_NAMESPACE,
+    'operator': DEFAULT_NAMESPACE,
+    'order': DEFAULT_NAMESPACE,
+    'orient': DEFAULT_NAMESPACE,
+    'orientation': DEFAULT_NAMESPACE,
+    'origin': DEFAULT_NAMESPACE,
+    'overflow': DEFAULT_NAMESPACE,
+    'overlay': DEFAULT_NAMESPACE,
+    'overline-position': DEFAULT_NAMESPACE,
+    'overline-thickness': DEFAULT_NAMESPACE,
+    'panose-1': DEFAULT_NAMESPACE,
+    'path': DEFAULT_NAMESPACE,
+    'pathLength': DEFAULT_NAMESPACE,
+    'patternContentUnits': DEFAULT_NAMESPACE,
+    'patternTransform': DEFAULT_NAMESPACE,
+    'patternUnits': DEFAULT_NAMESPACE,
+    'phase': DEFAULT_NAMESPACE,
+    'playbackOrder': DEFAULT_NAMESPACE,
+    'pointer-events': DEFAULT_NAMESPACE,
+    'points': DEFAULT_NAMESPACE,
+    'pointsAtX': DEFAULT_NAMESPACE,
+    'pointsAtY': DEFAULT_NAMESPACE,
+    'pointsAtZ': DEFAULT_NAMESPACE,
+    'preserveAlpha': DEFAULT_NAMESPACE,
+    'preserveAspectRatio': DEFAULT_NAMESPACE,
+    'primitiveUnits': DEFAULT_NAMESPACE,
+    'propagate': DEFAULT_NAMESPACE,
+    'property': DEFAULT_NAMESPACE,
+    'r': DEFAULT_NAMESPACE,
+    'radius': DEFAULT_NAMESPACE,
+    'refX': DEFAULT_NAMESPACE,
+    'refY': DEFAULT_NAMESPACE,
+    'rel': DEFAULT_NAMESPACE,
+    'rendering-intent': DEFAULT_NAMESPACE,
+    'repeatCount': DEFAULT_NAMESPACE,
+    'repeatDur': DEFAULT_NAMESPACE,
+    'requiredExtensions': DEFAULT_NAMESPACE,
+    'requiredFeatures': DEFAULT_NAMESPACE,
+    'requiredFonts': DEFAULT_NAMESPACE,
+    'requiredFormats': DEFAULT_NAMESPACE,
+    'resource': DEFAULT_NAMESPACE,
+    'restart': DEFAULT_NAMESPACE,
+    'result': DEFAULT_NAMESPACE,
+    'rev': DEFAULT_NAMESPACE,
+    'role': DEFAULT_NAMESPACE,
+    'rotate': DEFAULT_NAMESPACE,
+    'rx': DEFAULT_NAMESPACE,
+    'ry': DEFAULT_NAMESPACE,
+    'scale': DEFAULT_NAMESPACE,
+    'seed': DEFAULT_NAMESPACE,
+    'shape-rendering': DEFAULT_NAMESPACE,
+    'slope': DEFAULT_NAMESPACE,
+    'snapshotTime': DEFAULT_NAMESPACE,
+    'spacing': DEFAULT_NAMESPACE,
+    'specularConstant': DEFAULT_NAMESPACE,
+    'specularExponent': DEFAULT_NAMESPACE,
+    'spreadMethod': DEFAULT_NAMESPACE,
+    'startOffset': DEFAULT_NAMESPACE,
+    'stdDeviation': DEFAULT_NAMESPACE,
+    'stemh': DEFAULT_NAMESPACE,
+    'stemv': DEFAULT_NAMESPACE,
+    'stitchTiles': DEFAULT_NAMESPACE,
+    'stop-color': DEFAULT_NAMESPACE,
+    'stop-opacity': DEFAULT_NAMESPACE,
+    'strikethrough-position': DEFAULT_NAMESPACE,
+    'strikethrough-thickness': DEFAULT_NAMESPACE,
+    'string': DEFAULT_NAMESPACE,
+    'stroke': DEFAULT_NAMESPACE,
+    'stroke-dasharray': DEFAULT_NAMESPACE,
+    'stroke-dashoffset': DEFAULT_NAMESPACE,
+    'stroke-linecap': DEFAULT_NAMESPACE,
+    'stroke-linejoin': DEFAULT_NAMESPACE,
+    'stroke-miterlimit': DEFAULT_NAMESPACE,
+    'stroke-opacity': DEFAULT_NAMESPACE,
+    'stroke-width': DEFAULT_NAMESPACE,
+    'surfaceScale': DEFAULT_NAMESPACE,
+    'syncBehavior': DEFAULT_NAMESPACE,
+    'syncBehaviorDefault': DEFAULT_NAMESPACE,
+    'syncMaster': DEFAULT_NAMESPACE,
+    'syncTolerance': DEFAULT_NAMESPACE,
+    'syncToleranceDefault': DEFAULT_NAMESPACE,
+    'systemLanguage': DEFAULT_NAMESPACE,
+    'tableValues': DEFAULT_NAMESPACE,
+    'target': DEFAULT_NAMESPACE,
+    'targetX': DEFAULT_NAMESPACE,
+    'targetY': DEFAULT_NAMESPACE,
+    'text-anchor': DEFAULT_NAMESPACE,
+    'text-decoration': DEFAULT_NAMESPACE,
+    'text-rendering': DEFAULT_NAMESPACE,
+    'textLength': DEFAULT_NAMESPACE,
+    'timelineBegin': DEFAULT_NAMESPACE,
+    'title': DEFAULT_NAMESPACE,
+    'to': DEFAULT_NAMESPACE,
+    'transform': DEFAULT_NAMESPACE,
+    'transformBehavior': DEFAULT_NAMESPACE,
+    'type': DEFAULT_NAMESPACE,
+    'typeof': DEFAULT_NAMESPACE,
+    'u1': DEFAULT_NAMESPACE,
+    'u2': DEFAULT_NAMESPACE,
+    'underline-position': DEFAULT_NAMESPACE,
+    'underline-thickness': DEFAULT_NAMESPACE,
+    'unicode': DEFAULT_NAMESPACE,
+    'unicode-bidi': DEFAULT_NAMESPACE,
+    'unicode-range': DEFAULT_NAMESPACE,
+    'units-per-em': DEFAULT_NAMESPACE,
+    'v-alphabetic': DEFAULT_NAMESPACE,
+    'v-hanging': DEFAULT_NAMESPACE,
+    'v-ideographic': DEFAULT_NAMESPACE,
+    'v-mathematical': DEFAULT_NAMESPACE,
+    'values': DEFAULT_NAMESPACE,
+    'version': DEFAULT_NAMESPACE,
+    'vert-adv-y': DEFAULT_NAMESPACE,
+    'vert-origin-x': DEFAULT_NAMESPACE,
+    'vert-origin-y': DEFAULT_NAMESPACE,
+    'viewBox': DEFAULT_NAMESPACE,
+    'viewTarget': DEFAULT_NAMESPACE,
+    'visibility': DEFAULT_NAMESPACE,
+    'width': DEFAULT_NAMESPACE,
+    'widths': DEFAULT_NAMESPACE,
+    'word-spacing': DEFAULT_NAMESPACE,
+    'writing-mode': DEFAULT_NAMESPACE,
+    'x': DEFAULT_NAMESPACE,
+    'x-height': DEFAULT_NAMESPACE,
+    'x1': DEFAULT_NAMESPACE,
+    'x2': DEFAULT_NAMESPACE,
+    'xChannelSelector': DEFAULT_NAMESPACE,
+    'xlink:actuate': XLINK_NAMESPACE,
+    'xlink:arcrole': XLINK_NAMESPACE,
+    'xlink:href': XLINK_NAMESPACE,
+    'xlink:role': XLINK_NAMESPACE,
+    'xlink:show': XLINK_NAMESPACE,
+    'xlink:title': XLINK_NAMESPACE,
+    'xlink:type': XLINK_NAMESPACE,
+    'xml:base': XML_NAMESPACE,
+    'xml:id': XML_NAMESPACE,
+    'xml:lang': XML_NAMESPACE,
+    'xml:space': XML_NAMESPACE,
+    'y': DEFAULT_NAMESPACE,
+    'y1': DEFAULT_NAMESPACE,
+    'y2': DEFAULT_NAMESPACE,
+    'yChannelSelector': DEFAULT_NAMESPACE,
+    'z': DEFAULT_NAMESPACE,
+    'zoomAndPan': DEFAULT_NAMESPACE
+};
+
+module.exports = SVGAttributeNamespace;
+
+function SVGAttributeNamespace(value) {
+  if (SVG_PROPERTIES.hasOwnProperty(value)) {
+    return SVG_PROPERTIES[value];
+  }
+}
+
+},{}],753:[function(require,module,exports){
+'use strict';
+
+var isArray = require('x-is-array');
+
+var h = require('./index.js');
+
+
+var SVGAttributeNamespace = require('./svg-attribute-namespace');
+var attributeHook = require('./hooks/attribute-hook');
+
+var SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
+module.exports = svg;
+
+function svg(tagName, properties, children) {
+    if (!children && isChildren(properties)) {
+        children = properties;
+        properties = {};
+    }
+
+    properties = properties || {};
+
+    // set namespace for svg
+    properties.namespace = SVG_NAMESPACE;
+
+    var attributes = properties.attributes || (properties.attributes = {});
+
+    for (var key in properties) {
+        if (!properties.hasOwnProperty(key)) {
+            continue;
+        }
+
+        var namespace = SVGAttributeNamespace(key);
+
+        if (namespace === undefined) { // not a svg attribute
+            continue;
+        }
+
+        var value = properties[key];
+
+        if (typeof value !== 'string' &&
+            typeof value !== 'number' &&
+            typeof value !== 'boolean'
+        ) {
+            continue;
+        }
+
+        if (namespace !== null) { // namespaced attribute
+            properties[key] = attributeHook(namespace, value);
+            continue;
+        }
+
+        attributes[key] = value
+        properties[key] = undefined
+    }
+
+    return h(tagName, properties, children);
+}
+
+function isChildren(x) {
+    return typeof x === 'string' || isArray(x);
+}
+
+},{"./hooks/attribute-hook":747,"./index.js":750,"./svg-attribute-namespace":752,"x-is-array":771}],754:[function(require,module,exports){
+var isVNode = require("./is-vnode")
+var isVText = require("./is-vtext")
+var isWidget = require("./is-widget")
+var isThunk = require("./is-thunk")
+
+module.exports = handleThunk
+
+function handleThunk(a, b) {
+    var renderedA = a
+    var renderedB = b
+
+    if (isThunk(b)) {
+        renderedB = renderThunk(b, a)
+    }
+
+    if (isThunk(a)) {
+        renderedA = renderThunk(a, null)
+    }
+
+    return {
+        a: renderedA,
+        b: renderedB
+    }
+}
+
+function renderThunk(thunk, previous) {
+    var renderedThunk = thunk.vnode
+
+    if (!renderedThunk) {
+        renderedThunk = thunk.vnode = thunk.render(previous)
+    }
+
+    if (!(isVNode(renderedThunk) ||
+            isVText(renderedThunk) ||
+            isWidget(renderedThunk))) {
+        throw new Error("thunk did not return a valid node");
+    }
+
+    return renderedThunk
+}
+
+},{"./is-thunk":755,"./is-vnode":757,"./is-vtext":758,"./is-widget":759}],755:[function(require,module,exports){
+module.exports = isThunk
+
+function isThunk(t) {
+    return t && t.type === "Thunk"
+}
+
+},{}],756:[function(require,module,exports){
+module.exports = isHook
+
+function isHook(hook) {
+    return hook &&
+      (typeof hook.hook === "function" && !hook.hasOwnProperty("hook") ||
+       typeof hook.unhook === "function" && !hook.hasOwnProperty("unhook"))
+}
+
+},{}],757:[function(require,module,exports){
+var version = require("./version")
+
+module.exports = isVirtualNode
+
+function isVirtualNode(x) {
+    return x && x.type === "VirtualNode" && x.version === version
+}
+
+},{"./version":760}],758:[function(require,module,exports){
+var version = require("./version")
+
+module.exports = isVirtualText
+
+function isVirtualText(x) {
+    return x && x.type === "VirtualText" && x.version === version
+}
+
+},{"./version":760}],759:[function(require,module,exports){
+module.exports = isWidget
+
+function isWidget(w) {
+    return w && w.type === "Widget"
+}
+
+},{}],760:[function(require,module,exports){
+module.exports = "2"
+
+},{}],761:[function(require,module,exports){
+var version = require("./version")
+var isVNode = require("./is-vnode")
+var isWidget = require("./is-widget")
+var isThunk = require("./is-thunk")
+var isVHook = require("./is-vhook")
+
+module.exports = VirtualNode
+
+var noProperties = {}
+var noChildren = []
+
+function VirtualNode(tagName, properties, children, key, namespace) {
+    this.tagName = tagName
+    this.properties = properties || noProperties
+    this.children = children || noChildren
+    this.key = key != null ? String(key) : undefined
+    this.namespace = (typeof namespace === "string") ? namespace : null
+
+    var count = (children && children.length) || 0
+    var descendants = 0
+    var hasWidgets = false
+    var hasThunks = false
+    var descendantHooks = false
+    var hooks
+
+    for (var propName in properties) {
+        if (properties.hasOwnProperty(propName)) {
+            var property = properties[propName]
+            if (isVHook(property) && property.unhook) {
+                if (!hooks) {
+                    hooks = {}
+                }
+
+                hooks[propName] = property
+            }
+        }
+    }
+
+    for (var i = 0; i < count; i++) {
+        var child = children[i]
+        if (isVNode(child)) {
+            descendants += child.count || 0
+
+            if (!hasWidgets && child.hasWidgets) {
+                hasWidgets = true
+            }
+
+            if (!hasThunks && child.hasThunks) {
+                hasThunks = true
+            }
+
+            if (!descendantHooks && (child.hooks || child.descendantHooks)) {
+                descendantHooks = true
+            }
+        } else if (!hasWidgets && isWidget(child)) {
+            if (typeof child.destroy === "function") {
+                hasWidgets = true
+            }
+        } else if (!hasThunks && isThunk(child)) {
+            hasThunks = true;
+        }
+    }
+
+    this.count = count + descendants
+    this.hasWidgets = hasWidgets
+    this.hasThunks = hasThunks
+    this.hooks = hooks
+    this.descendantHooks = descendantHooks
+}
+
+VirtualNode.prototype.version = version
+VirtualNode.prototype.type = "VirtualNode"
+
+},{"./is-thunk":755,"./is-vhook":756,"./is-vnode":757,"./is-widget":759,"./version":760}],762:[function(require,module,exports){
+var version = require("./version")
+
+VirtualPatch.NONE = 0
+VirtualPatch.VTEXT = 1
+VirtualPatch.VNODE = 2
+VirtualPatch.WIDGET = 3
+VirtualPatch.PROPS = 4
+VirtualPatch.ORDER = 5
+VirtualPatch.INSERT = 6
+VirtualPatch.REMOVE = 7
+VirtualPatch.THUNK = 8
+
+module.exports = VirtualPatch
+
+function VirtualPatch(type, vNode, patch) {
+    this.type = Number(type)
+    this.vNode = vNode
+    this.patch = patch
+}
+
+VirtualPatch.prototype.version = version
+VirtualPatch.prototype.type = "VirtualPatch"
+
+},{"./version":760}],763:[function(require,module,exports){
+var version = require("./version")
+
+module.exports = VirtualText
+
+function VirtualText(text) {
+    this.text = String(text)
+}
+
+VirtualText.prototype.version = version
+VirtualText.prototype.type = "VirtualText"
+
+},{"./version":760}],764:[function(require,module,exports){
+var isObject = require("is-object")
+var isHook = require("../vnode/is-vhook")
+
+module.exports = diffProps
+
+function diffProps(a, b) {
+    var diff
+
+    for (var aKey in a) {
+        if (!(aKey in b)) {
+            diff = diff || {}
+            diff[aKey] = undefined
+        }
+
+        var aValue = a[aKey]
+        var bValue = b[aKey]
+
+        if (aValue === bValue) {
+            continue
+        } else if (isObject(aValue) && isObject(bValue)) {
+            if (getPrototype(bValue) !== getPrototype(aValue)) {
+                diff = diff || {}
+                diff[aKey] = bValue
+            } else if (isHook(bValue)) {
+                 diff = diff || {}
+                 diff[aKey] = bValue
+            } else {
+                var objectDiff = diffProps(aValue, bValue)
+                if (objectDiff) {
+                    diff = diff || {}
+                    diff[aKey] = objectDiff
+                }
+            }
+        } else {
+            diff = diff || {}
+            diff[aKey] = bValue
+        }
+    }
+
+    for (var bKey in b) {
+        if (!(bKey in a)) {
+            diff = diff || {}
+            diff[bKey] = b[bKey]
+        }
+    }
+
+    return diff
+}
+
+function getPrototype(value) {
+  if (Object.getPrototypeOf) {
+    return Object.getPrototypeOf(value)
+  } else if (value.__proto__) {
+    return value.__proto__
+  } else if (value.constructor) {
+    return value.constructor.prototype
+  }
+}
+
+},{"../vnode/is-vhook":756,"is-object":173}],765:[function(require,module,exports){
+var isArray = require("x-is-array")
+
+var VPatch = require("../vnode/vpatch")
+var isVNode = require("../vnode/is-vnode")
+var isVText = require("../vnode/is-vtext")
+var isWidget = require("../vnode/is-widget")
+var isThunk = require("../vnode/is-thunk")
+var handleThunk = require("../vnode/handle-thunk")
+
+var diffProps = require("./diff-props")
+
+module.exports = diff
+
+function diff(a, b) {
+    var patch = { a: a }
+    walk(a, b, patch, 0)
+    return patch
+}
+
+function walk(a, b, patch, index) {
+    if (a === b) {
+        return
+    }
+
+    var apply = patch[index]
+    var applyClear = false
+
+    if (isThunk(a) || isThunk(b)) {
+        thunks(a, b, patch, index)
+    } else if (b == null) {
+
+        // If a is a widget we will add a remove patch for it
+        // Otherwise any child widgets/hooks must be destroyed.
+        // This prevents adding two remove patches for a widget.
+        if (!isWidget(a)) {
+            clearState(a, patch, index)
+            apply = patch[index]
+        }
+
+        apply = appendPatch(apply, new VPatch(VPatch.REMOVE, a, b))
+    } else if (isVNode(b)) {
+        if (isVNode(a)) {
+            if (a.tagName === b.tagName &&
+                a.namespace === b.namespace &&
+                a.key === b.key) {
+                var propsPatch = diffProps(a.properties, b.properties)
+                if (propsPatch) {
+                    apply = appendPatch(apply,
+                        new VPatch(VPatch.PROPS, a, propsPatch))
+                }
+                apply = diffChildren(a, b, patch, apply, index)
+            } else {
+                apply = appendPatch(apply, new VPatch(VPatch.VNODE, a, b))
+                applyClear = true
+            }
+        } else {
+            apply = appendPatch(apply, new VPatch(VPatch.VNODE, a, b))
+            applyClear = true
+        }
+    } else if (isVText(b)) {
+        if (!isVText(a)) {
+            apply = appendPatch(apply, new VPatch(VPatch.VTEXT, a, b))
+            applyClear = true
+        } else if (a.text !== b.text) {
+            apply = appendPatch(apply, new VPatch(VPatch.VTEXT, a, b))
+        }
+    } else if (isWidget(b)) {
+        if (!isWidget(a)) {
+            applyClear = true
+        }
+
+        apply = appendPatch(apply, new VPatch(VPatch.WIDGET, a, b))
+    }
+
+    if (apply) {
+        patch[index] = apply
+    }
+
+    if (applyClear) {
+        clearState(a, patch, index)
+    }
+}
+
+function diffChildren(a, b, patch, apply, index) {
+    var aChildren = a.children
+    var orderedSet = reorder(aChildren, b.children)
+    var bChildren = orderedSet.children
+
+    var aLen = aChildren.length
+    var bLen = bChildren.length
+    var len = aLen > bLen ? aLen : bLen
+
+    for (var i = 0; i < len; i++) {
+        var leftNode = aChildren[i]
+        var rightNode = bChildren[i]
+        index += 1
+
+        if (!leftNode) {
+            if (rightNode) {
+                // Excess nodes in b need to be added
+                apply = appendPatch(apply,
+                    new VPatch(VPatch.INSERT, null, rightNode))
+            }
+        } else {
+            walk(leftNode, rightNode, patch, index)
+        }
+
+        if (isVNode(leftNode) && leftNode.count) {
+            index += leftNode.count
+        }
+    }
+
+    if (orderedSet.moves) {
+        // Reorder nodes last
+        apply = appendPatch(apply, new VPatch(
+            VPatch.ORDER,
+            a,
+            orderedSet.moves
+        ))
+    }
+
+    return apply
+}
+
+function clearState(vNode, patch, index) {
+    // TODO: Make this a single walk, not two
+    unhook(vNode, patch, index)
+    destroyWidgets(vNode, patch, index)
+}
+
+// Patch records for all destroyed widgets must be added because we need
+// a DOM node reference for the destroy function
+function destroyWidgets(vNode, patch, index) {
+    if (isWidget(vNode)) {
+        if (typeof vNode.destroy === "function") {
+            patch[index] = appendPatch(
+                patch[index],
+                new VPatch(VPatch.REMOVE, vNode, null)
+            )
+        }
+    } else if (isVNode(vNode) && (vNode.hasWidgets || vNode.hasThunks)) {
+        var children = vNode.children
+        var len = children.length
+        for (var i = 0; i < len; i++) {
+            var child = children[i]
+            index += 1
+
+            destroyWidgets(child, patch, index)
+
+            if (isVNode(child) && child.count) {
+                index += child.count
+            }
+        }
+    } else if (isThunk(vNode)) {
+        thunks(vNode, null, patch, index)
+    }
+}
+
+// Create a sub-patch for thunks
+function thunks(a, b, patch, index) {
+    var nodes = handleThunk(a, b)
+    var thunkPatch = diff(nodes.a, nodes.b)
+    if (hasPatches(thunkPatch)) {
+        patch[index] = new VPatch(VPatch.THUNK, null, thunkPatch)
+    }
+}
+
+function hasPatches(patch) {
+    for (var index in patch) {
+        if (index !== "a") {
+            return true
+        }
+    }
+
+    return false
+}
+
+// Execute hooks when two nodes are identical
+function unhook(vNode, patch, index) {
+    if (isVNode(vNode)) {
+        if (vNode.hooks) {
+            patch[index] = appendPatch(
+                patch[index],
+                new VPatch(
+                    VPatch.PROPS,
+                    vNode,
+                    undefinedKeys(vNode.hooks)
+                )
+            )
+        }
+
+        if (vNode.descendantHooks || vNode.hasThunks) {
+            var children = vNode.children
+            var len = children.length
+            for (var i = 0; i < len; i++) {
+                var child = children[i]
+                index += 1
+
+                unhook(child, patch, index)
+
+                if (isVNode(child) && child.count) {
+                    index += child.count
+                }
+            }
+        }
+    } else if (isThunk(vNode)) {
+        thunks(vNode, null, patch, index)
+    }
+}
+
+function undefinedKeys(obj) {
+    var result = {}
+
+    for (var key in obj) {
+        result[key] = undefined
+    }
+
+    return result
+}
+
+// List diff, naive left to right reordering
+function reorder(aChildren, bChildren) {
+    // O(M) time, O(M) memory
+    var bChildIndex = keyIndex(bChildren)
+    var bKeys = bChildIndex.keys
+    var bFree = bChildIndex.free
+
+    if (bFree.length === bChildren.length) {
+        return {
+            children: bChildren,
+            moves: null
+        }
+    }
+
+    // O(N) time, O(N) memory
+    var aChildIndex = keyIndex(aChildren)
+    var aKeys = aChildIndex.keys
+    var aFree = aChildIndex.free
+
+    if (aFree.length === aChildren.length) {
+        return {
+            children: bChildren,
+            moves: null
+        }
+    }
+
+    // O(MAX(N, M)) memory
+    var newChildren = []
+
+    var freeIndex = 0
+    var freeCount = bFree.length
+    var deletedItems = 0
+
+    // Iterate through a and match a node in b
+    // O(N) time,
+    for (var i = 0 ; i < aChildren.length; i++) {
+        var aItem = aChildren[i]
+        var itemIndex
+
+        if (aItem.key) {
+            if (bKeys.hasOwnProperty(aItem.key)) {
+                // Match up the old keys
+                itemIndex = bKeys[aItem.key]
+                newChildren.push(bChildren[itemIndex])
+
+            } else {
+                // Remove old keyed items
+                itemIndex = i - deletedItems++
+                newChildren.push(null)
+            }
+        } else {
+            // Match the item in a with the next free item in b
+            if (freeIndex < freeCount) {
+                itemIndex = bFree[freeIndex++]
+                newChildren.push(bChildren[itemIndex])
+            } else {
+                // There are no free items in b to match with
+                // the free items in a, so the extra free nodes
+                // are deleted.
+                itemIndex = i - deletedItems++
+                newChildren.push(null)
+            }
+        }
+    }
+
+    var lastFreeIndex = freeIndex >= bFree.length ?
+        bChildren.length :
+        bFree[freeIndex]
+
+    // Iterate through b and append any new keys
+    // O(M) time
+    for (var j = 0; j < bChildren.length; j++) {
+        var newItem = bChildren[j]
+
+        if (newItem.key) {
+            if (!aKeys.hasOwnProperty(newItem.key)) {
+                // Add any new keyed items
+                // We are adding new items to the end and then sorting them
+                // in place. In future we should insert new items in place.
+                newChildren.push(newItem)
+            }
+        } else if (j >= lastFreeIndex) {
+            // Add any leftover non-keyed items
+            newChildren.push(newItem)
+        }
+    }
+
+    var simulate = newChildren.slice()
+    var simulateIndex = 0
+    var removes = []
+    var inserts = []
+    var simulateItem
+
+    for (var k = 0; k < bChildren.length;) {
+        var wantedItem = bChildren[k]
+        simulateItem = simulate[simulateIndex]
+
+        // remove items
+        while (simulateItem === null && simulate.length) {
+            removes.push(remove(simulate, simulateIndex, null))
+            simulateItem = simulate[simulateIndex]
+        }
+
+        if (!simulateItem || simulateItem.key !== wantedItem.key) {
+            // if we need a key in this position...
+            if (wantedItem.key) {
+                if (simulateItem && simulateItem.key) {
+                    // if an insert doesn't put this key in place, it needs to move
+                    if (bKeys[simulateItem.key] !== k + 1) {
+                        removes.push(remove(simulate, simulateIndex, simulateItem.key))
+                        simulateItem = simulate[simulateIndex]
+                        // if the remove didn't put the wanted item in place, we need to insert it
+                        if (!simulateItem || simulateItem.key !== wantedItem.key) {
+                            inserts.push({key: wantedItem.key, to: k})
+                        }
+                        // items are matching, so skip ahead
+                        else {
+                            simulateIndex++
+                        }
+                    }
+                    else {
+                        inserts.push({key: wantedItem.key, to: k})
+                    }
+                }
+                else {
+                    inserts.push({key: wantedItem.key, to: k})
+                }
+                k++
+            }
+            // a key in simulate has no matching wanted key, remove it
+            else if (simulateItem && simulateItem.key) {
+                removes.push(remove(simulate, simulateIndex, simulateItem.key))
+            }
+        }
+        else {
+            simulateIndex++
+            k++
+        }
+    }
+
+    // remove all the remaining nodes from simulate
+    while(simulateIndex < simulate.length) {
+        simulateItem = simulate[simulateIndex]
+        removes.push(remove(simulate, simulateIndex, simulateItem && simulateItem.key))
+    }
+
+    // If the only moves we have are deletes then we can just
+    // let the delete patch remove these items.
+    if (removes.length === deletedItems && !inserts.length) {
+        return {
+            children: newChildren,
+            moves: null
+        }
+    }
+
+    return {
+        children: newChildren,
+        moves: {
+            removes: removes,
+            inserts: inserts
+        }
+    }
+}
+
+function remove(arr, index, key) {
+    arr.splice(index, 1)
+
+    return {
+        from: index,
+        key: key
+    }
+}
+
+function keyIndex(children) {
+    var keys = {}
+    var free = []
+    var length = children.length
+
+    for (var i = 0; i < length; i++) {
+        var child = children[i]
+
+        if (child.key) {
+            keys[child.key] = i
+        } else {
+            free.push(i)
+        }
+    }
+
+    return {
+        keys: keys,     // A hash of key name to index
+        free: free      // An array of unkeyed item indices
+    }
+}
+
+function appendPatch(apply, patch) {
+    if (apply) {
+        if (isArray(apply)) {
+            apply.push(patch)
+        } else {
+            apply = [apply, patch]
+        }
+
+        return apply
+    } else {
+        return patch
+    }
+}
+
+},{"../vnode/handle-thunk":754,"../vnode/is-thunk":755,"../vnode/is-vnode":757,"../vnode/is-vtext":758,"../vnode/is-widget":759,"../vnode/vpatch":762,"./diff-props":764,"x-is-array":771}],766:[function(require,module,exports){
 var indexOf = function (xs, item) {
     if (xs.indexOf) return xs.indexOf(item);
     else for (var i = 0; i < xs.length; i++) {
@@ -137533,607 +140465,9 @@ exports.createContext = Script.createContext = function (context) {
     return copy;
 };
 
-},{}],658:[function(require,module,exports){
-/**
- * @file Web Cryptography API shim
- * @author Artem S Vybornov <vybornov@gmail.com>
- * @license MIT
- */
-module.exports = function webcryptoShim (global) {
-    'use strict';
-
-    if ( typeof Promise !== 'function' )
-        throw "Promise support required";
-
-    var _crypto = global.crypto || global.msCrypto;
-    if ( !_crypto ) return;
-
-    var _subtle = _crypto.subtle || _crypto.webkitSubtle;
-    if ( !_subtle ) return;
-
-    var _Crypto     = global.Crypto || _crypto.constructor || Object,
-        _SubtleCrypto = global.SubtleCrypto || _subtle.constructor || Object,
-        _CryptoKey  = global.CryptoKey || global.Key || Object;
-
-    var isEdge = global.navigator.userAgent.indexOf('Edge/') > -1
-    var isIE    = !!global.msCrypto && !isEdge,
-        isWebkit = !_crypto.subtle && !!_crypto.webkitSubtle;
-    if ( !isIE && !isWebkit ) return;
-
-    function s2a ( s ) {
-        return btoa(s).replace(/\=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
-    }
-
-    function a2s ( s ) {
-        s += '===', s = s.slice( 0, -s.length % 4 );
-        return atob( s.replace(/-/g, '+').replace(/_/g, '/') );
-    }
-
-    function s2b ( s ) {
-        var b = new Uint8Array(s.length);
-        for ( var i = 0; i < s.length; i++ ) b[i] = s.charCodeAt(i);
-        return b;
-    }
-
-    function b2s ( b ) {
-        if ( b instanceof ArrayBuffer ) b = new Uint8Array(b);
-        return String.fromCharCode.apply( String, b );
-    }
-
-    function alg ( a ) {
-        var r = { 'name': (a.name || a || '').toUpperCase().replace('V','v') };
-        switch ( r.name ) {
-            case 'SHA-1':
-            case 'SHA-256':
-            case 'SHA-384':
-            case 'SHA-512':
-                break;
-            case 'AES-CBC':
-            case 'AES-GCM':
-            case 'AES-KW':
-                if ( a.length ) r['length'] = a.length;
-                break;
-            case 'HMAC':
-                if ( a.hash ) r['hash'] = alg(a.hash);
-                if ( a.length ) r['length'] = a.length;
-                break;
-            case 'RSAES-PKCS1-v1_5':
-                if ( a.publicExponent ) r['publicExponent'] = new Uint8Array(a.publicExponent);
-                if ( a.modulusLength ) r['modulusLength'] = a.modulusLength;
-                break;
-            case 'RSASSA-PKCS1-v1_5':
-            case 'RSA-OAEP':
-                if ( a.hash ) r['hash'] = alg(a.hash);
-                if ( a.publicExponent ) r['publicExponent'] = new Uint8Array(a.publicExponent);
-                if ( a.modulusLength ) r['modulusLength'] = a.modulusLength;
-                break;
-            default:
-                throw new SyntaxError("Bad algorithm name");
-        }
-        return r;
-    };
-
-    function jwkAlg ( a ) {
-        return {
-            'HMAC': {
-                'SHA-1': 'HS1',
-                'SHA-256': 'HS256',
-                'SHA-384': 'HS384',
-                'SHA-512': 'HS512',
-            },
-            'RSASSA-PKCS1-v1_5': {
-                'SHA-1': 'RS1',
-                'SHA-256': 'RS256',
-                'SHA-384': 'RS384',
-                'SHA-512': 'RS512',
-            },
-            'RSAES-PKCS1-v1_5': {
-                '': 'RSA1_5',
-            },
-            'RSA-OAEP': {
-                'SHA-1': 'RSA-OAEP',
-                'SHA-256': 'RSA-OAEP-256',
-            },
-            'AES-KW': {
-                '128': 'A128KW',
-                '192': 'A192KW',
-                '256': 'A256KW',
-            },
-            'AES-GCM': {
-                '128': 'A128GCM',
-                '192': 'A192GCM',
-                '256': 'A256GCM',
-            },
-            'AES-CBC': {
-                '128': 'A128CBC',
-                '192': 'A192CBC',
-                '256': 'A256CBC',
-            },
-        }[a.name][ ( a.hash || {} ).name || a.length || '' ];
-    }
-
-    function b2jwk ( k ) {
-        if ( k instanceof ArrayBuffer || k instanceof Uint8Array ) k = JSON.parse( decodeURIComponent( escape( b2s(k) ) ) );
-        var jwk = { 'kty': k.kty, 'alg': k.alg, 'ext': k.ext || k.extractable };
-        switch ( jwk.kty ) {
-            case 'oct':
-                jwk.k = k.k;
-            case 'RSA':
-                [ 'n', 'e', 'd', 'p', 'q', 'dp', 'dq', 'qi', 'oth' ].forEach( function ( x ) { if ( x in k ) jwk[x] = k[x] } );
-                break;
-            default:
-                throw new TypeError("Unsupported key type");
-        }
-        return jwk;
-    }
-
-    function jwk2b ( k ) {
-        var jwk = b2jwk(k);
-        if ( isIE ) jwk['extractable'] = jwk.ext, delete jwk.ext;
-        return s2b( unescape( encodeURIComponent( JSON.stringify(jwk) ) ) ).buffer;
-    }
-
-    function pkcs2jwk ( k ) {
-        var info = b2der(k), prv = false;
-        if ( info.length > 2 ) prv = true, info.shift(); // remove version from PKCS#8 PrivateKeyInfo structure
-        var jwk = { 'ext': true };
-        switch ( info[0][0] ) {
-            case '1.2.840.113549.1.1.1':
-                var rsaComp = [ 'n', 'e', 'd', 'p', 'q', 'dp', 'dq', 'qi' ],
-                    rsaKey  = b2der( info[1] );
-                if ( prv ) rsaKey.shift(); // remove version from PKCS#1 RSAPrivateKey structure
-                for ( var i = 0; i < rsaKey.length; i++ ) {
-                    if ( !rsaKey[i][0] ) rsaKey[i] = rsaKey[i].subarray(1);
-                    jwk[ rsaComp[i] ] = s2a( b2s( rsaKey[i] ) );
-                }
-                jwk['kty'] = 'RSA';
-                break;
-            default:
-                throw new TypeError("Unsupported key type");
-        }
-        return jwk;
-    }
-
-    function jwk2pkcs ( k ) {
-        var key, info = [ [ '', null ] ], prv = false;
-        switch ( k.kty ) {
-            case 'RSA':
-                var rsaComp = [ 'n', 'e', 'd', 'p', 'q', 'dp', 'dq', 'qi' ],
-                    rsaKey = [];
-                for ( var i = 0; i < rsaComp.length; i++ ) {
-                    if ( !( rsaComp[i] in k ) ) break;
-                    var b = rsaKey[i] = s2b( a2s( k[ rsaComp[i] ] ) );
-                    if ( b[0] & 0x80 ) rsaKey[i] = new Uint8Array(b.length + 1), rsaKey[i].set( b, 1 );
-                }
-                if ( rsaKey.length > 2 ) prv = true, rsaKey.unshift( new Uint8Array([0]) ); // add version to PKCS#1 RSAPrivateKey structure
-                info[0][0] = '1.2.840.113549.1.1.1';
-                key = rsaKey;
-                break;
-            default:
-                throw new TypeError("Unsupported key type");
-        }
-        info.push( new Uint8Array( der2b(key) ).buffer );
-        if ( !prv ) info[1] = { 'tag': 0x03, 'value': info[1] };
-        else info.unshift( new Uint8Array([0]) ); // add version to PKCS#8 PrivateKeyInfo structure
-        return new Uint8Array( der2b(info) ).buffer;
-    }
-
-    var oid2str = { 'KoZIhvcNAQEB': '1.2.840.113549.1.1.1' },
-        str2oid = { '1.2.840.113549.1.1.1': 'KoZIhvcNAQEB' };
-
-    function b2der ( buf, ctx ) {
-        if ( buf instanceof ArrayBuffer ) buf = new Uint8Array(buf);
-        if ( !ctx ) ctx = { pos: 0, end: buf.length };
-
-        if ( ctx.end - ctx.pos < 2 || ctx.end > buf.length ) throw new RangeError("Malformed DER");
-
-        var tag = buf[ctx.pos++],
-            len = buf[ctx.pos++];
-
-        if ( len >= 0x80 ) {
-            len &= 0x7f;
-            if ( ctx.end - ctx.pos < len ) throw new RangeError("Malformed DER");
-            for ( var xlen = 0; len--; ) xlen <<= 8, xlen |= buf[ctx.pos++];
-            len = xlen;
-        }
-
-        if ( ctx.end - ctx.pos < len ) throw new RangeError("Malformed DER");
-
-        var rv;
-
-        switch ( tag ) {
-            case 0x02: // Universal Primitive INTEGER
-                rv = buf.subarray( ctx.pos, ctx.pos += len );
-                break;
-            case 0x03: // Universal Primitive BIT STRING
-                if ( buf[ctx.pos++] ) throw new Error( "Unsupported bit string" );
-                len--;
-            case 0x04: // Universal Primitive OCTET STRING
-                rv = new Uint8Array( buf.subarray( ctx.pos, ctx.pos += len ) ).buffer;
-                break;
-            case 0x05: // Universal Primitive NULL
-                rv = null;
-                break;
-            case 0x06: // Universal Primitive OBJECT IDENTIFIER
-                var oid = btoa( b2s( buf.subarray( ctx.pos, ctx.pos += len ) ) );
-                if ( !( oid in oid2str ) ) throw new Error( "Unsupported OBJECT ID " + oid );
-                rv = oid2str[oid];
-                break;
-            case 0x30: // Universal Constructed SEQUENCE
-                rv = [];
-                for ( var end = ctx.pos + len; ctx.pos < end; ) rv.push( b2der( buf, ctx ) );
-                break;
-            default:
-                throw new Error( "Unsupported DER tag 0x" + tag.toString(16) );
-        }
-
-        return rv;
-    }
-
-    function der2b ( val, buf ) {
-        if ( !buf ) buf = [];
-
-        var tag = 0, len = 0,
-            pos = buf.length + 2;
-
-        buf.push( 0, 0 ); // placeholder
-
-        if ( val instanceof Uint8Array ) {  // Universal Primitive INTEGER
-            tag = 0x02, len = val.length;
-            for ( var i = 0; i < len; i++ ) buf.push( val[i] );
-        }
-        else if ( val instanceof ArrayBuffer ) { // Universal Primitive OCTET STRING
-            tag = 0x04, len = val.byteLength, val = new Uint8Array(val);
-            for ( var i = 0; i < len; i++ ) buf.push( val[i] );
-        }
-        else if ( val === null ) { // Universal Primitive NULL
-            tag = 0x05, len = 0;
-        }
-        else if ( typeof val === 'string' && val in str2oid ) { // Universal Primitive OBJECT IDENTIFIER
-            var oid = s2b( atob( str2oid[val] ) );
-            tag = 0x06, len = oid.length;
-            for ( var i = 0; i < len; i++ ) buf.push( oid[i] );
-        }
-        else if ( val instanceof Array ) { // Universal Constructed SEQUENCE
-            for ( var i = 0; i < val.length; i++ ) der2b( val[i], buf );
-            tag = 0x30, len = buf.length - pos;
-        }
-        else if ( typeof val === 'object' && val.tag === 0x03 && val.value instanceof ArrayBuffer ) { // Tag hint
-            val = new Uint8Array(val.value), tag = 0x03, len = val.byteLength;
-            buf.push(0); for ( var i = 0; i < len; i++ ) buf.push( val[i] );
-            len++;
-        }
-        else {
-            throw new Error( "Unsupported DER value " + val );
-        }
-
-        if ( len >= 0x80 ) {
-            var xlen = len, len = 4;
-            buf.splice( pos, 0, (xlen >> 24) & 0xff, (xlen >> 16) & 0xff, (xlen >> 8) & 0xff, xlen & 0xff );
-            while ( len > 1 && !(xlen >> 24) ) xlen <<= 8, len--;
-            if ( len < 4 ) buf.splice( pos, 4 - len );
-            len |= 0x80;
-        }
-
-        buf.splice( pos - 2, 2, tag, len );
-
-        return buf;
-    }
-
-    function CryptoKey ( key, alg, ext, use ) {
-        Object.defineProperties( this, {
-            _key: {
-                value: key
-            },
-            type: {
-                value: key.type,
-                enumerable: true,
-            },
-            extractable: {
-                value: (ext === undefined) ? key.extractable : ext,
-                enumerable: true,
-            },
-            algorithm: {
-                value: (alg === undefined) ? key.algorithm : alg,
-                enumerable: true,
-            },
-            usages: {
-                value: (use === undefined) ? key.usages : use,
-                enumerable: true,
-            },
-        });
-    }
-
-    function isPubKeyUse ( u ) {
-        return u === 'verify' || u === 'encrypt' || u === 'wrapKey';
-    }
-
-    function isPrvKeyUse ( u ) {
-        return u === 'sign' || u === 'decrypt' || u === 'unwrapKey';
-    }
-
-    [ 'generateKey', 'importKey', 'unwrapKey' ]
-        .forEach( function ( m ) {
-            var _fn = _subtle[m];
-
-            _subtle[m] = function ( a, b, c ) {
-                var args = [].slice.call(arguments),
-                    ka, kx, ku;
-
-                switch ( m ) {
-                    case 'generateKey':
-                        ka = alg(a), kx = b, ku = c;
-                        break;
-                    case 'importKey':
-                        ka = alg(c), kx = args[3], ku = args[4];
-                        if ( a === 'jwk' ) {
-                            b = b2jwk(b);
-                            if ( !b.alg ) b.alg = jwkAlg(ka);
-                            if ( !b.key_ops ) b.key_ops = ( b.kty !== 'oct' ) ? ( 'd' in b ) ? ku.filter(isPrvKeyUse) : ku.filter(isPubKeyUse) : ku.slice();
-                            args[1] = jwk2b(b);
-                        }
-                        break;
-                    case 'unwrapKey':
-                        ka = args[4], kx = args[5], ku = args[6];
-                        args[2] = c._key;
-                        break;
-                }
-
-                if ( m === 'generateKey' && ka.name === 'HMAC' && ka.hash ) {
-                    ka.length = ka.length || { 'SHA-1': 512, 'SHA-256': 512, 'SHA-384': 1024, 'SHA-512': 1024 }[ka.hash.name];
-                    return _subtle.importKey( 'raw', _crypto.getRandomValues( new Uint8Array( (ka.length+7)>>3 ) ), ka, kx, ku );
-                }
-
-                if ( isWebkit && m === 'generateKey' && ka.name === 'RSASSA-PKCS1-v1_5' && ( !ka.modulusLength || ka.modulusLength >= 2048 ) ) {
-                    a = alg(a), a.name = 'RSAES-PKCS1-v1_5', delete a.hash;
-                    return _subtle.generateKey( a, true, [ 'encrypt', 'decrypt' ] )
-                        .then( function ( k ) {
-                            return Promise.all([
-                                _subtle.exportKey( 'jwk', k.publicKey ),
-                                _subtle.exportKey( 'jwk', k.privateKey ),
-                            ]);
-                        })
-                        .then( function ( keys ) {
-                            keys[0].alg = keys[1].alg = jwkAlg(ka);
-                            keys[0].key_ops = ku.filter(isPubKeyUse), keys[1].key_ops = ku.filter(isPrvKeyUse);
-                            return Promise.all([
-                                _subtle.importKey( 'jwk', keys[0], ka, true, keys[0].key_ops ),
-                                _subtle.importKey( 'jwk', keys[1], ka, kx, keys[1].key_ops ),
-                            ]);
-                        })
-                        .then( function ( keys ) {
-                            return {
-                                publicKey: keys[0],
-                                privateKey: keys[1],
-                            };
-                        });
-                }
-
-                if ( ( isWebkit || ( isIE && ( ka.hash || {} ).name === 'SHA-1' ) )
-                        && m === 'importKey' && a === 'jwk' && ka.name === 'HMAC' && b.kty === 'oct' ) {
-                    return _subtle.importKey( 'raw', s2b( a2s(b.k) ), c, args[3], args[4] );
-                }
-
-                if ( isWebkit && m === 'importKey' && ( a === 'spki' || a === 'pkcs8' ) ) {
-                    return _subtle.importKey( 'jwk', pkcs2jwk(b), c, args[3], args[4] );
-                }
-
-                if ( isIE && m === 'unwrapKey' ) {
-                    return _subtle.decrypt( args[3], c, b )
-                        .then( function ( k ) {
-                            return _subtle.importKey( a, k, args[4], args[5], args[6] );
-                        });
-                }
-
-                var op;
-                try {
-                    op = _fn.apply( _subtle, args );
-                }
-                catch ( e ) {
-                    return Promise.reject(e);
-                }
-
-                if ( isIE ) {
-                    op = new Promise( function ( res, rej ) {
-                        op.onabort =
-                        op.onerror =    function ( e ) { rej(e)               };
-                        op.oncomplete = function ( r ) { res(r.target.result) };
-                    });
-                }
-
-                op = op.then( function ( k ) {
-                    if ( ka.name === 'HMAC' ) {
-                        if ( !ka.length ) ka.length = 8 * k.algorithm.length;
-                    }
-                    if ( ka.name.search('RSA') == 0 ) {
-                        if ( !ka.modulusLength ) ka.modulusLength = (k.publicKey || k).algorithm.modulusLength;
-                        if ( !ka.publicExponent ) ka.publicExponent = (k.publicKey || k).algorithm.publicExponent;
-                    }
-                    if ( k.publicKey && k.privateKey ) {
-                        k = {
-                            publicKey: new CryptoKey( k.publicKey, ka, kx, ku.filter(isPubKeyUse) ),
-                            privateKey: new CryptoKey( k.privateKey, ka, kx, ku.filter(isPrvKeyUse) ),
-                        };
-                    }
-                    else {
-                        k = new CryptoKey( k, ka, kx, ku );
-                    }
-                    return k;
-                });
-
-                return op;
-            }
-        });
-
-    [ 'exportKey', 'wrapKey' ]
-        .forEach( function ( m ) {
-            var _fn = _subtle[m];
-
-            _subtle[m] = function ( a, b, c ) {
-                var args = [].slice.call(arguments);
-
-                switch ( m ) {
-                    case 'exportKey':
-                        args[1] = b._key;
-                        break;
-                    case 'wrapKey':
-                        args[1] = b._key, args[2] = c._key;
-                        break;
-                }
-
-                if ( ( isWebkit || ( isIE && ( b.algorithm.hash || {} ).name === 'SHA-1' ) )
-                        && m === 'exportKey' && a === 'jwk' && b.algorithm.name === 'HMAC' ) {
-                    args[0] = 'raw';
-                }
-
-                if ( isWebkit && m === 'exportKey' && ( a === 'spki' || a === 'pkcs8' ) ) {
-                    args[0] = 'jwk';
-                }
-
-                if ( isIE && m === 'wrapKey' ) {
-                    return _subtle.exportKey( a, b )
-                        .then( function ( k ) {
-                            if ( a === 'jwk' ) k = s2b( unescape( encodeURIComponent( JSON.stringify( b2jwk(k) ) ) ) );
-                            return  _subtle.encrypt( args[3], c, k );
-                        });
-                }
-
-                var op;
-                try {
-                    op = _fn.apply( _subtle, args );
-                }
-                catch ( e ) {
-                    return Promise.reject(e);
-                }
-
-                if ( isIE ) {
-                    op = new Promise( function ( res, rej ) {
-                        op.onabort =
-                        op.onerror =    function ( e ) { rej(e)               };
-                        op.oncomplete = function ( r ) { res(r.target.result) };
-                    });
-                }
-
-                if ( m === 'exportKey' && a === 'jwk' ) {
-                    op = op.then( function ( k ) {
-                        if ( ( isWebkit || ( isIE && ( b.algorithm.hash || {} ).name === 'SHA-1' ) )
-                                && b.algorithm.name === 'HMAC') {
-                            return { 'kty': 'oct', 'alg': jwkAlg(b.algorithm), 'key_ops': b.usages.slice(), 'ext': true, 'k': s2a( b2s(k) ) };
-                        }
-                        k = b2jwk(k);
-                        if ( !k.alg ) k['alg'] = jwkAlg(b.algorithm);
-                        if ( !k.key_ops ) k['key_ops'] = ( b.type === 'public' ) ? b.usages.filter(isPubKeyUse) : ( b.type === 'private' ) ? b.usages.filter(isPrvKeyUse) : b.usages.slice();
-                        return k;
-                    });
-                }
-
-                if ( isWebkit && m === 'exportKey' && ( a === 'spki' || a === 'pkcs8' ) ) {
-                    op = op.then( function ( k ) {
-                        k = jwk2pkcs( b2jwk(k) );
-                        return k;
-                    });
-                }
-
-                return op;
-            }
-        });
-
-    [ 'encrypt', 'decrypt', 'sign', 'verify' ]
-        .forEach( function ( m ) {
-            var _fn = _subtle[m];
-
-            _subtle[m] = function ( a, b, c, d ) {
-                if ( isIE && ( !c.byteLength || ( d && !d.byteLength ) ) )
-                    throw new Error("Empy input is not allowed");
-
-                var args = [].slice.call(arguments),
-                    ka = alg(a);
-
-                if ( isIE && m === 'decrypt' && ka.name === 'AES-GCM' ) {
-                    var tl = a.tagLength >> 3;
-                    args[2] = (c.buffer || c).slice( 0, c.byteLength - tl ),
-                    a.tag = (c.buffer || c).slice( c.byteLength - tl );
-                }
-
-                args[1] = b._key;
-
-                var op;
-                try {
-                    op = _fn.apply( _subtle, args );
-                }
-                catch ( e ) {
-                    return Promise.reject(e);
-                }
-
-                if ( isIE ) {
-                    op = new Promise( function ( res, rej ) {
-                        op.onabort =
-                        op.onerror = function ( e ) {
-                            rej(e);
-                        };
-
-                        op.oncomplete = function ( r ) {
-                            var r = r.target.result;
-
-                            if ( m === 'encrypt' && r instanceof AesGcmEncryptResult ) {
-                                var c = r.ciphertext, t = r.tag;
-                                r = new Uint8Array( c.byteLength + t.byteLength );
-                                r.set( new Uint8Array(c), 0 );
-                                r.set( new Uint8Array(t), c.byteLength );
-                                r = r.buffer;
-                            }
-
-                            res(r);
-                        };
-                    });
-                }
-
-                return op;
-            }
-        });
-
-    if ( isIE ) {
-        var _digest = _subtle.digest;
-
-        _subtle['digest'] = function ( a, b ) {
-            if ( !b.byteLength )
-                throw new Error("Empy input is not allowed");
-
-            var op;
-            try {
-                op = _digest.call( _subtle, a, b );
-            }
-            catch ( e ) {
-                return Promise.reject(e);
-            }
-
-            op = new Promise( function ( res, rej ) {
-                op.onabort =
-                op.onerror =    function ( e ) { rej(e)               };
-                op.oncomplete = function ( r ) { res(r.target.result) };
-            });
-
-            return op;
-        };
-
-        global.crypto = Object.create( _crypto, {
-            getRandomValues: { value: function ( a ) { return _crypto.getRandomValues(a) } },
-            subtle:          { value: _subtle },
-        });
-
-        global.CryptoKey = CryptoKey;
-    }
-
-    if ( isWebkit ) {
-        _crypto.subtle = _subtle;
-
-        global.Crypto = _Crypto;
-        global.SubtleCrypto = _SubtleCrypto;
-        global.CryptoKey = CryptoKey;
-    }
-}
-
-},{}],659:[function(require,module,exports){
+},{}],767:[function(require,module,exports){
+arguments[4][296][0].apply(exports,arguments)
+},{"dup":296}],768:[function(require,module,exports){
 (function (process,global){
 'use strict'
 
@@ -138306,7 +140640,7 @@ function WebSocketStream(target, protocols, options) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":499,"duplexify":143,"readable-stream":596,"safe-buffer":601,"ws":660}],660:[function(require,module,exports){
+},{"_process":578,"duplexify":143,"readable-stream":676,"safe-buffer":681,"ws":769}],769:[function(require,module,exports){
 
 var ws = null
 
@@ -138320,7 +140654,7 @@ if (typeof WebSocket !== 'undefined') {
 
 module.exports = ws
 
-},{}],661:[function(require,module,exports){
+},{}],770:[function(require,module,exports){
 // Returns a wrapper function that returns a wrapped callback
 // The wrapper function should do some stuff, and return a
 // presumably different callback function.
@@ -138355,7 +140689,17 @@ function wrappy (fn, cb) {
   }
 }
 
-},{}],662:[function(require,module,exports){
+},{}],771:[function(require,module,exports){
+var nativeIsArray = Array.isArray
+var toString = Object.prototype.toString
+
+module.exports = nativeIsArray || isArray
+
+function isArray(obj) {
+    return toString.call(obj) === "[object Array]"
+}
+
+},{}],772:[function(require,module,exports){
 (function (process,Buffer){
 /**
  * Wrapper for built-in http.js to emulate the browser XMLHttpRequest object.
@@ -138979,7 +141323,7 @@ exports.XMLHttpRequest = function() {
 };
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"_process":499,"buffer":84,"child_process":82,"fs":82,"http":626,"https":150,"url":647}],663:[function(require,module,exports){
+},{"_process":578,"buffer":84,"child_process":82,"fs":82,"http":706,"https":152,"url":727}],773:[function(require,module,exports){
 module.exports = extend
 
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -139000,7 +141344,7 @@ function extend() {
     return target
 }
 
-},{}],664:[function(require,module,exports){
+},{}],774:[function(require,module,exports){
 const msgpackStream = require('msgpack5-stream')
 
 const znode = (_stream, rpc) => {
@@ -139043,6 +141387,7 @@ const znode = (_stream, rpc) => {
     })
     promise.resolve = (...args) => _resolve(...args)
     promise.reject = (...args) => _reject(...args)
+    // console.log('remotesMap.set', id, promise)
     remotesMap.set(id, promise)
     return promise
   }
@@ -139099,6 +141444,7 @@ const znode = (_stream, rpc) => {
     }
     /* istanbul ignore else */
     if (data.resolve) {
+      // console.log('remotesMap.get', data.resolve)
       let promise = remotesMap.get(data.resolve)
       if (data.then) {
         let args = data.then.map(ret => {
@@ -139114,6 +141460,7 @@ const znode = (_stream, rpc) => {
         e.stack = data.stack
         promise.reject(e)
       }
+      // console.log('remotesMap.delete', data.resolve)
       remotesMap.delete(data.resolve)
     }
   })
@@ -139122,4 +141469,301 @@ const znode = (_stream, rpc) => {
 
 module.exports = znode
 
-},{"msgpack5-stream":394}]},{},[3]);
+},{"msgpack5-stream":472}],775:[function(require,module,exports){
+const h = require('virtual-dom/h')
+const diff = require('virtual-dom/diff')
+const patch = require('virtual-dom/patch')
+const createElement = require('virtual-dom/create-element')
+const rafThrottle = require('raf-throttle').default
+
+module.exports = setupDom
+
+// minimal virtual dom rendering engine
+function setupDom({ container }) {
+  let tree = h('div')
+  let rootNode = createElement(tree)
+  container.appendChild(rootNode)
+
+  function rerender(newTree) {
+    const patches = diff(tree, newTree)
+    rootNode = patch(rootNode, patches)
+    tree = newTree
+  }
+
+  return rafThrottle(rerender)
+}
+
+},{"raf-throttle":664,"virtual-dom/create-element":737,"virtual-dom/diff":738,"virtual-dom/h":739,"virtual-dom/patch":740}],776:[function(require,module,exports){
+const h = require('virtual-dom/h')
+const s = require('virtual-dom/virtual-hyperscript/svg')
+
+module.exports = renderGraph
+
+function renderGraph(state) {
+  const { nodes, links } = state
+
+  return (
+
+    s('svg', {
+      width: 960,
+      height: 600,
+    }, [
+      s('g', { class: 'links' }, links.map(renderLink)),
+      s('g', { class: 'nodes' }, nodes.map(renderNode)),
+    ])
+
+  )
+}
+
+function renderNode(node) {
+  return (
+
+    s('circle', {
+      r: '5',
+      fill: node.color,
+      cx: node.x,
+      cy: node.y,
+    }, [
+      s('title', `${node.id}`),
+    ])
+
+  )
+}
+
+function renderLink(link) {
+  const { source, target } = link
+  return (
+
+    s('line', {
+      // strokeWidth: '1.4',
+      // strokeWidth: Math.sqrt(link.value),
+      strokeWidth: link.value,
+      x1: source.x,
+      y1: source.y,
+      x2: target.x,
+      y2: target.y,
+    })
+
+  )
+}
+
+},{"virtual-dom/h":739,"virtual-dom/virtual-hyperscript/svg":753}],777:[function(require,module,exports){
+const h = require('virtual-dom/h')
+const setupDom = require('./engine')
+const renderGraph = require('./graph')
+const { setupSimulation, setupSimulationForces } = require('./simulation')
+
+const graphWidth = 960
+const graphHeight = 600
+
+module.exports = startApp
+
+function startApp(opts = {}) {
+  const { store } = opts
+
+  const updateDom = setupDom({ container: document.body })
+
+  let currentGraph = {
+    nodes: [],
+    links: [],
+  }
+
+  const simulation = setupSimulation(currentGraph)
+
+  // setup rerender hooks
+  simulation.on('tick', rerender)
+  store.subscribe(rerender)
+  store.subscribe((state) => {
+    console.log('store did update', state)
+    // merge state
+    const { clientData } = state
+    const newGraph = buildGraph(clientData)
+    currentGraph = mergeGraph(currentGraph, newGraph)
+    // reset simulation
+    setupSimulationForces(simulation, currentGraph)
+    // trigger redraw
+    rerender()
+  })
+
+  function rerender() {
+    const state = getState()
+    updateDom(render(state))
+  }
+
+  // mix in local graph over store state
+  function getState() {
+    return Object.assign({},
+      store.getState(),
+      { graph: currentGraph },
+    )
+  }
+}
+
+function mergeGraph(oldGraph, newGraph) {
+  const graph = {}
+  // create index for faster lookups during merge
+  const graphIndex = createGraphIndex(oldGraph)
+  // merge old graph for existing nodes + links
+  graph.nodes = newGraph.nodes.map((node) => {
+    return Object.assign({
+      // creating all nodes at the same spot creates a big bang
+      // that accidently sorts the structures out nicely
+      x: graphWidth / 2,
+      y: graphHeight / 2,
+    }, graphIndex.nodes[node.id], node)
+  })
+  graph.links = newGraph.links.map((link) => {
+    return Object.assign({}, graphIndex.links[link.id], link)
+  })
+  return graph
+}
+
+function createGraphIndex(graph) {
+  const graphIndex = { nodes: {}, links: {} }
+  graph.nodes.forEach(node => {
+    graphIndex.nodes[node.id] = node
+  })
+  graph.links.forEach(link => {
+    graphIndex.links[link.id] = link
+  })
+  return graphIndex
+}
+
+function render(state) {
+  const { graph } = state
+  return (
+
+    h('.app-container', [
+      appStyle(),
+      h('.app-info-count', `nodes: ${graph.nodes.length}`),
+      h('.app-info-count', `links: ${graph.links.length}`),
+      renderGraph(graph),
+    ])
+
+  )
+}
+
+function appStyle() {
+  return h('style', [
+    `
+    .links line {
+      stroke: #999;
+      stroke-opacity: 0.6;
+    }
+
+    .nodes circle {
+      stroke: #fff;
+      stroke-width: 1.5px;
+    }
+
+    button.refresh {
+      width: 120px;
+      height: 30px;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 3px;
+      outline: none;
+      border: 0;
+      cursor: pointer;
+    }
+
+    button.refresh:hover {
+      background-color: green;
+    }
+
+    .legend {
+      font-family: "Arial", sans-serif;
+      font-size: 11px;
+    }
+    `
+  ])
+}
+
+function buildGraph(data) {
+  const GOOD = '#1f77b4'
+  const BAD = '#aec7e8'
+  const MISSING = '#ff7f0e'
+
+  const graph = { nodes: [], links: [] }
+
+  // first add kitsunet nodes
+  Object.keys(data).forEach((clientId) => {
+    const peerData = data[clientId].peers
+    const badResponse = (typeof peerData !== 'object')
+    const newNode = { id: clientId, color: badResponse ? BAD : GOOD }
+    graph.nodes.push(newNode)
+  })
+
+  // then links
+  Object.keys(data).forEach((clientId) => {
+    const peerData = data[clientId].peers
+    if (typeof peerData !== 'object') return
+    Object.keys(peerData).forEach((peerId) => {
+      // if connected to a missing node, create missing node
+      const alreadyExists = !!graph.nodes.find(item => item.id === peerId)
+      if (!alreadyExists) {
+        const newNode = { id: peerId, color: MISSING }
+        graph.nodes.push(newNode)
+      }
+      const rtt = peerData[peerId]
+      const didTimeout = rtt === 'timeout'
+      // const linkValue = Math.pow((10 - Math.log(rtt)), 2)
+      const linkValue = didTimeout ? 0.1 : 2
+      const linkId = `${clientId}-${peerId}`
+      const newLink = { id: linkId, source: clientId, target: peerId, value: linkValue }
+      graph.links.push(newLink)
+    })
+  })
+
+  return graph
+}
+//
+// function mapObject(obj, fn) {
+//   const newObj = {}
+//   Object.entries(obj).forEach(([key, value], index) => {
+//     newObj[key] = fn(key, value, index)
+//   })
+//   return newObj
+// }
+
+},{"./engine":775,"./graph":776,"./simulation":778,"virtual-dom/h":739}],778:[function(require,module,exports){
+const d3 = require('d3')
+
+const graphWidth = 960
+const graphHeight = 600
+
+module.exports = { setupSimulation, setupSimulationForces }
+
+function setupSimulation(state) {
+  const simulation = d3.forceSimulation()
+  setupSimulationForces(simulation, state)
+  return simulation
+}
+
+function setupSimulationForces (simulation, state) {
+  const nodes = Object.values(state.nodes)
+  const links = Object.values(state.links)
+
+  simulation
+    .nodes(nodes)
+    // pull nodes along links
+    .force('link', d3.forceLink().id(d => d.id).links(links))
+    // push nodes away from each other
+    .force('charge', d3.forceManyBody().strength(-30))
+    // translate nodes around the center
+    .force('center', d3.forceCenter(graphWidth / 2, graphHeight / 2))
+    // push nodes towards the center
+    .force('x', d3.forceX(graphWidth / 2, 0.05))
+    .force('y', d3.forceY(graphHeight / 2, 0.05))
+    .alphaTarget(0.3)
+    .restart()
+}
+
+function createForce(forceFn) {
+  let nodes
+  const result = (alpha) => { forceFn(nodes, alpha) }
+  result.initialize = (_nodes) => { nodes = _nodes }
+  return result
+}
+
+},{"d3":128}]},{},[2]);
