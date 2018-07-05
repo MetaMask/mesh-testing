@@ -53,7 +53,11 @@ class Node extends Libp2p {
   register (ns, ttl, callback) {
     if (typeof ttl === 'function') { 
       callback = ttl
-      ttl = 10 * 60 // 10 mins in seconds
+      ttl = null
+    }
+
+    if (!ttl) {
+      ttl = 60 * 60 // 60 mins (in seconds)
     }
 
     this._rndvzDiscovery.register(ns, ttl, callback)
