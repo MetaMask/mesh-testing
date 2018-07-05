@@ -137,7 +137,8 @@ async function start(){
     const server = await znode(serverConnection, {
       ping: async () => 'pong',
       sendNetworkState: async (networkState) => {
-        store.updateState(networkState)
+        console.log('server state:', networkState)
+        store.putState(networkState)
       },
     })
     global.server = server
@@ -146,7 +147,7 @@ async function start(){
     // request current network state
     console.log('MetaMask Mesh Testing - fetching network state')
     const networkState = await server.getNetworkState()
-    store.updateState(networkState)
+    store.putState(networkState)
 
     // in admin mode, we dont boot libp2p node
   }
