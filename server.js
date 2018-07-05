@@ -96,16 +96,16 @@ async function performPeerTimeoutCheck() {
     // race against ping response or timeout
     await Promise.race([
       // await ping response
-      async () => {
+      (async () => {
         await client.rpc.ping()
         let heardPing = true
-      },
+      })(),
       // disconnect peer on timeout
-      async () => {
+      (async () => {
         await timeout(remoteCallTimeout)
         if (heardPing) return
         disconnectClient(client.peerId)
-      },
+      })(),
     ])
   }))
 }
