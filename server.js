@@ -73,29 +73,42 @@ app.listen(9000, () => {
   console.log('ws listening on 9000')
 })
 
+handlePeerTimeouts()
+
+async function handlePeerTimeouts(){
+  while (true) {
+    try {
+      await performPeerTimeoutCheck()
+    } catch (err) {
+      console.error(err)
+    }
+    await timeout(heartBeatInterval)
+  }
+}
+
 // poll for connection status
-setInterval(() => {
-  // console.log('pinging')
-  // ask all clients for a ping
-  clients.forEach(async (client) => {
-    client.isAlive = false
-    // const start = Date.now()
-    await client.rpc.ping()
-    // const end = Date.now()
-    // const duration = end - start
-    // console.log('ping took', duration)
-    client.isAlive = true
-  })
-  // if clients haven't responded, disconnect
-  setTimeout(() => {
-    // console.log('culling')
-    clients.slice().forEach((client) => {
-      if (client.isAlive) return
-      // disconnect client
-      disconnectClient(client.peerId)
-    })
-  }, remoteCallTimeout)
-}, heartBeatInterval)
+async function performPeerTimeoutCheck() {
+  // try all clients in sync
+  await Promise.all(clients.map(async (client) => {
+    // mark client as not responded yet
+    let heardPing = false
+
+    // race against ping response or timeout
+    await Promise.race([
+      // await ping response
+      async () => {
+        await client.rpc.ping()
+        let heardPing = true
+      },
+      // disconnect peer on timeout
+      async () => {
+        await timeout(remoteCallTimeout)
+        if (heardPing) return
+        disconnectClient(client.peerId)
+      },
+    ])
+  }))
+}
 
 function disconnectClient(clientId) {
   const index = clients.findIndex(client => client.peerId === clientId)
