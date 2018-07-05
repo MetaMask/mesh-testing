@@ -5,7 +5,7 @@ const pify = require('pify')
 const pullStreamToStream = require('pull-stream-to-stream')
 const endOfStream = require('end-of-stream')
 const parallel = require('async/parallel')
-const reflect = require('async/reflect')
+const reflectAll = require('async/reflectAll')
 const createHttpClientStream = require('http-poll-stream/src/client')
 const ObservableStore = require('obs-store')
 
@@ -53,10 +53,10 @@ const clientRpc = {
   pingAll: async () => {
     return await Promise.all(kitsunetPeers.map(pingKitsunetPeerWithTimeout))
   },
-  getNetworkState,
+  getNetworkState
 }
 
-function getNetworkState() {
+function getNetworkState () {
   const results = {}
   Array.from(networkState).map(([peerId, state]) => {
     if (!state.ping) return
@@ -67,12 +67,12 @@ function getNetworkState() {
 global.getNetworkState = getNetworkState
 
 const kitsunetRpc = {
-  ping: () => true,
+  ping: () => true
 }
 
 start().catch(console.error)
 
-async function start(){
+async function start () {
   // parse params
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
   const adminCode = opts.admin || ''
@@ -99,7 +99,7 @@ async function start(){
       sendNetworkState: async (networkState) => {
         console.log('server state:', networkState)
         store.putState(networkState)
-      },
+      }
     })
     global.server = server
     console.log('MetaMask Mesh Testing - connected!')
@@ -141,8 +141,8 @@ async function start(){
     restartWithDelay(hour)
   }
 
-  function connectToTelemetryServerViaPost(adminCode) {
-    const devMode = (!opts.prod && location.hostname === 'localhost')
+  function connectToTelemetryServerViaPost (adminCode) {
+    const devMode = (!opts.prod && window.location.hostname === 'localhost')
     // const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
     // const ws = websocket(`${host}/${adminCode}`)
     // ws.on('error', console.error)
@@ -155,8 +155,8 @@ async function start(){
     return clientStream
   }
 
-  function connectToTelemetryServerViaWs(adminCode) {
-    const devMode = (!opts.prod && location.hostname === 'localhost')
+  function connectToTelemetryServerViaWs (adminCode) {
+    const devMode = (!opts.prod && window.location.hostname === 'localhost')
     const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
     const ws = websocket(`${host}/${adminCode}`)
     ws.on('error', console.error)
@@ -164,59 +164,52 @@ async function start(){
   }
 }
 
-function randomFromRange(min, max) {
+function randomFromRange (min, max) {
   return min + Math.random() * (max - min)
 }
 
-const RENDEZVOUS_NODES = [
-  // '/dns4/tigress.kitsunet.metamask.io/tcp/443/wss/ipfs/QmZMmjMMP9VUyBkA6zFdEGmuFRdwjsiHZ3KtxMp89i7Xwv',
-  // '/dns4/viper.kitsunet.metamask.io/tcp/443/wss/ipfs/QmR6X4y3N4pHMXCPf4NaN91sk9Gwz8TvRkMebK5Fjtwgoy',
-  // '/dns4/crane.kitsunet.metamask.io/tcp/443/wss/ipfs/QmSJY8gjJYArR4u3rTjANWkSLwr75dVTjnknvdfbe7uiCi',
-  '/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
-  // '/dns4/starfish.lab.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC',
-]
-function startLibp2pNode(node, cb) {
+function startLibp2pNode (node, cb) {
   node.start(() => {
-    cb()
-
-    parallel(RENDEZVOUS_NODES.map((addr) => (cb) => node.dial(addr, cb)), () => {
-      node.register('/kitsunet/test/0.0.1')
-
-      node.on('peer:discovery', (peerInfo) => {
-        const peerId = peerInfo.id.toB58String()
-        // console.log('MetaMask Mesh Testing - node/peer:discovery', peerInfo.id.toB58String())
-        // add to discovered peers list
-        if (discoveredPeers.length >= maxDiscovered) return
-        const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
-        if (alreadyExists) return
-        discoveredPeers.push(peerInfo)
-      })
-
-      node.on('peer:connect', (peerInfo) => {
-        // console.log('MetaMask Mesh Testing - node/peer:connect', peerInfo.id.toB58String())
-        peers.push(peerInfo)
-        // attempt to upgrage to kitsunet connection
-        attemptDial(peerInfo)
-      })
-
-      node.on('peer:disconnect', (peerInfo) => {
-        removeFromArray(peerInfo, peers)
-      })
-
-      node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
-        console.log('MetaMask Mesh Testing - incomming kitsunet connection')
-        conn.getPeerInfo((err, peerInfo) => {
-          if (err) return console.error(err)
-          connectKitsunet(peerInfo, conn)
-        })
-      })
-
-      autoConnectWhenLonely(node, { minPeers: 4 })
+    node.register('/kitsunet/test/0.0.1')
+    node.on('peer:discovery', (peerInfo) => {
+      const peerId = peerInfo.id.toB58String()
+      // console.log('MetaMask Mesh Testing - node/peer:discovery', peerInfo.id.toB58String())
+      // add to discovered peers list
+      if (discoveredPeers.length >= maxDiscovered) return
+      const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
+      if (alreadyExists) return
+      discoveredPeers.push(peerInfo)
     })
+
+    node.on('peer:connect', (peerInfo) => {
+      // console.log('MetaMask Mesh Testing - node/peer:connect', peerInfo.id.toB58String())
+      peers.push(peerInfo)
+      // attempt to upgrage to kitsunet connection
+      attemptDial(peerInfo)
+    })
+
+    node.on('peer:disconnect', (peerInfo) => {
+      removeFromArray(peerInfo, peers)
+    })
+
+    node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
+      console.log('MetaMask Mesh Testing - incomming kitsunet connection')
+      conn.getPeerInfo((err, peerInfo) => {
+        if (err) return console.error(err)
+        connectKitsunet(peerInfo, conn)
+      })
+    })
+
+    node.stats.on('update', () => {
+      console.dir(node.stats)
+    })
+
+    autoConnectWhenLonely(node, { minPeers: 4 })
+    cb()
   })
 }
 
-function updatePeerState(peerId, value) {
+function updatePeerState (peerId, value) {
   if (value) {
     const oldValue = networkState.get(peerId)
     const newValue = Object.assign({}, oldValue, value)
@@ -226,7 +219,7 @@ function updatePeerState(peerId, value) {
   }
 }
 
-async function connectKitsunet(peerInfo, conn) {
+async function connectKitsunet (peerInfo, conn) {
   const peerId = peerInfo.id.toB58String()
   // check if already connected
   const alreadyConnected = networkState.has(peerId)
@@ -253,7 +246,7 @@ async function connectKitsunet(peerInfo, conn) {
   keepPinging(peer)
 }
 
-async function keepPinging(peer) {
+async function keepPinging (peer) {
   while (networkState.has(peer.id)) {
     const ping = await pingKitsunetPeer(peer)
     updatePeerState(peer.id, { ping })
@@ -261,14 +254,14 @@ async function keepPinging(peer) {
   }
 }
 
-function pingKitsunetPeerWithTimeout(peer) {
+function pingKitsunetPeerWithTimeout (peer) {
   return Promise.race([
     timeout(peerPingTimeout, 'timeout'),
-    pingKitsunetPeer(peer),
+    pingKitsunetPeer(peer)
   ])
 }
 
-async function pingKitsunetPeer(peer) {
+async function pingKitsunetPeer (peer) {
   if (!peer.rpc) return
   const start = Date.now()
   await peer.rpc.ping()
@@ -277,7 +270,7 @@ async function pingKitsunetPeer(peer) {
   return rtt
 }
 
-function autoConnectWhenLonely(node, { minPeers }) {
+function autoConnectWhenLonely (node, { minPeers }) {
   setInterval(() => {
     if (peers.length >= minPeers) return
     const peerInfo = discoveredPeers.shift()
@@ -288,7 +281,7 @@ function autoConnectWhenLonely(node, { minPeers }) {
   }, autoConnectAttemptInterval)
 }
 
-async function attemptDial(peerInfo) {
+async function attemptDial (peerInfo) {
   const peerId = peerInfo.id.toB58String()
   // too many peers
   if (peers.length > maxPeers) {
@@ -303,7 +296,7 @@ async function attemptDial(peerInfo) {
   // attempt connection
   try {
     // console.log('MetaMask Mesh Testing - kitsunet dial', peerId)
-    const conn = await pify(node.dialProtocol).call(node, peerInfo, '/kitsunet/test/0.0.1')
+    const conn = await pify(global.node.dialProtocol).call(global.node, peerInfo, '/kitsunet/test/0.0.1')
     console.log('MetaMask Mesh Testing - kitsunet dial success', peerId)
     await connectKitsunet(peerInfo, conn)
   } catch (err) {
@@ -312,31 +305,31 @@ async function attemptDial(peerInfo) {
   }
 }
 
-function hangupPeer(peerInfo) {
-  const peerId = peerInfo.id.toB58String()
-  node.hangUp(peerInfo, () => {
+function hangupPeer (peerInfo) {
+  // const peerId = peerInfo.id.toB58String()
+  global.node.hangUp(peerInfo, () => {
     // console.log('MetaMask Mesh Testing - did hangup', peerId)
   })
 }
 
-function restartWithDelay(timeoutDuration) {
-  console.log(`MetaMask Mesh Testing - restarting in ${timeoutDuration/1000} sec...`)
+function restartWithDelay (timeoutDuration) {
+  console.log(`MetaMask Mesh Testing - restarting in ${timeoutDuration / 1000} sec...`)
   setTimeout(restart, timeoutDuration)
 }
 
-function restart() {
+function restart () {
   console.log('restarting...')
   global.server.disconnect()
   // leave 3 sec for network activity
   setTimeout(() => window.location.reload(), 3 * sec)
 }
 
-function removeFromArray(item, array) {
+function removeFromArray (item, array) {
   const index = array.indexOf(item)
   if (index === -1) return
   array.splice(index, 1)
 }
 
-function timeout(duration, value) {
+function timeout (duration, value) {
   return new Promise((resolve) => setTimeout(() => resolve(value), duration))
 }
