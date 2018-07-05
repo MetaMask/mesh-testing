@@ -169,6 +169,7 @@ async function handleClient(stream, req) {
     submitNetworkState: (peers) => {
       const peerId = client.peerId
       if (!peerId) return
+      if (!clients.includes(client)) return
       // update network state
       const networkState = networkStore.getState()
       networkState.clients[peerId] = { peers }
