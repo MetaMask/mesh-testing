@@ -97,21 +97,6 @@ setInterval(() => {
   }, remoteCallTimeout)
 }, heartBeatInterval)
 
-// clear disconnect nodes from network state
-// this should happen automatically as part of the disconnect process
-// but i can see that it somehow is not
-setInterval(() => {
-  const networkState = networkStore.getState()
-  Object.keys(networkState.clients).forEach((clientId) => {
-    const client = clients.find(c => c.peerId === clientId)
-    if (!client) {
-      console.log(`orphaned client found, cleaning up: ${clientId}`)
-      delete networkState.clients[clientId]
-    }
-  })
-  networkStore.putState(networkState)
-}, 10 * sec)
-
 function disconnectClient(clientId) {
   const index = clients.findIndex(client => client.peerId === clientId)
   console.log(`disconnecting client "${clientId}"`)
