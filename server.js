@@ -98,7 +98,7 @@ async function performPeerTimeoutCheck() {
       // await ping response
       (async () => {
         await client.rpc.ping()
-        let heardPing = true
+        heardPing = true
       })(),
       // disconnect peer on timeout
       (async () => {
@@ -190,7 +190,11 @@ async function handleAdmin(stream, request) {
     sendToClient: async (clientId, method, args) => {
       console.log(`forwarding "${method}" with (${args}) to client ${clientId}`)
       const client = clients.find(c => c.peerId === clientId)
-      if (!client) return console.log(`no client found ${clientId}`)
+      if (!client) {
+        console.log(`no client found ${clientId}`)
+        // znode doesnt like undefined responses
+        return 'error: missing client'
+      }
       return await sendCallWithTimeout(client.rpc, method, args, remoteCallTimeout)
     },
     // broadcast
