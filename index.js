@@ -201,7 +201,7 @@ function startLibp2pNode (node, cb) {
     })
 
     node.stats.on('update', () => {
-      console.dir(node.stats)
+      // console.dir(node.stats)
     })
 
     autoConnectWhenLonely(node, { minPeers: 4 })
