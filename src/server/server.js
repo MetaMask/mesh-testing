@@ -5,7 +5,7 @@ const websocketStream = require('websocket-stream/stream')
 const znode = require('znode')
 const hat = require('hat')
 const ObservableStore = require('obs-store')
-const createHttpClientHandler = require('./src/server/http-poll-stream')
+const createHttpClientHandler = require('./http-poll-stream')
 
 
 const app = express()
