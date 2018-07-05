@@ -214,7 +214,6 @@ const RENDEZVOUS_NODES = [
   // '/dns4/crane.kitsunet.metamask.io/tcp/443/wss/ipfs/QmSJY8gjJYArR4u3rTjANWkSLwr75dVTjnknvdfbe7uiCi',
   '/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
   // '/dns4/starfish.lab.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC',
-  // '/ip4/127.0.0.1/tcp/30334/ws/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
 ]
 function startLibp2pNode(node, cb) {
   node.start(() => {
@@ -439,7 +438,11 @@ class Node extends Libp2p {
   register (ns, ttl, callback) {
     if (typeof ttl === 'function') { 
       callback = ttl
-      ttl = 10 * 60 // 10 mins in seconds
+      ttl = null
+    }
+
+    if (!ttl) {
+      ttl = 60 * 60 // 60 mins (in seconds)
     }
 
     this._rndvzDiscovery.register(ns, ttl, callback)
