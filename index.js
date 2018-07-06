@@ -124,6 +124,8 @@ async function start () {
         seqno: seqno.toString(),
         topicIDs,
       })
+      // publish new data to server
+      if (serverAsync) serverAsync.submitNetworkState(clientState)
     }, (err) => {
       console.log('subscribed to "kitsunet-test1"', err)
     })

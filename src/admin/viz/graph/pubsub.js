@@ -9,7 +9,7 @@ function renderGraph(state, actions) {
 
   function renderNode(node, state, actions) {
     const { selectedNode, pubsubTarget, networkState } = state
-    const nodeData = state.networkState[node.id] || {}
+    const nodeData = state.networkState.clients[node.id] || {}
     const pubsubMessages = nodeData.pubsub || []
 
     const isSelected = selectedNode === node.id

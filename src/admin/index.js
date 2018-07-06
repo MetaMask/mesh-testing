@@ -27,6 +27,9 @@ function startApp(opts = {}) {
     links: [],
   }
 
+  // for debugging
+  global.setPubsubTarget = (target) => { pubsubTarget = target }
+
   // view actions
   const actions = {
     // ui state
