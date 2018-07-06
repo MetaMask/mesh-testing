@@ -140670,6 +140670,8 @@ function renderGlobalPanel(state, actions) {
 function renderSelectedNodePanel(state, actions) {
   const { selectedNode, networkState } = state
   const selectedNodeData = networkState.clients[selectedNode]
+  if (!selectedNodeData) return
+  const selectedNodeStats = selectedNodeData.stats
   const shortId = `${selectedNode.slice(0,4)}...${selectedNode.slice(-4)}`
   return (
 
@@ -140688,15 +140690,14 @@ function renderSelectedNodePanel(state, actions) {
         onclick: () => actions.pingNode(selectedNode),
       }, 'ping'),
 
-      selectedNodeData && renderSelectedNodeStats(selectedNodeData),
+      selectedNodeStats && renderSelectedNodeStats(selectedNodeStats),
 
     ])
 
   )
 }
 
-function renderSelectedNodeStats(selectedNodeData) {
-  const nodeStats = selectedNodeData.stats
+function renderSelectedNodeStats(nodeStats) {
   const tranports = Object.entries(nodeStats.transports)
   if (!tranports) return 'no transport stats yet'
 
