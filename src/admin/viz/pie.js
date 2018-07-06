@@ -21,6 +21,7 @@ function renderPieChart({
   innerRadius,
   outerRadius,
   colors,
+  onclick,
 }) {
   // set defaults
   width = width || 220
@@ -41,22 +42,18 @@ function renderPieChart({
 
   return (
 
-    // s('svg', {
-    //   width,
-    //   height,
-    // }, [
-      s('g', {
-        transform: `translate(${centerX}, ${centerY})`,
-      }, pie(data).map((arcData, index) => {
-        const fill = colors[index % colors.length]
-        return s('path', {
-          fill,
-          d: arc(arcData),
-          // 'stroke': 'black',
-          // 'stroke-width': '1px',
-        })
-      }))
-    // ])
+    s('g', {
+      transform: `translate(${centerX}, ${centerY})`,
+    }, pie(data).map((arcData, index) => {
+      const fill = colors[index % colors.length]
+      return s('path', {
+        fill,
+        d: arc(arcData),
+        // 'stroke': 'black',
+        // 'stroke-width': '1px',
+        onclick,
+      })
+    }))
 
   )
 }

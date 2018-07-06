@@ -1,6 +1,10 @@
 const h = require('virtual-dom/h')
+const s = require('virtual-dom/virtual-hyperscript/svg')
 const setupDom = require('./engine')
-const renderGraph = require('./graph')
+const renderGraphNormal = require('./viz/graph/normal')
+const renderGraphPieTransportTx = require('./viz/graph/pie-transport-tx')
+const renderGraphPieTransportRx = require('./viz/graph/pie-transport-rx')
+const renderGraphMesh = require('./viz/graph/mesh')
 const renderPieChart = require('./viz/pie')
 const { setupSimulation, setupSimulationForces } = require('./simulation')
 
@@ -13,6 +17,8 @@ function startApp(opts = {}) {
   const { store } = opts
 
   // view state
+  const viewModes = ['normal', 'pie(tx)', 'pie(rx)', 'mesh']
+  let viewMode = viewModes[0]
   let selectedNode = undefined
   let currentGraph = {
     nodes: [],
@@ -22,6 +28,10 @@ function startApp(opts = {}) {
   // view actions
   const actions = {
     // ui state
+    selectViewMode: (mode) => {
+      viewMode = mode
+      rerender()
+    },
     selectNode: (nodeId) => {
       selectedNode = nodeId
       rerender()
@@ -64,6 +74,20 @@ function startApp(opts = {}) {
     rerender()
   })
 
+  // mix in local graph over store state
+  function getState() {
+    const networkState = store.getState()
+    return Object.assign({},
+      {
+        viewModes,
+        viewMode,
+        selectedNode,
+        networkState,
+        graph: currentGraph,
+      },
+    )
+  }
+
   async function sendToClient (nodeId, method, args) {
     console.log(`START sending to "${nodeId}" "${method}" ${args}`)
     const start = Date.now()
@@ -77,18 +101,6 @@ function startApp(opts = {}) {
     const state = getState()
     updateDom(render(state, actions))
   }
-
-  // mix in local graph over store state
-  function getState() {
-    const networkState = store.getState()
-    return Object.assign({},
-      {
-        selectedNode,
-        networkState,
-        graph: currentGraph,
-      },
-    )
-  }
 }
 
 function render(state, actions) {
@@ -101,6 +113,7 @@ function render(state, actions) {
 
       h('section.flexbox-container', [
         h('div.main', [
+          renderViewModeButons(state, actions),
           renderGraph(state, actions),
         ]),
 
@@ -115,6 +128,22 @@ function render(state, actions) {
     ])
 
   )
+}
+
+function renderViewModeButons(state, actions) {
+  return h('div', state.viewModes.map((mode) => h('button', {
+    onclick: () => actions.selectViewMode(mode),
+  }, mode)))
+}
+
+function renderGraph(state, actions) {
+  const { viewMode } = state
+  switch(viewMode) {
+    case 'normal': return renderGraphNormal(state, actions)
+    case 'pie(tx)': return renderGraphPieTransportTx(state, actions)
+    case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
+    case 'mesh': return renderGraphMesh(state, actions)
+  }
 }
 
 function renderGlobalPanel(state, actions) {
@@ -188,15 +217,26 @@ function renderSelectedNodeTransportPieChart(nodeStats) {
     }
   })
 
-  return null
-  return renderPieChart({
-    data,
-    // width,
-    // height,
-    // innerRadius,
-    // outerRadius,
-    // colors,
-  })
+  const width = 220
+  const height = 220
+
+  return (
+
+    s('svg', {
+      width,
+      height,
+    }, [
+      renderPieChart({
+        data,
+        width,
+        height,
+        // innerRadius,
+        // outerRadius,
+        // colors,
+      })
+    ])
+
+  )
 }
 
 function renderSelectedNodeTransportTable(nodeStats) {
