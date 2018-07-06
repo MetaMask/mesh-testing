@@ -24,10 +24,17 @@ class Node extends Libp2p {
       discovery: []
     }
 
-    if (options.bootstrap) {
-      const r = new Railing(options.bootstrap)
-      modules.discovery.push(r)
-    }
+    const r = new Railing({
+      list: [
+      // '/dns4/tigress.kitsunet.metamask.io/tcp/443/wss/ipfs/QmZMmjMMP9VUyBkA6zFdEGmuFRdwjsiHZ3KtxMp89i7Xwv',
+      // '/dns4/viper.kitsunet.metamask.io/tcp/443/wss/ipfs/QmR6X4y3N4pHMXCPf4NaN91sk9Gwz8TvRkMebK5Fjtwgoy',
+      // '/dns4/crane.kitsunet.metamask.io/tcp/443/wss/ipfs/QmSJY8gjJYArR4u3rTjANWkSLwr75dVTjnknvdfbe7uiCi',
+        '/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
+      // '/dns4/starfish.lab.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC',
+        // '/ip4/127.0.0.1/tcp/30334/ws/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
+      ]
+    })
+    modules.discovery.push(r)
 
     super(modules, peerInfo, peerBook, options)
     this._rndvzDiscovery = new Discovery(this)
@@ -43,7 +50,7 @@ class Node extends Libp2p {
     ], callback)
   }
 
-  stop(callback) {
+  stop (callback) {
     series([
       (cb) => this._rndvzDiscovery.stop(cb),
       (cb) => super.stop(cb)
@@ -51,7 +58,7 @@ class Node extends Libp2p {
   }
 
   register (ns, ttl, callback) {
-    if (typeof ttl === 'function') { 
+    if (typeof ttl === 'function') {
       callback = ttl
       ttl = null
     }
