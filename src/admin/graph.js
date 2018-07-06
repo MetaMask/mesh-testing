@@ -1,5 +1,6 @@
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
+const renderPieChart = require('./viz/pie')
 
 module.exports = renderGraph
 
@@ -21,11 +22,14 @@ function renderGraph(state, actions) {
 }
 
 function renderNode(node, state, actions) {
-  const { selectedNode } = state
+  const { selectedNode, networkState } = state
   const isSelected = selectedNode === node.id
-  return (
 
-    s('circle', {
+  const nodeData = networkState.clients[node.id]
+  const nodeStats = nodeData && nodeData.stats
+  if (!nodeStats) {
+    // no stats - just draw simple circle
+    return s('circle', {
       r: isSelected ? 10 : 5,
       fill: node.color,
       cx: node.x,
@@ -34,6 +38,40 @@ function renderNode(node, state, actions) {
     }, [
       s('title', `${node.id}`),
     ])
+  }
+
+  const transports = Object.entries(nodeStats.transports)
+  const data = transports.map(([transportName, stats]) => {
+    return {
+      label: transportName,
+      value: Number.parseInt(stats.snapshot.dataSent, 10),
+    }
+  })
+  const size = (isSelected ? 10 : 5) * 2
+
+
+  return (
+
+    renderPieChart({
+      data,
+      centerX: node.x,
+      centerY: node.y,
+      width: size,
+      height: size,
+      // innerRadius,
+      outerRadius: size/2,
+      // colors,
+    })
+
+    // s('circle', {
+    //   r: isSelected ? 10 : 5,
+    //   fill: node.color,
+    //   cx: node.x,
+    //   cy: node.y,
+    //   onclick: () => actions.selectNode(node.id)
+    // }, [
+    //   s('title', `${node.id}`),
+    // ])
 
   )
 }

@@ -82,7 +82,6 @@ function startApp(opts = {}) {
   function getState() {
     const networkState = store.getState()
     return Object.assign({},
-      store.getState(),
       {
         selectedNode,
         networkState,
@@ -189,6 +188,7 @@ function renderSelectedNodeTransportPieChart(nodeStats) {
     }
   })
 
+  return null
   return renderPieChart({
     data,
     // width,
