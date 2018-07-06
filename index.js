@@ -199,12 +199,8 @@ async function start () {
 
   function connectToTelemetryServerViaPost(adminCode) {
     const devMode = (!opts.prod && location.hostname === 'localhost')
-    // const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
-    // const ws = websocket(`${host}/${adminCode}`)
-    // ws.on('error', console.error)
-    // return ws
     const connectionId = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
-    const host = devMode ? 'http://localhost:9000' : 'https://telemetry.metamask.io'
+    const host = devMode ? 'http://localhost:9000' : 'https://telemetry.lab.metamask.io'
     const uri = adminCode ? `${host}/${adminCode}/stream/${connectionId}` : `${host}/stream/${connectionId}`
     const clientStream = createHttpClientStream({ uri })
     clientStream.on('error', console.error)
@@ -213,7 +209,7 @@ async function start () {
 
   function connectToTelemetryServerViaWs (adminCode) {
     const devMode = (!opts.prod && window.location.hostname === 'localhost')
-    const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
+    const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.lab.metamask.io')
     const ws = websocket(adminCode ? `${host}/${adminCode}` : `${host}`)
     ws.on('error', console.error)
     return ws
