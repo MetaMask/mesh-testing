@@ -33,7 +33,7 @@ const discoveredPeers = []
 global.discoveredPeers = discoveredPeers
 const maxDiscovered = 25
 
-const clientState = { stats: {}, peers: {} }
+const clientState = { stats: {}, peers: {}, pubsub: [] }
 global.clientState = clientState
 
 
@@ -112,9 +112,18 @@ async function start () {
     console.log('MetaMask Mesh Testing - libp2p node started')
 
     // setup pubsub
-    node.pubsub.subscribe('kitsunet-test1', ({ from, data }) => {
-      if (from === peerId) return
-      console.log('"kitsunet-test1":', data.toString())
+    node.pubsub.subscribe('kitsunet-test1', (message) => {
+      const { from, data, seqno, topicIDs } = message
+      // // ignore messages from self
+      // if (from === peerId) return
+      console.log(`pubsub message on "kitsunet-test1" from ${from}: ${data.toString()}`)
+      // record message in client state
+      clientState.pubsub.push({
+        from,
+        data: data.toString(),
+        seqno: seqno.toString(),
+        topicIDs,
+      })
     }, (err) => {
       console.log('subscribed to "kitsunet-test1"', err)
     })

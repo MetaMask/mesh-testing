@@ -5,6 +5,7 @@ const renderGraphNormal = require('./viz/graph/normal')
 const renderGraphPieTransportTx = require('./viz/graph/pie-transport-tx')
 const renderGraphPieTransportRx = require('./viz/graph/pie-transport-rx')
 const renderGraphMesh = require('./viz/graph/mesh')
+const renderGraphPubsub = require('./viz/graph/pubsub')
 const renderPieChart = require('./viz/pie')
 const { setupSimulation, setupSimulationForces } = require('./simulation')
 
@@ -17,9 +18,10 @@ function startApp(opts = {}) {
   const { store } = opts
 
   // view state
-  const viewModes = ['normal', 'pie(tx)', 'pie(rx)', 'mesh']
+  const viewModes = ['normal', 'pie(tx)', 'pie(rx)', 'mesh', 'pubsub']
   let viewMode = viewModes[0]
   let selectedNode = undefined
+  let pubsubTarget = undefined
   let currentGraph = {
     nodes: [],
     links: [],
@@ -38,11 +40,17 @@ function startApp(opts = {}) {
     },
     // network state
     // single node
-    restartNode: async (nodeId) => {
-      await sendToClient(nodeId, 'refresh', [])
-    },
     pingNode: async (nodeId) => {
       await sendToClient(nodeId, 'ping', [])
+    },
+    sendPubsub: async (nodeId) => {
+      pubsubTarget = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString()
+      viewMode = 'pubsub'
+      rerender()
+      await sendToClient(nodeId, 'eval', [`pubsubPublish('${pubsubTarget}')`])
+    },
+    restartNode: async (nodeId) => {
+      await sendToClient(nodeId, 'refresh', [])
     },
     // broadcast
     restartAllShortDelay: () => {
@@ -82,6 +90,7 @@ function startApp(opts = {}) {
         viewModes,
         viewMode,
         selectedNode,
+        pubsubTarget,
         networkState,
         graph: currentGraph,
       },
@@ -143,6 +152,7 @@ function renderGraph(state, actions) {
     case 'pie(tx)': return renderGraphPieTransportTx(state, actions)
     case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
     case 'mesh': return renderGraphMesh(state, actions)
+    case 'pubsub': return renderGraphPubsub(state, actions)
   }
 }
 
@@ -188,11 +198,15 @@ function renderSelectedNodePanel(state, actions) {
       ]),
 
       h('button', {
-        onclick: () => actions.restartNode(selectedNode),
-      }, 'restart'),
-      h('button', {
         onclick: () => actions.pingNode(selectedNode),
       }, 'ping'),
+      h('button', {
+        onclick: () => actions.sendPubsub(selectedNode),
+      }, 'pubsub'),
+      h('button', {
+        onclick: () => actions.restartNode(selectedNode),
+      }, 'restart'),
+
 
       selectedNodeStats && renderSelectedNodeStats(selectedNodeStats),
 
@@ -430,17 +444,13 @@ StatsObj shape
 */
 
 function buildGraph(networkState) {
-  const GOOD = '#1f77b4'
-  const BAD = '#aec7e8'
-  const MISSING = '#ff7f0e'
-
   const graph = { nodes: [], links: [] }
 
   // first add kitsunet nodes
   Object.keys(networkState).forEach((clientId) => {
     const peerData = networkState[clientId].peers
     const badResponse = (typeof peerData !== 'object')
-    const newNode = { id: clientId, color: badResponse ? BAD : GOOD }
+    const newNode = { id: clientId, type: badResponse ? 'bad' : 'good' }
     graph.nodes.push(newNode)
   })
 
@@ -452,7 +462,7 @@ function buildGraph(networkState) {
       // if connected to a missing node, create missing node
       const alreadyExists = !!graph.nodes.find(item => item.id === peerId)
       if (!alreadyExists) {
-        const newNode = { id: peerId, color: MISSING }
+        const newNode = { id: peerId, type: 'missing' }
         graph.nodes.push(newNode)
       }
       const rtt = peerData[peerId].ping

@@ -8,16 +8,21 @@ function renderGraph(state, actions) {
   return renderBaseGraph(state, actions, { renderNode, renderLink })
 
   function renderNode(node, state, actions) {
-    const { selectedNode, networkState } = state
+    const { selectedNode, pubsubTarget, networkState } = state
+    const nodeData = state.networkState[node.id] || {}
+    const pubsubMessages = nodeData.pubsub || []
+
     const isSelected = selectedNode === node.id
+    const matchingPubsubMessage = pubsubMessages.find(m => m.data === pubsubTarget)
 
-    const colors = {
-      good: '#1f77b4',
-      bad: '#aec7e8',
-      missing: '#ff7f0e',
-    }
+    // {
+    //   from,
+    //   data: data.toString(),
+    //   seqno: seqno.toString(),
+    //   topicIDs,
+    // }
 
-    const color = colors[node.type]
+    const color = matchingPubsubMessage ? '#66c2a5' : '#1f77b4'
     const radius = isSelected ? 10 : 5
 
     return (
