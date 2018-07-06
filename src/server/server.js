@@ -149,13 +149,13 @@ async function handleClient(stream, req) {
       networkStore.putState(networkState)
       return 'yuss'
     },
-    submitNetworkState: async (peers) => {
+    submitNetworkState: async (clientState) => {
       const peerId = client.peerId
       if (!peerId) return
       if (!clients.includes(client)) return
       // update network state
       const networkState = networkStore.getState()
-      networkState.clients[peerId] = { peers }
+      networkState.clients[peerId] = clientState
       networkStore.putState(networkState)
     },
     disconnect: async () => {
