@@ -30,13 +30,20 @@ function renderGraph(state, actions, { nodeToPieData }) {
 
       )
     } else {
+      const colors = {
+        good: '#1f77b4',
+        bad: '#aec7e8',
+        missing: '#ff7f0e',
+      }
+
+      const color = colors[node.type]
 
       // no data - just draw simple circle
       return (
 
         s('circle', {
           r: size/2,
-          fill: node.color,
+          fill: color,
           cx: node.x,
           cy: node.y,
           onclick: () => actions.selectNode(node.id)

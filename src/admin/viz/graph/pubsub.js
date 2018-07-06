@@ -22,7 +22,8 @@ function renderGraph(state, actions) {
     //   topicIDs,
     // }
 
-    const color = matchingPubsubMessage ? '#66c2a5' : '#1f77b4'
+    let color = matchingPubsubMessage ? '#66c2a5' : '#1f77b4'
+    if (node.type !== 'good') color = '#ff7f0e'
     const radius = isSelected ? 10 : 5
 
     return (
