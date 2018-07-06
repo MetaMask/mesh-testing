@@ -164,6 +164,8 @@ async function start () {
         seqno: seqno.toString(),
         topicIDs,
       })
+      // publish new data to server
+      if (serverAsync) serverAsync.submitNetworkState(clientState)
     }, (err) => {
       console.log('subscribed to "kitsunet-test1"', err)
     })
@@ -139986,6 +139988,9 @@ function startApp(opts = {}) {
     links: [],
   }
 
+  // for debugging
+  global.setPubsubTarget = (target) => { pubsubTarget = target }
+
   // view actions
   const actions = {
     // ui state
@@ -140142,8 +140147,7 @@ function renderGlobalPanel(state, actions) {
 
 function renderSelectedNodePanel(state, actions) {
   const { selectedNode, networkState } = state
-  const selectedNodeData = networkState.clients[selectedNode]
-  if (!selectedNodeData) return
+  const selectedNodeData = networkState.clients[selectedNode] || {}
   const selectedNodeStats = selectedNodeData.stats
   const shortId = `${selectedNode.slice(0,4)}...${selectedNode.slice(-4)}`
   return (
@@ -140165,7 +140169,6 @@ function renderSelectedNodePanel(state, actions) {
       h('button', {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),
-
 
       selectedNodeStats && renderSelectedNodeStats(selectedNodeStats),
 
@@ -140727,7 +140730,7 @@ function renderGraph(state, actions) {
 
   function renderNode(node, state, actions) {
     const { selectedNode, pubsubTarget, networkState } = state
-    const nodeData = state.networkState[node.id] || {}
+    const nodeData = state.networkState.clients[node.id] || {}
     const pubsubMessages = nodeData.pubsub || []
 
     const isSelected = selectedNode === node.id
