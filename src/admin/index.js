@@ -1,6 +1,7 @@
 const h = require('virtual-dom/h')
 const setupDom = require('./engine')
 const renderGraph = require('./graph')
+const renderPieChart = require('./viz/pie')
 const { setupSimulation, setupSimulationForces } = require('./simulation')
 
 const graphWidth = 960
@@ -173,6 +174,32 @@ function renderSelectedNodePanel(state, actions) {
 }
 
 function renderSelectedNodeStats(nodeStats) {
+  return h('div', [
+    renderSelectedNodeTransportTable(nodeStats),
+    renderSelectedNodeTransportPieChart(nodeStats),
+  ])
+}
+
+function renderSelectedNodeTransportPieChart(nodeStats) {
+  const tranports = Object.entries(nodeStats.transports)
+  const data = tranports.map(([transportName, stats]) => {
+    return {
+      label: transportName,
+      value: Number.parseInt(stats.snapshot.dataSent, 10),
+    }
+  })
+
+  return renderPieChart({
+    data,
+    // width,
+    // height,
+    // innerRadius,
+    // outerRadius,
+    // colors,
+  })
+}
+
+function renderSelectedNodeTransportTable(nodeStats) {
   const tranports = Object.entries(nodeStats.transports)
   if (!tranports) return 'no transport stats yet'
 
