@@ -38,32 +38,7 @@ const maxDiscovered = 25
 const networkState = new Map()
 global.networkState = networkState
 
-<<<<<<< HEAD
 function getNetworkState() {
-=======
-const clientRpc = {
-  ping: () => 'pong',
-  refresh: () => restart(),
-  refreshShortDelay: () => {
-    restartWithDelay(randomFromRange(5 * sec, 10 * sec))
-  },
-  refreshLongDelay: () => {
-    restartWithDelay(randomFromRange(2 * min, 10 * min))
-  },
-  eval: (src) => {
-    console.log(`MetaMask Mesh Testing - evaling "${src}"`)
-    const result = eval(src)
-    console.log(`MetaMask Mesh Testing - eval result: "${result}"`)
-    return result
-  },
-  pingAll: async () => {
-    return await Promise.all(kitsunetPeers.map(pingKitsunetPeerWithTimeout))
-  },
-  getNetworkState
-}
-
-function getNetworkState () {
->>>>>>> 0d0b0d8be68e7b8bcdcd559779ec6b5ecae90d4d
   const results = {}
   Array.from(networkState).map(([peerId, state]) => {
     if (!state.ping) return
@@ -73,12 +48,6 @@ function getNetworkState () {
 }
 global.getNetworkState = getNetworkState
 
-<<<<<<< HEAD
-=======
-const kitsunetRpc = {
-  ping: () => true
-}
->>>>>>> 0d0b0d8be68e7b8bcdcd559779ec6b5ecae90d4d
 
 start().catch(console.error)
 
@@ -209,7 +178,6 @@ async function start () {
     restartWithDelay(hour)
   }
 
-<<<<<<< HEAD
   async function submitNetworkStateOnInterval(serverAsync){
     while (true) {
       const state = getNetworkState()
@@ -220,10 +188,6 @@ async function start () {
 
   function connectToTelemetryServerViaPost(adminCode) {
     const devMode = (!opts.prod && location.hostname === 'localhost')
-=======
-  function connectToTelemetryServerViaPost (adminCode) {
-    const devMode = (!opts.prod && window.location.hostname === 'localhost')
->>>>>>> 0d0b0d8be68e7b8bcdcd559779ec6b5ecae90d4d
     // const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
     // const ws = websocket(`${host}/${adminCode}`)
     // ws.on('error', console.error)
@@ -362,13 +326,8 @@ function pingKitsunetPeerWithTimeout (peer) {
   ])
 }
 
-<<<<<<< HEAD
 async function pingKitsunetPeer(peer) {
   if (!peer.rpcAsync) return
-=======
-async function pingKitsunetPeer (peer) {
-  if (!peer.rpc) return
->>>>>>> 0d0b0d8be68e7b8bcdcd559779ec6b5ecae90d4d
   const start = Date.now()
   await peer.rpcAsync.ping()
   const end = Date.now()
