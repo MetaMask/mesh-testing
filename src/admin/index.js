@@ -259,7 +259,8 @@ function buildGraph(data) {
       const rtt = peerData[peerId]
       const didTimeout = rtt === 'timeout'
       // const linkValue = Math.pow((10 - Math.log(rtt)), 2)
-      const linkValue = didTimeout ? 0.1 : 2
+      // const linkValue = didTimeout ? 0.1 : 2
+      const linkValue = 2
       const linkId = `${clientId}-${peerId}`
       const newLink = { id: linkId, source: clientId, target: peerId, value: linkValue }
       graph.links.push(newLink)

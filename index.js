@@ -4,8 +4,6 @@ const qs = require('qs')
 const pify = require('pify')
 const pullStreamToStream = require('pull-stream-to-stream')
 const endOfStream = require('end-of-stream')
-const parallel = require('async/parallel')
-const reflectAll = require('async/reflectAll')
 const createHttpClientStream = require('http-poll-stream/src/client')
 const ObservableStore = require('obs-store')
 
@@ -41,8 +39,8 @@ global.networkState = networkState
 function getNetworkState() {
   const results = {}
   Array.from(networkState).map(([peerId, state]) => {
-    if (!state.ping) return
-    results[peerId] = state.ping
+    // if (!state.ping) return
+    results[peerId] = { ping: state.ping, stats: state.stats }
   })
   return results
 }
@@ -246,7 +244,18 @@ function startLibp2pNode (node, cb) {
     })
 
     node.stats.on('update', () => {
-      // console.dir(node.stats)
+      node.stats.peers().forEach((peerId) => {
+        let peer = networkState.get(peerId)
+        if (peer && peer.status === 'connected') {
+          peer.stats = Object.assign({}, {}, peer.stats)
+          node.stats.transports().forEach((t) => {
+            peer.stats[t] = {
+              dataReceived: node.stats.forTransport(t).snapshot.dataReceived.toString(),
+              dataSent: node.stats.forTransport(t).snapshot.dataSent.toString()
+            }
+          })
+        }
+      })
     })
 
     autoConnectWhenLonely(node, { minPeers: 4 })
