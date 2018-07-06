@@ -33,17 +33,8 @@ const discoveredPeers = []
 global.discoveredPeers = discoveredPeers
 const maxDiscovered = 25
 
-const clientState = new Map()
+const clientState = {}
 global.clientState = clientState
-
-function getNetworkState() {
-  const results = {}
-  Array.from(clientState).map(([peerId, state]) => {
-    results[peerId] = state
-  })
-  return results
-}
-global.getNetworkState = getNetworkState
 
 
 start().catch(console.error)
@@ -190,8 +181,7 @@ async function start () {
 
   async function submitClientStateOnInterval(serverAsync){
     while (true) {
-      const state = getNetworkState()
-      await serverAsync.submitNetworkState(state)
+      await serverAsync.submitNetworkState(clientState)
       await timeout(clientStateSubmitInterval)
     }
   }
@@ -258,7 +248,7 @@ function startLibp2pNode (node, cb) {
     // dump stats to clientState
     node.stats.on('update', () => {
       node.stats.peers().forEach((peerId) => {
-        let peer = clientState.get(peerId)
+        let peer = clientState[peerId]
         if (peer && peer.status === 'connected') {
           peer.stats = Object.assign({}, peer.stats)
           node.stats.transports().forEach((t) => {
@@ -278,18 +268,18 @@ function startLibp2pNode (node, cb) {
 
 function updatePeerState (peerId, value) {
   if (value) {
-    const oldValue = clientState.get(peerId)
+    const oldValue = clientState[peerId]
     const newValue = Object.assign({}, oldValue, value)
-    clientState.set(peerId, newValue)
+    clientState[peerId] = newValue
   } else {
-    clientState.delete(peerId)
+    delete clientState[peerId]
   }
 }
 
 async function connectKitsunet (peerInfo, conn) {
   const peerId = peerInfo.id.toB58String()
   // check if already connected
-  const alreadyConnected = networkState.has(peerId)
+  const alreadyConnected = !!clientState[peerId]
   if (alreadyConnected) {
     console.log('MetaMask Mesh Testing - kitsunet already connected', peerId)
     return
@@ -334,7 +324,7 @@ async function connectKitsunet (peerInfo, conn) {
 }
 
 async function keepPinging (peer) {
-  while (networkState.has(peer.id)) {
+  while (!!clientState[peer.id]) {
     const ping = await pingKitsunetPeer(peer)
     updatePeerState(peer.id, { ping })
     await timeout(peerPingInterval)
@@ -375,7 +365,7 @@ async function attemptDial (peerInfo) {
     hangupPeer(peerInfo)
   }
   // check if already connected
-  const alreadyConnected = networkState.has(peerId)
+  const alreadyConnected = !!clientState[peerId]
   if (alreadyConnected) {
     // console.log('MetaMask Mesh Testing - kitsunet already connected', peerId)
     return
