@@ -186,8 +186,7 @@ function renderGlobalPanel(state, actions) {
 
 function renderSelectedNodePanel(state, actions) {
   const { selectedNode, networkState } = state
-  const selectedNodeData = networkState.clients[selectedNode]
-  if (!selectedNodeData) return
+  const selectedNodeData = networkState.clients[selectedNode] || {}
   const selectedNodeStats = selectedNodeData.stats
   const shortId = `${selectedNode.slice(0,4)}...${selectedNode.slice(-4)}`
   return (
@@ -209,7 +208,6 @@ function renderSelectedNodePanel(state, actions) {
       h('button', {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),
-
 
       selectedNodeStats && renderSelectedNodeStats(selectedNodeStats),
 
