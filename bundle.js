@@ -479,7 +479,7 @@ function timeout (duration, value) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"./createNode":1,"./src/admin/index":717,"./src/util/cbify":719,"./src/util/multiplexRpc":720,"buffer":82,"end-of-stream":142,"http-poll-stream/src/client":149,"obs-store":480,"pify":512,"pull-stream-to-stream":547,"pump":589,"qs":592,"websocket-stream":709}],3:[function(require,module,exports){
+},{"./createNode":1,"./src/admin/index":716,"./src/util/cbify":725,"./src/util/multiplexRpc":726,"buffer":82,"end-of-stream":142,"http-poll-stream/src/client":149,"obs-store":480,"pify":512,"pull-stream-to-stream":547,"pump":589,"qs":592,"websocket-stream":709}],3:[function(require,module,exports){
 'use strict'
 
 const WS = require('libp2p-websockets')
@@ -140464,68 +140464,15 @@ function setupDom({ container }) {
 }
 
 },{"raf-throttle":600,"virtual-dom/create-element":678,"virtual-dom/diff":679,"virtual-dom/h":680,"virtual-dom/patch":681}],716:[function(require,module,exports){
-const h = require('virtual-dom/h')
-const s = require('virtual-dom/virtual-hyperscript/svg')
-
-module.exports = renderGraph
-
-function renderGraph(state, actions) {
-  const { graph } = state
-  const { nodes, links } = graph
-
-  return (
-
-    s('svg', {
-      width: 960,
-      height: 600,
-    }, [
-      s('g', { class: 'links' }, links.map((link) => renderLink(link, state, actions))),
-      s('g', { class: 'nodes' }, nodes.map((node) => renderNode(node, state, actions))),
-    ])
-
-  )
-}
-
-function renderNode(node, state, actions) {
-  const { selectedNode } = state
-  const isSelected = selectedNode === node.id
-  return (
-
-    s('circle', {
-      r: isSelected ? 10 : 5,
-      fill: node.color,
-      cx: node.x,
-      cy: node.y,
-      onclick: () => actions.selectNode(node.id)
-    }, [
-      s('title', `${node.id}`),
-    ])
-
-  )
-}
-
-function renderLink(link, state, actions) {
-  const { source, target } = link
-  return (
-
-    s('line', {
-      // strokeWidth: '1.4',
-      // strokeWidth: Math.sqrt(link.value),
-      strokeWidth: link.value,
-      x1: source.x,
-      y1: source.y,
-      x2: target.x,
-      y2: target.y,
-    })
-
-  )
-}
-
-},{"virtual-dom/h":680,"virtual-dom/virtual-hyperscript/svg":694}],717:[function(require,module,exports){
 (function (global){
 const h = require('virtual-dom/h')
+const s = require('virtual-dom/virtual-hyperscript/svg')
 const setupDom = require('./engine')
-const renderGraph = require('./graph')
+const renderGraphNormal = require('./viz/graph/normal')
+const renderGraphPieTransportTx = require('./viz/graph/pie-transport-tx')
+const renderGraphPieTransportRx = require('./viz/graph/pie-transport-rx')
+const renderGraphMesh = require('./viz/graph/mesh')
+const renderPieChart = require('./viz/pie')
 const { setupSimulation, setupSimulationForces } = require('./simulation')
 
 const graphWidth = 960
@@ -140537,6 +140484,8 @@ function startApp(opts = {}) {
   const { store } = opts
 
   // view state
+  const viewModes = ['normal', 'pie(tx)', 'pie(rx)', 'mesh']
+  let viewMode = viewModes[0]
   let selectedNode = undefined
   let currentGraph = {
     nodes: [],
@@ -140546,6 +140495,10 @@ function startApp(opts = {}) {
   // view actions
   const actions = {
     // ui state
+    selectViewMode: (mode) => {
+      viewMode = mode
+      rerender()
+    },
     selectNode: (nodeId) => {
       selectedNode = nodeId
       rerender()
@@ -140588,6 +140541,20 @@ function startApp(opts = {}) {
     rerender()
   })
 
+  // mix in local graph over store state
+  function getState() {
+    const networkState = store.getState()
+    return Object.assign({},
+      {
+        viewModes,
+        viewMode,
+        selectedNode,
+        networkState,
+        graph: currentGraph,
+      },
+    )
+  }
+
   async function sendToClient (nodeId, method, args) {
     console.log(`START sending to "${nodeId}" "${method}" ${args}`)
     const start = Date.now()
@@ -140601,19 +140568,6 @@ function startApp(opts = {}) {
     const state = getState()
     updateDom(render(state, actions))
   }
-
-  // mix in local graph over store state
-  function getState() {
-    const networkState = store.getState()
-    return Object.assign({},
-      store.getState(),
-      {
-        selectedNode,
-        networkState,
-        graph: currentGraph,
-      },
-    )
-  }
 }
 
 function render(state, actions) {
@@ -140626,6 +140580,7 @@ function render(state, actions) {
 
       h('section.flexbox-container', [
         h('div.main', [
+          renderViewModeButons(state, actions),
           renderGraph(state, actions),
         ]),
 
@@ -140640,6 +140595,22 @@ function render(state, actions) {
     ])
 
   )
+}
+
+function renderViewModeButons(state, actions) {
+  return h('div', state.viewModes.map((mode) => h('button', {
+    onclick: () => actions.selectViewMode(mode),
+  }, mode)))
+}
+
+function renderGraph(state, actions) {
+  const { viewMode } = state
+  switch(viewMode) {
+    case 'normal': return renderGraphNormal(state, actions)
+    case 'pie(tx)': return renderGraphPieTransportTx(state, actions)
+    case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
+    case 'mesh': return renderGraphMesh(state, actions)
+  }
 }
 
 function renderGlobalPanel(state, actions) {
@@ -140698,6 +140669,44 @@ function renderSelectedNodePanel(state, actions) {
 }
 
 function renderSelectedNodeStats(nodeStats) {
+  return h('div', [
+    renderSelectedNodeTransportTable(nodeStats),
+    renderSelectedNodeTransportPieChart(nodeStats),
+  ])
+}
+
+function renderSelectedNodeTransportPieChart(nodeStats) {
+  const tranports = Object.entries(nodeStats.transports)
+  const data = tranports.map(([transportName, stats]) => {
+    return {
+      label: transportName,
+      value: Number.parseInt(stats.snapshot.dataSent, 10),
+    }
+  })
+
+  const width = 220
+  const height = 220
+
+  return (
+
+    s('svg', {
+      width,
+      height,
+    }, [
+      renderPieChart({
+        data,
+        width,
+        height,
+        // innerRadius,
+        // outerRadius,
+        // colors,
+      })
+    ])
+
+  )
+}
+
+function renderSelectedNodeTransportTable(nodeStats) {
   const tranports = Object.entries(nodeStats.transports)
   if (!tranports) return 'no transport stats yet'
 
@@ -140936,7 +140945,7 @@ function buildGraph(networkState) {
 // }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./engine":715,"./graph":716,"./simulation":718,"virtual-dom/h":680}],718:[function(require,module,exports){
+},{"./engine":715,"./simulation":717,"./viz/graph/mesh":719,"./viz/graph/normal":720,"./viz/graph/pie-transport-rx":721,"./viz/graph/pie-transport-tx":722,"./viz/pie":724,"virtual-dom/h":680,"virtual-dom/virtual-hyperscript/svg":694}],717:[function(require,module,exports){
 const d3 = require('d3')
 
 const graphWidth = 960
@@ -140976,7 +140985,295 @@ function createForce(forceFn) {
   return result
 }
 
-},{"d3":126}],719:[function(require,module,exports){
+},{"d3":126}],718:[function(require,module,exports){
+const h = require('virtual-dom/h')
+const s = require('virtual-dom/virtual-hyperscript/svg')
+
+module.exports = renderGraph
+
+function renderGraph(state, actions, { renderNode, renderLink }) {
+  const { graph } = state
+  const { nodes, links } = graph
+
+  return (
+
+    s('svg', {
+      width: 960,
+      height: 600,
+    }, [
+      s('g', { class: 'links' }, links.map((link) => renderLink(link, state, actions))),
+      s('g', { class: 'nodes' }, nodes.map((node) => renderNode(node, state, actions))),
+    ])
+
+  )
+}
+
+},{"virtual-dom/h":680,"virtual-dom/virtual-hyperscript/svg":694}],719:[function(require,module,exports){
+const h = require('virtual-dom/h')
+const s = require('virtual-dom/virtual-hyperscript/svg')
+const renderBaseGraph = require('./base')
+
+module.exports = renderGraph
+
+function renderGraph(state, actions) {
+  return renderBaseGraph(state, actions, { renderNode, renderLink })
+
+  function renderNode(node, state, actions) {
+    return null
+  }
+
+  function renderLink(link, state, actions) {
+    const { source, target } = link
+    return (
+
+      s('line', {
+        strokeWidth: link.value,
+        x1: source.x,
+        y1: source.y,
+        x2: target.x,
+        y2: target.y,
+      })
+
+    )
+  }
+
+}
+
+},{"./base":718,"virtual-dom/h":680,"virtual-dom/virtual-hyperscript/svg":694}],720:[function(require,module,exports){
+const h = require('virtual-dom/h')
+const s = require('virtual-dom/virtual-hyperscript/svg')
+const renderBaseGraph = require('./base')
+
+module.exports = renderGraph
+
+function renderGraph(state, actions) {
+  return renderBaseGraph(state, actions, { renderNode, renderLink })
+
+  function renderNode(node, state, actions) {
+    const { selectedNode, networkState } = state
+    const isSelected = selectedNode === node.id
+
+    return (
+
+      s('circle', {
+        r: isSelected ? 10 : 5,
+        fill: node.color,
+        cx: node.x,
+        cy: node.y,
+        onclick: () => actions.selectNode(node.id)
+      }, [
+        s('title', `${node.id}`),
+      ])
+
+    )
+  }
+
+  function renderLink(link, state, actions) {
+    const { source, target } = link
+    return (
+
+      s('line', {
+        strokeWidth: link.value,
+        x1: source.x,
+        y1: source.y,
+        x2: target.x,
+        y2: target.y,
+      })
+
+    )
+  }
+
+}
+
+},{"./base":718,"virtual-dom/h":680,"virtual-dom/virtual-hyperscript/svg":694}],721:[function(require,module,exports){
+const renderPieBaseGraph = require('./pie')
+
+module.exports = renderGraph
+
+function renderGraph(state, actions) {
+  return renderPieBaseGraph(state, actions, { nodeToPieData })
+
+  function nodeToPieData(node, state) {
+    const { networkState } = state
+    const nodeData = networkState.clients[node.id]
+    const nodeStats = nodeData && nodeData.stats
+    if (!nodeStats) return
+    const transports = Object.entries(nodeStats.transports)
+    const data = transports.map(([transportName, stats]) => {
+      return {
+        label: transportName,
+        value: Number.parseInt(stats.snapshot.dataReceived, 10),
+      }
+    })
+    return data
+  }
+
+}
+
+},{"./pie":723}],722:[function(require,module,exports){
+const renderPieBaseGraph = require('./pie')
+
+module.exports = renderGraph
+
+function renderGraph(state, actions) {
+  return renderPieBaseGraph(state, actions, { nodeToPieData })
+
+  function nodeToPieData(node, state) {
+    const { networkState } = state
+    const nodeData = networkState.clients[node.id]
+    const nodeStats = nodeData && nodeData.stats
+    if (!nodeStats) return
+    const transports = Object.entries(nodeStats.transports)
+    const data = transports.map(([transportName, stats]) => {
+      return {
+        label: transportName,
+        value: Number.parseInt(stats.snapshot.dataSent, 10),
+      }
+    })
+    return data
+  }
+
+}
+
+},{"./pie":723}],723:[function(require,module,exports){
+const h = require('virtual-dom/h')
+const s = require('virtual-dom/virtual-hyperscript/svg')
+const renderBaseGraph = require('./base')
+const renderPieChart = require('../pie')
+
+module.exports = renderGraph
+
+function renderGraph(state, actions, { nodeToPieData }) {
+  return renderBaseGraph(state, actions, { renderNode, renderLink })
+
+  function renderNode(node, state, actions) {
+    const { selectedNode, networkState } = state
+    const isSelected = selectedNode === node.id
+    const size = (isSelected ? 10 : 5) * 2
+
+    const data = nodeToPieData(node, state)
+    if (data) {
+      return (
+
+        // render data as pie chart
+        renderPieChart({
+          data,
+          centerX: node.x,
+          centerY: node.y,
+          width: size,
+          height: size,
+          outerRadius: size/2,
+          onclick: () => actions.selectNode(node.id),
+        })
+
+      )
+    } else {
+
+      // no data - just draw simple circle
+      return (
+
+        s('circle', {
+          r: size/2,
+          fill: node.color,
+          cx: node.x,
+          cy: node.y,
+          onclick: () => actions.selectNode(node.id)
+        }, [
+          s('title', `${node.id}`),
+        ])
+
+      )
+
+    }
+  }
+
+  function renderLink(link, state, actions) {
+    const { source, target } = link
+    return (
+
+      s('line', {
+        strokeWidth: link.value,
+        x1: source.x,
+        y1: source.y,
+        x2: target.x,
+        y2: target.y,
+      })
+
+    )
+  }
+
+}
+
+},{"../pie":724,"./base":718,"virtual-dom/h":680,"virtual-dom/virtual-hyperscript/svg":694}],724:[function(require,module,exports){
+const s = require('virtual-dom/virtual-hyperscript/svg')
+const d3 = require('d3')
+
+module.exports = renderPieChart
+
+/*
+
+data = [{
+  label: String,
+  value: Number,
+}]
+
+*/
+
+function renderPieChart({
+  data,
+  width,
+  height,
+  centerX,
+  centerY,
+  innerRadius,
+  outerRadius,
+  colors,
+  onclick,
+}) {
+  // set defaults
+  width = width || 220
+  height = height || 220
+  centerX = centerX || width/2
+  centerY = centerY || height/2
+  innerRadius = innerRadius || 0
+  outerRadius = outerRadius || 100
+  colors = colors || ['#66c2a5','#fc8d62','#8da0cb','#e78ac3','#a6d854','#ffd92f']
+
+  const pie = d3.pie()
+    .value(d => d.value)
+    .sort(null)
+
+  const arc = d3.arc()
+      .innerRadius(innerRadius)
+      .outerRadius(outerRadius)
+
+  return (
+
+    s('g', {
+      transform: `translate(${centerX}, ${centerY})`,
+    }, pie(data).map((arcData, index) => {
+      const fill = colors[index % colors.length]
+      return s('path', {
+        fill,
+        d: arc(arcData),
+        // 'stroke': 'black',
+        // 'stroke-width': '1px',
+        onclick,
+      })
+    }))
+
+  )
+}
+//
+// var arc = d3.svg.arc()
+// 	.outerRadius(radius * 0.8)
+// 	.innerRadius(radius * 0.4);
+//
+// var outerArc = d3.svg.arc()
+// 	.innerRadius(radius * 0.9)
+// 	.outerRadius(radius * 0.9);
+
+},{"d3":126,"virtual-dom/virtual-hyperscript/svg":694}],725:[function(require,module,exports){
 const promiseToCallback = require('promise-to-callback')
 const noop = function () {}
 
@@ -141015,7 +141312,7 @@ function cbify (fn, context) {
   }
 }
 
-},{"promise-to-callback":514}],720:[function(require,module,exports){
+},{"promise-to-callback":514}],726:[function(require,module,exports){
 var RPC = require('rpc-stream');
 var multiplex = require('multiplex');
 // var has = require('has');
