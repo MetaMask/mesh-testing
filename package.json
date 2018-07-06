@@ -14,8 +14,9 @@
     "end-of-stream": "^1.4.1",
     "express": "^4.16.2",
     "express-ws": "^3.0.0",
+    "has": "^1.0.3",
     "hat": "0.0.3",
-    "http-poll-stream": "^1.0.3",
+    "http-poll-stream": "^1.1.0",
     "ipfs": "^0.29.3",
     "libp2p": "^0.20.4",
     "libp2p-circuit": "github:dryajov/js-libp2p-circuit",
@@ -29,13 +30,17 @@
     "libp2p-websockets": "^0.12.0",
     "mafmt": "dryajov/js-mafmt",
     "multiaddr": "dryajov/js-multiaddr",
+    "multiplex": "^6.7.0",
     "multiplex-rpc": "^1.0.1",
     "obs-store": "^3.0.0",
     "peer-info": "dryajov/js-peer-info",
     "pify": "^3.0.0",
+    "promise-to-callback": "^1.0.0",
     "pull-stream-to-stream": "^1.3.4",
+    "pump": "^3.0.0",
     "qs": "^6.5.1",
     "raf-throttle": "^2.0.3",
+    "rpc-stream": "^2.1.2",
     "virtual-dom": "^2.1.1",
     "websocket-stream": "^5.1.1",
     "znode": "^1.1.3"
@@ -47,7 +52,7 @@
   "scripts": {
     "start": "beefy index.js:bundle.js --live",
     "build": "browserify index.js > bundle.js",
-    "server": "node server/server.js"
+    "server": "node src/server/server.js"
   },
   "repository": {
     "type": "git",

@@ -1,5 +1,5 @@
 const websocket = require('websocket-stream')
-const znode = require('znode')
+const pump = require('pump')
 const qs = require('qs')
 const pify = require('pify')
 const pullStreamToStream = require('pull-stream-to-stream')
@@ -11,6 +11,9 @@ const ObservableStore = require('obs-store')
 
 const createLibp2pNode = require('./createNode')
 const startAdminApp = require('./src/admin/index')
+// const multiplexRpc = require('multiplex-rpc')
+const multiplexRpc = require('./src/util/multiplexRpc')
+const { cbifyObj } = require('./src/util/cbify')
 
 const sec = 1000
 const min = 60 * sec
@@ -35,27 +38,6 @@ const maxDiscovered = 25
 const networkState = new Map()
 global.networkState = networkState
 
-const clientRpc = {
-  ping: () => 'pong',
-  refresh: () => restart(),
-  refreshShortDelay: () => {
-    restartWithDelay(randomFromRange(5 * sec, 10 * sec))
-  },
-  refreshLongDelay: () => {
-    restartWithDelay(randomFromRange(2 * min, 10 * min))
-  },
-  eval: (src) => {
-    console.log(`MetaMask Mesh Testing - evaling "${src}"`)
-    const result = eval(src)
-    console.log(`MetaMask Mesh Testing - eval result: "${result}"`)
-    return result
-  },
-  pingAll: async () => {
-    return await Promise.all(kitsunetPeers.map(pingKitsunetPeerWithTimeout))
-  },
-  getNetworkState,
-}
-
 function getNetworkState() {
   const results = {}
   Array.from(networkState).map(([peerId, state]) => {
@@ -66,9 +48,6 @@ function getNetworkState() {
 }
 global.getNetworkState = getNetworkState
 
-const kitsunetRpc = {
-  ping: () => true,
-}
 
 start().catch(console.error)
 
@@ -94,19 +73,41 @@ async function start(){
     startAdminApp({ store })
 
     // setup admin rpc
-    const server = await znode(serverConnection, {
+    const adminRpcImplementationForServer = cbifyObj({
       ping: async () => 'pong',
       sendNetworkState: async (networkState) => {
-        console.log('server state:', networkState)
         store.putState(networkState)
       },
     })
+    const serverRpcInterfaceForAdmin = [
+      'ping',
+      'getPeerCount',
+      'getNetworkState',
+      'sendToClient',
+      'send',
+      'refresh',
+      'refreshShortDelay',
+      'refreshLongDelay',
+    ]
+
+    const rpcConnection = multiplexRpc(adminRpcImplementationForServer)
+    pump(
+      serverConnection,
+      rpcConnection,
+      serverConnection,
+      (err) => {
+        console.log('server rpcConnection disconnect', err)
+      }
+    )
+    const server = rpcConnection.wrap(serverRpcInterfaceForAdmin)
+    const serverAsync = pify(server)
     global.server = server
+    global.serverAsync = serverAsync
     console.log('MetaMask Mesh Testing - connected!')
 
     // request current network state
     console.log('MetaMask Mesh Testing - fetching network state')
-    const networkState = await server.getNetworkState()
+    const networkState = await serverAsync.getNetworkState()
     store.putState(networkState)
 
     // in admin mode, we dont boot libp2p node
@@ -122,23 +123,67 @@ async function start(){
     console.log('MetaMask Mesh Testing - libp2p node started')
 
     // connect to telemetry server
+    // const serverConnection = connectToTelemetryServerViaWs()
     const serverConnection = connectToTelemetryServerViaPost()
-    global.serverConnection = serverConnection
-    // return
-    let server = await znode(serverConnection, clientRpc)
+
+    const clientRpcImplementationForServer = cbifyObj({
+      ping: async () => 'pong',
+      refresh: async () => restart(),
+      refreshShortDelay: async () => {
+        restartWithDelay(randomFromRange(5 * sec, 10 * sec))
+      },
+      refreshLongDelay: async () => {
+        restartWithDelay(randomFromRange(2 * min, 10 * min))
+      },
+      eval: async (src) => {
+        console.log(`MetaMask Mesh Testing - evaling "${src}"`)
+        const result = eval(src)
+        console.log(`MetaMask Mesh Testing - eval result: "${result}"`)
+        return result
+      },
+      pingAll: async () => {
+        return await Promise.all(kitsunetPeers.map(pingKitsunetPeerWithTimeout))
+      },
+    })
+    const serverRpcInterfaceForClient = [
+      'ping',
+      'setPeerId',
+      'submitNetworkState',
+      'disconnect',
+    ]
+
+    const rpcConnection = multiplexRpc(clientRpcImplementationForServer)
+    endOfStream(rpcConnection, (err) => console.log('rpcConnection ended', err))
+    pump(
+      serverConnection,
+      rpcConnection,
+      serverConnection,
+      (err) => {
+        console.log('server rpcConnection disconnect', err)
+      }
+    )
+
+    const server = rpcConnection.wrap(serverRpcInterfaceForClient)
+    const serverAsync = pify(server)
     global.server = server
+    global.serverAsync = serverAsync
     console.log('MetaMask Mesh Testing - connected to telemetry!')
-    await server.setPeerId(peerId)
+    await serverAsync.setPeerId(peerId)
 
     // submit network state to backend on interval
     // this also keeps the connection alive
-    setInterval(async () => {
-      const state = getNetworkState()
-      await server.submitNetworkState(state)
-    }, networkStateSubmitInterval)
+    submitNetworkStateOnInterval(serverAsync)
 
     // schedule refresh every hour so everyone stays hot and fresh
     restartWithDelay(hour)
+  }
+
+  async function submitNetworkStateOnInterval(serverAsync){
+    while (true) {
+      const state = getNetworkState()
+      await serverAsync.submitNetworkState(state)
+      await timeout(networkStateSubmitInterval)
+    }
   }
 
   function connectToTelemetryServerViaPost(adminCode) {
@@ -158,7 +203,7 @@ async function start(){
   function connectToTelemetryServerViaWs(adminCode) {
     const devMode = (!opts.prod && location.hostname === 'localhost')
     const host = (devMode ? 'ws://localhost:9000' : 'wss://telemetry.metamask.io')
-    const ws = websocket(`${host}/${adminCode}`)
+    const ws = websocket(adminCode ? `${host}/${adminCode}` : `${host}`)
     ws.on('error', console.error)
     return ws
   }
@@ -240,7 +285,27 @@ async function connectKitsunet(peerInfo, conn) {
   updatePeerState(peerId, { status: 'connecting' })
   // do connect
   const stream = pullStreamToStream(conn)
-  peer.rpc = await znode(stream, kitsunetRpc)
+
+  const kitsunetRpcImplementationForPeer = cbifyObj({
+    ping: async () => 'pong',
+  })
+  const kistunetRpcInterfaceForPeer = [
+    'ping'
+  ]
+
+  const rpcConnection = multiplexRpc(kitsunetRpcImplementationForPeer)
+  pump(
+    stream,
+    rpcConnection,
+    stream,
+    (err) => {
+      console.log('peer rpcConnection disconnect', err.message)
+    }
+  )
+
+  peer.rpc = rpcConnection.wrap(kistunetRpcInterfaceForPeer)
+  peer.rpcAsync = pify(peer.rpc)
+
   console.log('MetaMask Mesh Testing - kitsunet CONNECT', peerId)
   updatePeerState(peerId, { status: 'connected' })
   // handle disconnect
@@ -269,9 +334,9 @@ function pingKitsunetPeerWithTimeout(peer) {
 }
 
 async function pingKitsunetPeer(peer) {
-  if (!peer.rpc) return
+  if (!peer.rpcAsync) return
   const start = Date.now()
-  await peer.rpc.ping()
+  await peer.rpcAsync.ping()
   const end = Date.now()
   const rtt = end - start
   return rtt

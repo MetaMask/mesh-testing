@@ -35,10 +35,10 @@ function startApp(opts = {}) {
     },
     // broadcast
     restartAllShortDelay: () => {
-      global.server.refreshShortDelay()
+      global.serverAsync.refreshShortDelay()
     },
     restartAllLongDelay: () => {
-      global.server.refreshLongDelay()
+      global.serverAsync.refreshLongDelay()
     },
   }
 
@@ -66,7 +66,7 @@ function startApp(opts = {}) {
   async function sendToClient (nodeId, method, args) {
     console.log(`START sending to "${nodeId}" "${method}" ${args}`)
     const start = Date.now()
-    const result = await global.server.sendToClient(nodeId, method, args)
+    const result = await global.serverAsync.sendToClient(nodeId, method, args)
     const end = Date.now()
     const duration = end - start
     console.log(`END sending to "${nodeId}" "${method}" ${args} - ${result} ${duration}ms`)
