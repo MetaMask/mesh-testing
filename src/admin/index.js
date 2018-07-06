@@ -79,10 +79,12 @@ function startApp(opts = {}) {
 
   // mix in local graph over store state
   function getState() {
+    const networkState = store.getState()
     return Object.assign({},
       store.getState(),
       {
         selectedNode,
+        networkState,
         graph: currentGraph,
       },
     )
@@ -90,62 +92,134 @@ function startApp(opts = {}) {
 }
 
 function render(state, actions) {
-  const { graph, selectedNode } = state
+  const { selectedNode } = state
   return (
 
     h('.app-container', [
 
       appStyle(),
 
-      h('section.flexbox-container', {
-        // style: {
-        //   display: 'flex',
-        //   alignItems: 'center',
-        // }
-      }, [
-        h('div.main', {
-          // style: {
-          //   flex: 1,
-          // }
-        }, [
-          h('div', [
-            h('.app-info-count', `nodes: ${graph.nodes.length}`),
-            h('.app-info-count', `links: ${graph.links.length}`),
-          ]),
+      h('section.flexbox-container', [
+        h('div.main', [
           renderGraph(state, actions),
         ]),
 
-        h('div.sidebar', {
-          // style: {
-          //   flex: 1,
-          // }
-        }, [
-          h('h2', 'node controls'),
-          h('.app-selected-node', [
-            `selected: ${selectedNode || 'none'}`,
-          ]),
-          h('button', {
-            disabled: !selectedNode,
-            onclick: () => actions.restartNode(selectedNode),
-          }, 'restart'),
-          h('button', {
-            disabled: !selectedNode,
-            onclick: () => actions.pingNode(selectedNode),
-          }, 'ping'),
+        h('div.sidebar', [
 
-          h('h2', 'global controls'),
-          h('button', {
-            onclick: () => actions.restartAllShortDelay()
-          }, 'restart all (5-10s delay)'),
-          h('button', {
-            onclick: () => actions.restartAllLongDelay()
-          }, 'restart all (2-10m delay)'),
+          renderGlobalPanel(state, actions),
+          selectedNode && renderSelectedNodePanel(state, actions),
+
         ]),
       ])
 
     ])
 
   )
+}
+
+function renderGlobalPanel(state, actions) {
+  const { graph } = state
+  return (
+
+    h('div', [
+
+      h('h2', 'network'),
+
+      h('div', [
+        h('.app-info-count', `nodes: ${graph.nodes.length}`),
+        h('.app-info-count', `links: ${graph.links.length}`),
+      ]),
+
+      h('button', {
+        onclick: () => actions.restartAllShortDelay()
+      }, 'restart all (5-10s delay)'),
+      h('button', {
+        onclick: () => actions.restartAllLongDelay()
+      }, 'restart all (2-10m delay)'),
+
+    ])
+
+  )
+}
+
+function renderSelectedNodePanel(state, actions) {
+  const { selectedNode, networkState } = state
+  const selectedNodeData = networkState.clients[selectedNode]
+  const shortId = `${selectedNode.slice(0,4)}...${selectedNode.slice(-4)}`
+  return (
+
+    h('div', [
+
+      h('h2', 'selected node'),
+
+      h('.app-selected-node', [
+        `id: ${shortId}`,
+      ]),
+
+      h('button', {
+        onclick: () => actions.restartNode(selectedNode),
+      }, 'restart'),
+      h('button', {
+        onclick: () => actions.pingNode(selectedNode),
+      }, 'ping'),
+
+      selectedNodeData && renderSelectedNodeStats(selectedNodeData),
+
+    ])
+
+  )
+}
+
+function renderSelectedNodeStats(selectedNodeData) {
+  const nodeStats = selectedNodeData.stats
+  const tranports = Object.entries(nodeStats.transports)
+  if (!tranports) return 'no transport stats yet'
+
+  const totalRx = Number.parseInt(nodeStats.global.snapshot.dataReceived, 10)
+  const totalTx = Number.parseInt(nodeStats.global.snapshot.dataSent, 10)
+
+  // create column labels
+  const columnLabels = ['transport', 'in', 'out', 'in(1m)', 'out(1m)']
+  // create rows
+  const rows = tranports.map(rowFromStats)
+  rows.unshift(rowFromStats(['total', nodeStats.global]))
+
+  return h('table', [
+    h('thead', [
+      h('tr', columnLabels.map((content) => h('th', content)))
+    ]),
+    h('tbody', rows),
+  ])
+
+  function rowFromStats([transportName, stats]) {
+    const amountRx = Number.parseInt(stats.snapshot.dataReceived, 10)
+    const amountTx = Number.parseInt(stats.snapshot.dataSent, 10)
+    const percentRx = totalRx ? Math.floor(100 * amountRx / totalRx) : 100
+    const percentTx = totalTx ? Math.floor(100 * amountTx / totalTx) : 100
+    // if (!totalRx) console.log(totalRx, nodeStats.global.dataReceived)
+
+    return h('tr', [
+      h('td', transportName),
+      h('td', `${formatBytes(amountRx)} ${percentRx}%`),
+      h('td', `${formatBytes(amountTx)} ${percentTx}%`),
+      h('td', formatBytes(stats.movingAverages.dataReceived['60000'])),
+      h('td', formatBytes(stats.movingAverages.dataSent['60000'])),
+    ])
+  }
+
+  function formatBytes(bytes) {
+    let result = bytes || 0
+    let unit = 'b'
+    if (result > 1000000) {
+      result = result / 1000000
+      unit = 'mb'
+    } else if (result > 1000) {
+      result = result / 1000
+      unit = 'kb'
+    }
+    result = result.toFixed(1)
+    return `${result}${unit}`
+  }
 }
 
 function mergeGraph(oldGraph, newGraph) {
@@ -187,6 +261,21 @@ function appStyle() {
       height: 100%;
     }
 
+    button {
+      margin: 6px;
+      padding: 4px 8px;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 8px 0;
+    }
+
+    td, th {
+      border: 1px solid black;
+      padding: 4px;
+    }
+
     .app-container {
       height: 100%;
     }
@@ -204,6 +293,8 @@ function appStyle() {
       flex-basis: auto;
       padding: 0 12px;
       min-height: 666px;
+      background: #f7f7f7;
+      border-left: 1px solid;
     }
 
     .main {
@@ -230,7 +321,47 @@ function appStyle() {
   ])
 }
 
-function buildGraph(data) {
+/*
+networkState shape
+{
+  [clientId]: {
+    stats: {
+      transports: {
+        [transportName]: StatsObj,
+      }
+    },
+    peers: {
+      [peerId]: {
+        status: 'string',
+        ping: Number,
+        stats: StatsObj,
+      }
+    }
+  }
+}
+
+StatsObj shape
+{
+  snapshot: {
+    dataReceived: String,
+    dataSent: String,
+  },
+  movingAverages: {
+    dataReceived: {
+      '60000': Number,
+      '300000': Number,
+      '900000': Number,
+    },
+    dataSent: {
+      '60000': Number,
+      '300000': Number,
+      '900000': Number,
+    },
+  }
+}
+*/
+
+function buildGraph(networkState) {
   const GOOD = '#1f77b4'
   const BAD = '#aec7e8'
   const MISSING = '#ff7f0e'
@@ -238,16 +369,16 @@ function buildGraph(data) {
   const graph = { nodes: [], links: [] }
 
   // first add kitsunet nodes
-  Object.keys(data).forEach((clientId) => {
-    const peerData = data[clientId].peers
+  Object.keys(networkState).forEach((clientId) => {
+    const peerData = networkState[clientId].peers
     const badResponse = (typeof peerData !== 'object')
     const newNode = { id: clientId, color: badResponse ? BAD : GOOD }
     graph.nodes.push(newNode)
   })
 
   // then links
-  Object.keys(data).forEach((clientId) => {
-    const peerData = data[clientId].peers
+  Object.keys(networkState).forEach((clientId) => {
+    const peerData = networkState[clientId].peers
     if (typeof peerData !== 'object') return
     Object.keys(peerData).forEach((peerId) => {
       // if connected to a missing node, create missing node
@@ -256,8 +387,8 @@ function buildGraph(data) {
         const newNode = { id: peerId, color: MISSING }
         graph.nodes.push(newNode)
       }
-      const rtt = peerData[peerId]
-      const didTimeout = rtt === 'timeout'
+      const rtt = peerData[peerId].ping
+      // const didTimeout = rtt === 'timeout'
       // const linkValue = Math.pow((10 - Math.log(rtt)), 2)
       // const linkValue = didTimeout ? 0.1 : 2
       const linkValue = 2
