@@ -122,6 +122,19 @@ async function start () {
     await pify(startLibp2pNode)(node)
     console.log('MetaMask Mesh Testing - libp2p node started')
 
+    // setup pubsub
+    node.pubsub.subscribe('kitsunet-test1', ({ from, data }) => {
+      if (from === peerId) return
+      console.log('"kitsunet-test1":', data.toString())
+    }, (err) => {
+      console.log('subscribed to "kitsunet-test1"', err)
+    })
+    global.pubsubPublish = (message) => {
+      node.pubsub.publish('kitsunet-test1', Buffer.from(message, 'utf8'), (err) => {
+        console.log(`published "${message}"`, err)
+      })
+    }
+
     // connect to telemetry server
     // const serverConnection = connectToTelemetryServerViaWs()
     const serverConnection = connectToTelemetryServerViaPost()
