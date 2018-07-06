@@ -17,7 +17,7 @@ const sec = 1000
 const min = 60 * sec
 const hour = 60 * min
 
-const networkStateSubmitInterval = 15 * sec
+const clientStateSubmitInterval = 15 * sec
 const peerPingInterval = 1 * min
 const peerPingTimeout = 20 * sec
 const autoConnectAttemptInterval = 10 * sec
@@ -33,14 +33,13 @@ const discoveredPeers = []
 global.discoveredPeers = discoveredPeers
 const maxDiscovered = 25
 
-const networkState = new Map()
-global.networkState = networkState
+const clientState = new Map()
+global.clientState = clientState
 
 function getNetworkState() {
   const results = {}
-  Array.from(networkState).map(([peerId, state]) => {
-    // if (!state.ping) return
-    results[peerId] = { ping: state.ping, stats: state.stats }
+  Array.from(clientState).map(([peerId, state]) => {
+    results[peerId] = state
   })
   return results
 }
@@ -183,17 +182,17 @@ async function start () {
 
     // submit network state to backend on interval
     // this also keeps the connection alive
-    submitNetworkStateOnInterval(serverAsync)
+    submitClientStateOnInterval(serverAsync)
 
     // schedule refresh every hour so everyone stays hot and fresh
     restartWithDelay(hour)
   }
 
-  async function submitNetworkStateOnInterval(serverAsync){
+  async function submitClientStateOnInterval(serverAsync){
     while (true) {
       const state = getNetworkState()
       await serverAsync.submitNetworkState(state)
-      await timeout(networkStateSubmitInterval)
+      await timeout(clientStateSubmitInterval)
     }
   }
 
@@ -256,11 +255,12 @@ function startLibp2pNode (node, cb) {
       })
     })
 
+    // dump stats to clientState
     node.stats.on('update', () => {
       node.stats.peers().forEach((peerId) => {
-        let peer = networkState.get(peerId)
+        let peer = clientState.get(peerId)
         if (peer && peer.status === 'connected') {
-          peer.stats = Object.assign({}, {}, peer.stats)
+          peer.stats = Object.assign({}, peer.stats)
           node.stats.transports().forEach((t) => {
             peer.stats[t] = {
               dataReceived: node.stats.forTransport(t).snapshot.dataReceived.toString(),
@@ -278,11 +278,11 @@ function startLibp2pNode (node, cb) {
 
 function updatePeerState (peerId, value) {
   if (value) {
-    const oldValue = networkState.get(peerId)
+    const oldValue = clientState.get(peerId)
     const newValue = Object.assign({}, oldValue, value)
-    networkState.set(peerId, newValue)
+    clientState.set(peerId, newValue)
   } else {
-    networkState.delete(peerId)
+    clientState.delete(peerId)
   }
 }
 
