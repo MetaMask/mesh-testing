@@ -500,9 +500,11 @@ class Node extends Libp2p {
   constructor (peerInfo, peerBook, options) {
     options = options || {}
 
+    const webRtcCircuit = new WebRTCCircuit()
     const modules = {
       transport: [
-        new WS()
+        new WS(),
+        webRtcCircuit
       ],
       connection: {
         muxer: [Multiplex],
@@ -527,7 +529,7 @@ class Node extends Libp2p {
     this._rndvzDiscovery = new Discovery(this)
     this._rndvzDiscovery.on('peer', (peerInfo) => this.emit('peer:discovery', peerInfo))
     this.modules.discovery.push(this._rndvzDiscovery)
-    this.modules.transport.push(new WebRTCCircuit(this))
+    webRtcCircuit.setLibp2p(this)
   }
 
   start (callback) {
@@ -61711,11 +61713,15 @@ const multicodec = '/libp2p/webrtc/circuit/1.0.1'
 const ErrorMsgs = require('./errcodes')
 
 class WebRTCCircuit {
-  constructor (libp2p, maxCons) {
-    this._libp2p = libp2p
+  constructor (maxCons) {
+    this._libp2p = null
     this.maxCons = isNode ? 50 : 4
     this.maxCons = maxCons || this.maxCons
     this.totalCons = 0
+  }
+
+  setLibp2p (libp2p) {
+    this._libp2p = libp2p
   }
 
   dial (ma, options, callback) {
@@ -61746,7 +61752,7 @@ class WebRTCCircuit {
     const conn = new Connection(toPull.duplex(channel))
     // chunk into 16kb size
     // TODO: make chunking configurable
-    pull(conn, block({ size: 16384 }), lp.encode(), conn)
+    // pull(conn, block({ size: 16384 }), lp.encode(), conn)
 
     let connected = false
     channel.on('signal', (signal) => {
@@ -116673,6 +116679,8 @@ module.exports = function (timeout) {
         var next = queue.shift()
         next.cb(null, state.get(next.length))
       }
+      else if(ended == true && queue[0].length && state.length < queue[0].length)
+        queue.shift().cb(new Error('stream ended with:'+state.length+' but wanted:'+queue.length))
       else if(ended)
         queue.shift().cb(ended)
       else
