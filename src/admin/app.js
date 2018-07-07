@@ -218,16 +218,36 @@ function renderSelectedNodePanel(state, actions) {
 
 function renderSelectedNodeStats(nodeStats) {
   return h('div', [
-    renderSelectedNodeTransportTable(nodeStats),
-    renderSelectedNodeTransportPieChart(nodeStats),
+    renderSelectedNodeTransportStats(nodeStats),
+    renderSelectedNodeProtocolStats(nodeStats),
   ])
 }
 
-function renderSelectedNodeTransportPieChart(nodeStats) {
-  const tranports = Object.entries(nodeStats.transports)
-  const data = tranports.map(([transportName, stats]) => {
+function renderSelectedNodeProtocolStats(nodeStats) {
+  const protocols = Object.entries(nodeStats.protocols)
+  if (!protocols) return 'no protocol stats yet'
+  return renderNodeStats('protocol', protocols, nodeStats)
+}
+
+function renderSelectedNodeTransportStats(nodeStats) {
+  const transports = Object.entries(nodeStats.transports)
+  if (!transports) return 'no transport stats yet'
+  return renderNodeStats('transport', transports, nodeStats)
+}
+
+function renderNodeStats(primaryLabel, specificStats, nodeStats) {
+  return (
+    h('div', [
+      renderNodeStatsTable(primaryLabel, specificStats, nodeStats),
+      renderNodeStatsPieChart(specificStats, nodeStats),
+    ])
+  )
+}
+
+function renderNodeStatsPieChart(specificStats) {
+  const data = specificStats.map(([name, stats]) => {
     return {
-      label: transportName,
+      label: name,
       value: Number.parseInt(stats.snapshot.dataSent, 10),
     }
   })
@@ -237,72 +257,54 @@ function renderSelectedNodeTransportPieChart(nodeStats) {
 
   return (
 
-    s('svg', {
-      width,
-      height,
-    }, [
-      renderPieChart({
-        data,
-        width,
-        height,
-        // innerRadius,
-        // outerRadius,
-        // colors,
-      })
+    s('svg', { width, height }, [
+      renderPieChart({ data, width, height })
     ])
 
   )
 }
 
-function renderSelectedNodeTransportTable(nodeStats) {
-  const tranports = Object.entries(nodeStats.transports)
-  if (!tranports) return 'no transport stats yet'
-
+function renderNodeStatsTable(primaryLabel, tableStats, nodeStats) {
   const totalRx = Number.parseInt(nodeStats.global.snapshot.dataReceived, 10)
   const totalTx = Number.parseInt(nodeStats.global.snapshot.dataSent, 10)
 
   // create column labels
-  const columnLabels = ['transport', 'in', 'out', 'in(1m)', 'out(1m)']
+  const columnLabels = [primaryLabel, 'in', 'out', 'in(1m)', 'out(1m)']
   // create rows
-  const rows = tranports.map(rowFromStats)
+  const rows = tableStats.map(rowFromStats)
   rows.unshift(rowFromStats(['total', nodeStats.global]))
 
-  return h('table', [
-    h('thead', [
-      h('tr', columnLabels.map((content) => h('th', content)))
-    ]),
-    h('tbody', rows),
-  ])
+  return renderTable({ columnLabels, rows })
 
   function rowFromStats([transportName, stats]) {
     const amountRx = Number.parseInt(stats.snapshot.dataReceived, 10)
     const amountTx = Number.parseInt(stats.snapshot.dataSent, 10)
     const percentRx = totalRx ? Math.floor(100 * amountRx / totalRx) : 100
     const percentTx = totalTx ? Math.floor(100 * amountTx / totalTx) : 100
-    // if (!totalRx) console.log(totalRx, nodeStats.global.dataReceived)
 
-    return h('tr', [
-      h('td', transportName),
-      h('td', `${formatBytes(amountRx)} ${percentRx}%`),
-      h('td', `${formatBytes(amountTx)} ${percentTx}%`),
-      h('td', formatBytes(stats.movingAverages.dataReceived['60000'])),
-      h('td', formatBytes(stats.movingAverages.dataSent['60000'])),
+    return [
+      transportName,
+      `${formatBytes(amountRx)} ${percentRx}%`,
+      `${formatBytes(amountTx)} ${percentTx}%`,
+      formatBytes(stats.movingAverages.dataReceived['60000']),
+      formatBytes(stats.movingAverages.dataSent['60000']),
+    ]
+  }
+}
+
+function renderTable({ columnLabels, rows }) {
+  return (
+
+    h('table', [
+      h('thead', [
+        h('tr', columnLabels.map((content) => h('th', content)))
+      ]),
+      h('tbody', rows.map((rowContent) => {
+        return h('tr', rowContent.map(content => h('td', content)))
+      })),
     ])
-  }
 
-  function formatBytes(bytes) {
-    let result = bytes || 0
-    let unit = 'b'
-    if (result > 1000000) {
-      result = result / 1000000
-      unit = 'mb'
-    } else if (result > 1000) {
-      result = result / 1000
-      unit = 'kb'
-    }
-    result = result.toFixed(1)
-    return `${result}${unit}`
-  }
+  )
 }
 
 function mergeGraph(oldGraph, newGraph) {
@@ -479,11 +481,17 @@ function buildGraph(networkState) {
 
   return graph
 }
-//
-// function mapObject(obj, fn) {
-//   const newObj = {}
-//   Object.entries(obj).forEach(([key, value], index) => {
-//     newObj[key] = fn(key, value, index)
-//   })
-//   return newObj
-// }
+
+function formatBytes(bytes) {
+  let result = bytes || 0
+  let unit = 'b'
+  if (result > 1000000) {
+    result = result / 1000000
+    unit = 'mb'
+  } else if (result > 1000) {
+    result = result / 1000
+    unit = 'kb'
+  }
+  result = result.toFixed(1)
+  return `${result}${unit}`
+}
