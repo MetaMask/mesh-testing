@@ -119,7 +119,7 @@ async function setupClient () {
   submitClientStateOnInterval({ serverAsync, node })
 
   // schedule refresh every hour so everyone stays hot and fresh
-  restartWithDelay(hour)
+  restartWithDelay(randomFromRange(1 * hour, 1.5 * hour))
 }
 
 async function submitClientStateOnInterval({ serverAsync, node }){
