@@ -13,9 +13,11 @@ class Node extends Libp2p {
   constructor (peerInfo, peerBook, options) {
     options = options || {}
 
+    const webRtcCircuit = new WebRTCCircuit()
     const modules = {
       transport: [
-        new WS()
+        new WS(),
+        webRtcCircuit
       ],
       connection: {
         muxer: [Multiplex],
@@ -40,7 +42,7 @@ class Node extends Libp2p {
     this._rndvzDiscovery = new Discovery(this)
     this._rndvzDiscovery.on('peer', (peerInfo) => this.emit('peer:discovery', peerInfo))
     this.modules.discovery.push(this._rndvzDiscovery)
-    this.modules.transport.push(new WebRTCCircuit(this))
+    webRtcCircuit.setLibp2p(this)
   }
 
   start (callback) {
