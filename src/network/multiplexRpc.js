@@ -1,6 +1,6 @@
 var RPC = require('rpc-stream');
 var multiplex = require('multiplex');
-// var has = require('has');
+const pump = require('pump')
 
 module.exports = function (api) {
     var index = 2;
@@ -10,7 +10,15 @@ module.exports = function (api) {
             if (typeof api[name] !== 'function') return;
             var stream = api[name].apply(null, args);
             if (!stream || typeof stream.pipe !== 'function') return;
-            stream.pipe(mx.createSharedStream(id)).pipe(stream);
+            console.log(`multiplexRpc internal child "${id}" created`)
+            pump(
+              stream,
+              mx.createSharedStream(id),
+              stream,
+              (err) => {
+                console.log(`multiplexRpc internal child "${id}" stream ended`, err.message)
+              }
+            )
         }
     });
     var iclient = irpc.wrap([ 'open' ]);
@@ -26,8 +34,22 @@ module.exports = function (api) {
     }); // public interface
 
     var mx = multiplex({ chunked: true });
-    irpc.pipe(mx.createSharedStream('0')).pipe(irpc);
-    prpc.pipe(mx.createSharedStream('1')).pipe(prpc);
+    pump(
+      irpc,
+      mx.createSharedStream('0'),
+      irpc,
+      (err) => {
+        console.log('multiplexRpc internal stream ended', err.message)
+      }
+    )
+    pump(
+      prpc,
+      mx.createSharedStream('1'),
+      prpc,
+      (err) => {
+        console.log('multiplexRpc public stream ended', err.message)
+      }
+    )
 
     mx.wrap = function (methods) {
         var names = methods.map(function (m) {
