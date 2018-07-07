@@ -14,7 +14,7 @@ function renderGraph(state, actions, { nodeToPieData }) {
     const size = (isSelected ? 10 : 5) * 2
 
     const data = nodeToPieData(node, state)
-    if (data && data.stats) {
+    if (data) {
       return (
 
         // render data as pie chart
@@ -36,7 +36,7 @@ function renderGraph(state, actions, { nodeToPieData }) {
         missing: '#ff7f0e',
       }
 
-      const color = colors[node.type]
+      const color = colors[node.type] || '#aec7e8'
 
       // no data - just draw simple circle
       return (
