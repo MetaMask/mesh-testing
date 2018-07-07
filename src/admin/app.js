@@ -38,6 +38,7 @@ function startApp(opts = {}) {
       rerender()
     },
     selectNode: (nodeId) => {
+      if (!currentGraph.nodes.find(node => node.id === nodeId)) return
       selectedNode = nodeId
       rerender()
     },
@@ -126,6 +127,7 @@ function render(state, actions) {
       h('section.flexbox-container', [
         h('div.main', [
           renderViewModeButons(state, actions),
+          renderNodeSelect(state, actions),
           renderGraph(state, actions),
         ]),
 
@@ -146,6 +148,13 @@ function renderViewModeButons(state, actions) {
   return h('div', state.viewModes.map((mode) => h('button', {
     onclick: () => actions.selectViewMode(mode),
   }, mode)))
+}
+
+function renderNodeSelect(state, actions) {
+  return h('input', {
+    placeholder: 'nodeId to select',
+    oninput: (event) => actions.selectNode(event.target.value),
+  })
 }
 
 function renderGraph(state, actions) {
