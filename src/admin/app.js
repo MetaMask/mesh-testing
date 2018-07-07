@@ -378,6 +378,7 @@ function appStyle() {
       flex-basis: auto;
       padding: 0 12px;
       min-height: 666px;
+      overflow: scroll;
       background: #f7f7f7;
       border-left: 1px solid;
     }
