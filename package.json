@@ -50,8 +50,8 @@
     "browserify": "^16.1.1"
   },
   "scripts": {
-    "start": "beefy index.js:bundle.js --live",
-    "build": "browserify index.js > bundle.js",
+    "start": "beefy src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
+    "build": "browserify src/client/index.js > client-bundle.js && browserify src/admin/index.js > admin-bundle.js",
     "server": "node src/server/server.js"
   },
   "repository": {

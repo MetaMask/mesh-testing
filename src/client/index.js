@@ -30,8 +30,8 @@ const maxDiscovered = 25
 const clientState = { stats: {}, peers: {}, pubsub: [] }
 global.clientState = clientState
 
-module.exports = setupClient
 
+setupClient().catch(console.error)
 
 async function setupClient () {
   // configure libp2p client

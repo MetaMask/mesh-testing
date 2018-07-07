@@ -8,8 +8,8 @@ const startAdminApp = require('./app')
 const multiplexRpc = require('../network/multiplexRpc')
 const { cbifyObj } = require('../util/cbify')
 
-module.exports = setupAdmin
 
+setupAdmin().catch(console.error)
 
 async function setupAdmin () {
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })

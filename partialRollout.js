@@ -16,21 +16,24 @@ function start() {
 
   if (matchesThreshold) {
     console.log('MetaMask Mesh Testing - threshold matched -- activating test')
-    activateBundle()
+    activate()
   } else if (location.hostname === 'localhost') {
     console.log('MetaMask Mesh Testing - development detected -- activating test')
-    activateBundle()
+    activate()
   } else {
     console.log('MetaMask Mesh Testing - threshold not matched -- skipping test')
   }
 }
 
-function activateBundle(){
-  // console.log('MetaMask Mesh Testing - tests temporarily disabled')
-  // return
+function activate(){
+  const isAdmin = document.location.search.includes('admin')
+  const src = isAdmin ? './admin-bundle.js' : './client-bundle.js'
+  activateBundle(src)
+}
 
+function activateBundle(src){
   const script = document.createElement('script')
-  script.src = './bundle.js'
+  script.src = src
   script.type = 'text/javascript'
   document.body.appendChild(script)
 }
