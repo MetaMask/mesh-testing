@@ -1,2 +1,4 @@
 .git
 node_modules
+admin-bundle.js
+client-bundle.js
