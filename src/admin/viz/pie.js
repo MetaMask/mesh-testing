@@ -30,7 +30,20 @@ function renderPieChart({
   centerY = centerY || height/2
   innerRadius = innerRadius || 0
   outerRadius = outerRadius || 100
-  colors = colors || ['#66c2a5','#fc8d62','#8da0cb','#e78ac3','#a6d854','#ffd92f']
+  colors = colors || [
+    // green
+    '#66c2a5',
+    // blue
+    '#8da0cb',
+    // orange
+    '#fc8d62',
+    // pink
+    '#e78ac3',
+    // lime
+    '#a6d854',
+    // yellow
+    '#ffd92f',
+  ]
 
   const pie = d3.pie()
     .value(d => d.value)
