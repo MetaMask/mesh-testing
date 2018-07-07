@@ -119025,8 +119025,10 @@ async function setupClient () {
   }
 
   // connect to telemetry server
+  const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
+  const devMode = (!opts.prod && location.hostname === 'localhost')
   // const serverConnection = connectToTelemetryServerViaWs()
-  const serverConnection = connectToTelemetryServerViaPost()
+  const serverConnection = connectToTelemetryServerViaPost({ devMode })
 
   const clientRpcImplementationForServer = cbifyObj({
     ping: async () => 'pong',
@@ -119077,7 +119079,7 @@ async function setupClient () {
   submitClientStateOnInterval({ serverAsync, node })
 
   // schedule refresh every hour so everyone stays hot and fresh
-  restartWithDelay(hour)
+  restartWithDelay(randomFromRange(1 * hour, 1.5 * hour))
 }
 
 async function submitClientStateOnInterval({ serverAsync, node }){
@@ -119117,7 +119119,9 @@ function startLibp2pNode (node, cb) {
     })
 
     node.on('peer:disconnect', (peerInfo) => {
+      const peerId = peerInfo.id.toB58String()
       removeFromArray(peerInfo, peers)
+      updatePeerState(peerId, null)
     })
 
     node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
@@ -119210,6 +119214,7 @@ async function connectKitsunet (peerInfo, conn) {
   const kitsunetRpcImplementationForPeer = cbifyObj({
     ping: async () => 'pong',
   })
+
   const kistunetRpcInterfaceForPeer = [
     'ping'
   ]
@@ -119409,7 +119414,7 @@ module.exports = Node
 },{"async/series":44,"libp2p":285,"libp2p-mplex":197,"libp2p-railing":208,"libp2p-rendezvous":211,"libp2p-secio":252,"libp2p-webrtc-circuit":275,"libp2p-websockets":277}],640:[function(require,module,exports){
 var RPC = require('rpc-stream');
 var multiplex = require('multiplex');
-// var has = require('has');
+const pump = require('pump')
 
 module.exports = function (api) {
     var index = 2;
@@ -119419,7 +119424,15 @@ module.exports = function (api) {
             if (typeof api[name] !== 'function') return;
             var stream = api[name].apply(null, args);
             if (!stream || typeof stream.pipe !== 'function') return;
-            stream.pipe(mx.createSharedStream(id)).pipe(stream);
+            console.log(`multiplexRpc internal child "${id}" created`)
+            pump(
+              stream,
+              mx.createSharedStream(id),
+              stream,
+              (err) => {
+                console.log(`multiplexRpc internal child "${id}" stream ended`, err.message)
+              }
+            )
         }
     });
     var iclient = irpc.wrap([ 'open' ]);
@@ -119435,8 +119448,22 @@ module.exports = function (api) {
     }); // public interface
 
     var mx = multiplex({ chunked: true });
-    irpc.pipe(mx.createSharedStream('0')).pipe(irpc);
-    prpc.pipe(mx.createSharedStream('1')).pipe(prpc);
+    pump(
+      irpc,
+      mx.createSharedStream('0'),
+      irpc,
+      (err) => {
+        console.log('multiplexRpc internal stream ended', err.message)
+      }
+    )
+    pump(
+      prpc,
+      mx.createSharedStream('1'),
+      prpc,
+      (err) => {
+        console.log('multiplexRpc public stream ended', err.message)
+      }
+    )
 
     mx.wrap = function (methods) {
         var names = methods.map(function (m) {
@@ -119464,7 +119491,7 @@ module.exports = function (api) {
     }
 };
 
-},{"multiplex":371,"rpc-stream":570}],641:[function(require,module,exports){
+},{"multiplex":371,"pump":543,"rpc-stream":570}],641:[function(require,module,exports){
 const websocket = require('websocket-stream')
 const createHttpClientStream = require('http-poll-stream/src/client')
 
