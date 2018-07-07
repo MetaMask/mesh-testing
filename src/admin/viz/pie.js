@@ -13,6 +13,7 @@ data = [{
 */
 
 function renderPieChart({
+  label,
   data,
   width,
   height,
@@ -21,6 +22,7 @@ function renderPieChart({
   innerRadius,
   outerRadius,
   colors,
+  renderLabels,
   onclick,
 }) {
   // set defaults
@@ -28,8 +30,8 @@ function renderPieChart({
   height = height || 220
   centerX = centerX || width/2
   centerY = centerY || height/2
-  innerRadius = innerRadius || 0
-  outerRadius = outerRadius || 100
+  outerRadius = outerRadius === undefined ? Math.min(width, height)/2 : outerRadius
+  innerRadius = innerRadius === undefined ? outerRadius * 0.8 : innerRadius
   colors = colors || [
     // green
     '#66c2a5',
@@ -44,37 +46,100 @@ function renderPieChart({
     // yellow
     '#ffd92f',
   ]
+  renderLabels = renderLabels === undefined ? true : renderLabels
 
+  // reduce pie chart radii so theres room for labels
+  const textRadius = outerRadius * 0.9
+  if (renderLabels) {
+    innerRadius *= 0.8
+    outerRadius *= 0.8
+  }
+
+  // pie chart layout util
   const pie = d3.pie()
     .value(d => d.value)
     .sort(null)
 
+  // edge of pie
   const arc = d3.arc()
       .innerRadius(innerRadius)
       .outerRadius(outerRadius)
+
+  // arc for text labels
+  const outerArc = d3.arc()
+      .innerRadius(textRadius)
+      .outerRadius(textRadius)
+
+  const sliceData = pie(data)
 
   return (
 
     s('g', {
       transform: `translate(${centerX}, ${centerY})`,
-    }, pie(data).map((arcData, index) => {
+    }, [
+      s('g', renderSlices()),
+      renderLabels ? s('g', renderLabelLines()) : null,
+      renderLabels ? s('g', renderLabelText()) : null,
+      label ? renderPrimaryLabel() : null,
+    ])
+
+  )
+
+  function renderSlices() {
+    return sliceData.map((arcData, index) => {
       const fill = colors[index % colors.length]
       return s('path', {
         fill,
         d: arc(arcData),
-        // 'stroke': 'black',
-        // 'stroke-width': '1px',
         onclick,
-      })
-    }))
+      }, [
+        s('title', data[index].label),
+      ])
+    })
+  }
 
-  )
+  function renderLabelLines() {
+    return sliceData.map((arcData, index) => {
+      const pos = outerArc.centroid(arcData)
+      pos[0] = textRadius * (midAngle(arcData) < Math.PI ? 1 : -1)
+
+      return s('polyline', {
+        points: [arc.centroid(arcData), outerArc.centroid(arcData), pos].join(','),
+        'opacity': .3,
+        'stroke': 'black',
+        'stroke-width': 2,
+        'fill': 'none',
+      })
+    })
+  }
+
+  function renderLabelText() {
+    return sliceData.map((arcData, index) => {
+      const pos = outerArc.centroid(arcData)
+      // changes the point to be on left or right depending on where label is.
+      pos[0] = textRadius * (midAngle(arcData) < Math.PI ? 1 : -1)
+
+      return s('text', {
+        transform: `translate(${pos.join(',')})`,
+        dy: '0.35em',
+        style: {
+          'text-anchor': (midAngle(arcData)) < Math.PI ? 'start' : 'end',
+        },
+      }, data[index].label)
+    })
+  }
+
+  function renderPrimaryLabel() {
+    return s('text', {
+      transform: `translate(0,0)`,
+      dy: '0.35em',
+      style: {
+        'text-anchor': 'middle',
+      },
+    }, label)
+  }
+
+  function midAngle(d) {
+    return d.startAngle + (d.endAngle - d.startAngle) / 2
+  }
 }
-//
-// var arc = d3.svg.arc()
-// 	.outerRadius(radius * 0.8)
-// 	.innerRadius(radius * 0.4);
-//
-// var outerArc = d3.svg.arc()
-// 	.innerRadius(radius * 0.9)
-// 	.outerRadius(radius * 0.9);

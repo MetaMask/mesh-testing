@@ -24,8 +24,10 @@ function renderGraph(state, actions, { nodeToPieData }) {
           centerY: node.y,
           width: size,
           height: size,
+          innerRadius: 0,
           outerRadius: size/2,
           onclick: () => actions.selectNode(node.id),
+          renderLabels: false,
         })
 
       )

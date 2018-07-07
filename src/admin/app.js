@@ -248,26 +248,35 @@ function renderNodeStats(primaryLabel, specificStats, nodeStats) {
   return (
     h('div', [
       renderNodeStatsTable(primaryLabel, specificStats, nodeStats),
-      renderNodeStatsPieChart(specificStats, nodeStats),
+      h('div', [
+        h('h4', 'in'),
+        renderNodeStatsPieChart('1min', specificStats, (stats) => stats.movingAverages.dataReceived['60000']),
+        renderNodeStatsPieChart('all', specificStats, (stats) => Number.parseInt(stats.snapshot.dataReceived, 10)),
+      ]),
+      h('div', [
+        h('h4', 'out'),
+        renderNodeStatsPieChart('1min', specificStats, (stats) => stats.movingAverages.dataSent['60000']),
+        renderNodeStatsPieChart('all', specificStats, (stats) => Number.parseInt(stats.snapshot.dataSent, 10)),
+      ]),
     ])
   )
 }
 
-function renderNodeStatsPieChart(specificStats) {
+function renderNodeStatsPieChart(label, specificStats, mapFn) {
   const data = specificStats.map(([name, stats]) => {
     return {
       label: name,
-      value: Number.parseInt(stats.snapshot.dataSent, 10),
+      value: mapFn(stats),
     }
   })
 
-  const width = 220
-  const height = 220
+  const width = 80
+  const height = 80
 
   return (
 
     s('svg', { width, height }, [
-      renderPieChart({ data, width, height })
+      renderPieChart({ data, width, height, label, renderLabels: false })
     ])
 
   )
