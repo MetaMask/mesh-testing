@@ -65,8 +65,10 @@ async function setupClient () {
   }
 
   // connect to telemetry server
+  const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
+  const devMode = (!opts.prod && location.hostname === 'localhost')
   // const serverConnection = connectToTelemetryServerViaWs()
-  const serverConnection = connectToTelemetryServerViaPost()
+  const serverConnection = connectToTelemetryServerViaPost({ devMode })
 
   const clientRpcImplementationForServer = cbifyObj({
     ping: async () => 'pong',
@@ -250,6 +252,7 @@ async function connectKitsunet (peerInfo, conn) {
   const kitsunetRpcImplementationForPeer = cbifyObj({
     ping: async () => 'pong',
   })
+
   const kistunetRpcInterfaceForPeer = [
     'ping'
   ]
