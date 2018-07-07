@@ -159,7 +159,9 @@ function startLibp2pNode (node, cb) {
     })
 
     node.on('peer:disconnect', (peerInfo) => {
+      const peerId = peerInfo.id.toB58String()
       removeFromArray(peerInfo, peers)
+      updatePeerState(peerId, null)
     })
 
     node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
