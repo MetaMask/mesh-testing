@@ -14,7 +14,7 @@ function renderGraph(state, actions, { nodeToPieData }) {
     const size = (isSelected ? 10 : 5) * 2
 
     const data = nodeToPieData(node, state)
-    if (data) {
+    if (data && data.stats) {
       return (
 
         // render data as pie chart
