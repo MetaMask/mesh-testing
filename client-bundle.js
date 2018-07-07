@@ -119014,7 +119014,7 @@ async function setupClient () {
       topicIDs,
     })
     // publish new data to server
-    if (serverAsync) serverAsync.submitNetworkState(clientState)
+    if (serverAsync) submitNetworkState({ node, serverAsync })
   }, (err) => {
     console.log('subscribed to "kitsunet-test1"', err)
   })
@@ -119082,10 +119082,14 @@ async function setupClient () {
 
 async function submitClientStateOnInterval({ serverAsync, node }){
   while (true) {
-    updateClientStateWithLibp2pStats(node)
-    await serverAsync.submitNetworkState(clientState)
+    await submitNetworkState({ serverAsync, node })
     await timeout(clientStateSubmitInterval)
   }
+}
+
+async function submitNetworkState({ serverAsync, node }) {
+  updateClientStateWithLibp2pStats(node)
+  await serverAsync.submitNetworkState(clientState)
 }
 
 function randomFromRange (min, max) {
@@ -119134,11 +119138,19 @@ function updateClientStateWithLibp2pStats(node) {
   clientState.stats.global = libp2pStatsToJson(node.stats.global)
   // transports
   const transportStats = {}
-  node.stats.transports().forEach((t) => {
-    const rawTransportStats = node.stats.forTransport(t)
-    transportStats[t] = libp2pStatsToJson(rawTransportStats)
+  node.stats.transports().forEach((transportName) => {
+    const rawTransportStats = node.stats.forTransport(transportName)
+    transportStats[transportName] = libp2pStatsToJson(rawTransportStats)
   })
   clientState.stats.transports = transportStats
+  // protocols
+  const protocolStats = {}
+  // some protocols are non-strings - weird, prolly a configuration bug
+  node.stats.protocols().filter(protocolName => typeof protocolName === 'string').forEach((protocolName) => {
+    const rawProtocolStats = node.stats.forProtocol(protocolName)
+    protocolStats[protocolName] = libp2pStatsToJson(rawProtocolStats)
+  })
+  clientState.stats.protocols = protocolStats
   // peers
   node.stats.peers().forEach((peerId) => {
     let peer = clientState.peers[peerId]
@@ -119343,12 +119355,12 @@ class Node extends Libp2p {
 
     const r = new Railing({
       list: [
-      // '/dns4/tigress.kitsunet.metamask.io/tcp/443/wss/ipfs/QmZMmjMMP9VUyBkA6zFdEGmuFRdwjsiHZ3KtxMp89i7Xwv',
-      // '/dns4/viper.kitsunet.metamask.io/tcp/443/wss/ipfs/QmR6X4y3N4pHMXCPf4NaN91sk9Gwz8TvRkMebK5Fjtwgoy',
-      // '/dns4/crane.kitsunet.metamask.io/tcp/443/wss/ipfs/QmSJY8gjJYArR4u3rTjANWkSLwr75dVTjnknvdfbe7uiCi',
-        '/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
-      // '/dns4/starfish.lab.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC',
-        // '/ip4/127.0.0.1/tcp/30334/ws/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
+        // '/dns4/tigress.kitsunet.metamask.io/tcp/443/wss/ipfs/QmZMmjMMP9VUyBkA6zFdEGmuFRdwjsiHZ3KtxMp89i7Xwv',
+        // '/dns4/viper.kitsunet.metamask.io/tcp/443/wss/ipfs/QmR6X4y3N4pHMXCPf4NaN91sk9Gwz8TvRkMebK5Fjtwgoy',
+        // '/dns4/crane.kitsunet.metamask.io/tcp/443/wss/ipfs/QmSJY8gjJYArR4u3rTjANWkSLwr75dVTjnknvdfbe7uiCi',
+        '/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC',
+        '/dns4/starfish.lab.metamask.io/tcp/443/wss/ipfs/QmR6X4y3N4pHMXCPf4NaN91sk9Gwz8TvRkMebK5Fjtwgoy',
+        // '/ip4/127.0.0.1/tcp/30334/ws/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC',
       ]
     })
     modules.discovery.push(r)
