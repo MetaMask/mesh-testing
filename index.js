@@ -8,7 +8,7 @@ const createHttpClientStream = require('http-poll-stream/src/client')
 const ObservableStore = require('obs-store')
 
 const createLibp2pNode = require('./createNode')
-const startAdminApp = require('./src/admin/index')
+const startAdminApp = require('./src/admin/app')
 // const multiplexRpc = require('multiplex-rpc')
 const multiplexRpc = require('./src/util/multiplexRpc')
 const { cbifyObj } = require('./src/util/cbify')
