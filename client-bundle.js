@@ -119225,18 +119225,18 @@ async function connectKitsunet (peerInfo, conn) {
     rpcConnection,
     stream,
     (err) => {
-      console.log('peer rpcConnection disconnect', err.message)
+      console.log(`peer rpcConnection disconnect ${peerId}`, err.message)
     }
   )
 
   peer.rpc = rpcConnection.wrap(kistunetRpcInterfaceForPeer)
   peer.rpcAsync = pify(peer.rpc)
 
-  console.log('MetaMask Mesh Testing - kitsunet CONNECT', peerId)
+  console.log(`MetaMask Mesh Testing - kitsunet CONNECT ${peerId}`)
   updatePeerState(peerId, { status: 'connected' })
   // handle disconnect
   endOfStream(stream, (err) => {
-    console.log('MetaMask Mesh Testing - kitsunet peer DISCONNECT', peerId, err.message)
+    console.log(`MetaMask Mesh Testing - kitsunet peer DISCONNECT ${peerId}`, err.message)
     removeFromArray(peer, kitsunetPeers)
     updatePeerState(peerId, null)
   })
