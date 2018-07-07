@@ -54,7 +54,7 @@ async function setupClient () {
       topicIDs,
     })
     // publish new data to server
-    if (serverAsync) serverAsync.submitNetworkState(clientState)
+    if (serverAsync) submitNetworkState({ node, serverAsync })
   }, (err) => {
     console.log('subscribed to "kitsunet-test1"', err)
   })
@@ -122,10 +122,14 @@ async function setupClient () {
 
 async function submitClientStateOnInterval({ serverAsync, node }){
   while (true) {
-    updateClientStateWithLibp2pStats(node)
-    await serverAsync.submitNetworkState(clientState)
+    await submitNetworkState({ serverAsync, node })
     await timeout(clientStateSubmitInterval)
   }
+}
+
+async function submitNetworkState({ serverAsync, node }) {
+  updateClientStateWithLibp2pStats(node)
+  await serverAsync.submitNetworkState(clientState)
 }
 
 function randomFromRange (min, max) {
@@ -174,11 +178,19 @@ function updateClientStateWithLibp2pStats(node) {
   clientState.stats.global = libp2pStatsToJson(node.stats.global)
   // transports
   const transportStats = {}
-  node.stats.transports().forEach((t) => {
-    const rawTransportStats = node.stats.forTransport(t)
-    transportStats[t] = libp2pStatsToJson(rawTransportStats)
+  node.stats.transports().forEach((transportName) => {
+    const rawTransportStats = node.stats.forTransport(transportName)
+    transportStats[transportName] = libp2pStatsToJson(rawTransportStats)
   })
   clientState.stats.transports = transportStats
+  // protocols
+  const protocolStats = {}
+  // some protocols are non-strings - weird, prolly a configuration bug
+  node.stats.protocols().filter(protocolName => typeof protocolName === 'string').forEach((protocolName) => {
+    const rawProtocolStats = node.stats.forProtocol(protocolName)
+    protocolStats[protocolName] = libp2pStatsToJson(rawProtocolStats)
+  })
+  clientState.stats.protocols = protocolStats
   // peers
   node.stats.peers().forEach((peerId) => {
     let peer = clientState.peers[peerId]
