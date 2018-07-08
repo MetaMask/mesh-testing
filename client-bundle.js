@@ -23559,6 +23559,7 @@ function createHttpClientStream(opts) {
   const primaryStream = duplexify(inStream, outStream)
   const idleDelay = opts.idleDelay || 200
   const uri = opts.uri
+  let isInitialized = false
 
   // create a queue to handle each childStream serially
   const queue = createQueue(processChildStream, 1)
@@ -23569,9 +23570,16 @@ function createHttpClientStream(opts) {
 
   // break inStream into small childStreams of activity
   async function processChildStream (childStream) {
-    const writeStream = hyperquest.post(uri)
+    let targetUri = uri
+    if (!isInitialized) {
+      targetUri += '?init=1'
+      isInitialized = true
+    }
+    const writeStream = hyperquest.post(targetUri)
     // manually pipe in data so we dont propagate the end event
     writeStream.on('data', (data) => outStream.write(data))
+    // manually propagate the error event
+    writeStream.on('error', (err) => outStream.write(err))
     await pumpAsync(
       childStream,
       writeStream
