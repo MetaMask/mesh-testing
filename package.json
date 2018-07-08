@@ -16,7 +16,7 @@
     "express-ws": "^3.0.0",
     "has": "^1.0.3",
     "hat": "0.0.3",
-    "http-poll-stream": "^1.1.0",
+    "http-poll-stream": "^2.1.0",
     "ipfs": "^0.29.3",
     "libp2p": "^0.20.4",
     "libp2p-circuit": "github:dryajov/js-libp2p-circuit",
