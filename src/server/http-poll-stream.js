@@ -1,4 +1,5 @@
 const { createServerStream } = require('http-poll-stream')
+const endOfStream = require('end-of-stream')
 const connectionStreams = {}
 
 module.exports = createClientHandler
@@ -13,6 +14,11 @@ function createClientHandler ({ onNewConnection }) {
     if (!connectionStream) {
       connectionStream = createServerStream({})
       connectionStreams[connectionId] = connectionStream
+      // cleanup on end
+      endOfStream(connectionStream, (err) => {
+        delete connectionStreams[connectionId]
+      })
+      // report new connection
       onNewConnection({ connectionId, connectionStream, req })
     }
     // process data flow
