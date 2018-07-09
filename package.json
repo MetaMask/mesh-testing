@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "@nodeutils/defaults-deep": "^1.1.0",
     "babel-core": "^6.26.0",
     "babel-preset-env": "^1.6.1",
     "babel-preset-es2015": "^6.24.1",
@@ -18,7 +19,8 @@
     "hat": "0.0.3",
     "http-poll-stream": "^2.1.0",
     "ipfs": "^0.29.3",
-    "libp2p": "^0.20.4",
+    "libp2p": "^0.22.0",
+    "libp2p-bootstrap": "^0.9.3",
     "libp2p-circuit": "github:dryajov/js-libp2p-circuit",
     "libp2p-mplex": "^0.8.0",
     "libp2p-railing": "^0.9.1",
