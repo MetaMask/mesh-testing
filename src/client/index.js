@@ -137,7 +137,6 @@ function randomFromRange (min, max) {
 
 function startLibp2pNode (node, cb) {
   node.start(() => {
-    node.register('/kitsunet/test/0.0.1')
     node.on('peer:discovery', (peerInfo) => {
       const peerId = peerInfo.id.toB58String()
       // console.log('MetaMask Mesh Testing - node/peer:discovery', peerInfo.id.toB58String())
