@@ -25,8 +25,8 @@
     "libp2p-railing": "^0.9.1",
     "libp2p-rendezvous": "MetaMask/js-libp2p-rendezvous.git#feat/improve-and-cleanup",
     "libp2p-secio": "^0.10.0",
-    "libp2p-webrtc-circuit": "github:dryajov/js-libp2p-webrtc-circuit",
     "libp2p-switch": "github:libp2p/js-libp2p-switch#c4ed4495e6e50ff1812605768b0fe750897e5f94",
+    "libp2p-webrtc-circuit": "github:dryajov/js-libp2p-webrtc-circuit",
     "libp2p-webrtc-star": "^0.15.3",
     "libp2p-websocket-star": "^0.8.1",
     "libp2p-websockets": "^0.12.0",
@@ -44,17 +44,20 @@
     "raf-throttle": "^2.0.3",
     "rpc-stream": "^2.1.2",
     "virtual-dom": "^2.1.1",
+    "webrtcsupport": "^2.2.0",
     "websocket-stream": "^5.1.1",
     "znode": "^1.1.3"
   },
   "devDependencies": {
     "beefy": "^2.1.8",
-    "browserify": "^16.1.1"
+    "browserify": "^16.1.1",
+    "patch-package": "^5.1.1"
   },
   "scripts": {
     "start": "beefy src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
     "build": "browserify src/client/index.js > client-bundle.js && browserify src/admin/index.js > admin-bundle.js",
-    "server": "node --inspect=0.0.0.0:9221 src/server/server.js"
+    "server": "node --inspect=0.0.0.0:9221 src/server/server.js",
+    "postinstall": "patch-package"
   },
   "repository": {
     "type": "git",
