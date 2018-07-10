@@ -39232,7 +39232,7 @@ function renderSelectedNodePanel(state, actions) {
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 
-      selectedNodeStats && renderSelectedNodeStats(selectedNodeStats),
+      selectedNodeStats && renderSelectedNodeStats(selectedNodeStats, state, actions),
 
     ])
 
@@ -39280,24 +39280,31 @@ function renderSelectedNodePanel(state, actions) {
 //   }
 // }
 
-function renderSelectedNodeStats(nodeStats) {
+function renderSelectedNodeStats(nodeStats, state, actions) {
   return h('div', [
     h('h4', 'peers'),
-    renderSelectedNodePeerStats(nodeStats),
+    renderSelectedNodePeerStats(nodeStats, state, actions),
     // renderSelectedNodeTransportStats(nodeStats),
     // renderSelectedNodeProtocolStats(nodeStats),
   ])
 }
 
-function renderSelectedNodePeerStats(nodeStats) {
+function renderSelectedNodePeerStats(nodeStats, state, actions) {
   // temporary guard against old stats format
   if (nodeStats.global) return 'old stats format'
   const peers = Object.entries(nodeStats)
   return peers.map(([peerId, peerData]) => {
     const transports = Object.entries(peerData.transports)
     const protocols = Object.entries(peerData.protocols)
+    const inGraph = !!state.graph.nodes.find(node => node.id === peerId)
     return h('details', [
-      h('summary', peerIdToShortId(peerId)),
+      h('summary', [
+        peerIdToShortId(peerId),
+        h('button', {
+          disabled: !inGraph,
+          onclick: () => actions.selectNode(peerId),
+        }, 'select')
+      ]),
       renderNodePeerTransportStats(transports),
       renderNodePeerProtocolStats(protocols),
     ])
