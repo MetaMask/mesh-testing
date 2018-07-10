@@ -196,8 +196,9 @@ function renderGlobalPanel(state, actions) {
 function renderSelectedNodePanel(state, actions) {
   const { selectedNode, networkState } = state
   const selectedNodeData = networkState.clients[selectedNode] || {}
+  const selectedNodePeers = selectedNodeData.peers
   const selectedNodeStats = selectedNodeData.stats
-  const shortId = `${selectedNode.slice(0,4)}...${selectedNode.slice(-4)}`
+  const shortId = peerIdToShortId(selectedNode)
   return (
 
     h('div', [
@@ -218,11 +219,54 @@ function renderSelectedNodePanel(state, actions) {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),
 
+      selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
+
       selectedNodeStats && renderSelectedNodeStats(selectedNodeStats),
 
     ])
 
   )
+}
+
+function renderSelectedNodePeers(nodePeers) {
+  const peers = Object.entries(nodePeers).sort(([peerA], [peerB]) => peerA > peerB)
+  return h('div', [
+    renderNodePeersTable(peers),
+    h('div', [
+      renderNodeStatsPieChart('in 1min', peers, (peerData) => peerData.stats.movingAverages.dataReceived['60000']),
+      renderNodeStatsPieChart('in all', peers, (peerData) => Number.parseInt(peerData.stats.snapshot.dataReceived, 10)),
+    ]),
+    h('div', [
+      renderNodeStatsPieChart('out 1min', peers, (peerData) => peerData.stats.movingAverages.dataSent['60000']),
+      renderNodeStatsPieChart('out all', peers, (peerData) => Number.parseInt(peerData.stats.snapshot.dataSent, 10)),
+    ]),
+  ])
+}
+
+function renderNodePeersTable(peers) {
+
+  // create column labels
+  const columnLabels = ['peers', 'ping', 'in(1m)', 'out(1m)', 'in', 'out']
+  // create rows
+  const rows = peers.map(rowFromStats)
+
+  return renderTable({ columnLabels, rows })
+
+  function rowFromStats([peerId, peerData]) {
+    const { stats } = peerData
+    const amountRx = Number.parseInt(stats.snapshot.dataReceived, 10)
+    const amountTx = Number.parseInt(stats.snapshot.dataSent, 10)
+    const shortId = peerIdToShortId(peerId)
+
+    return [
+      shortId,
+      String(peerData.ping),
+      `${formatBytes(amountRx)}`,
+      `${formatBytes(amountTx)}`,
+      formatBytes(stats.movingAverages.dataReceived['60000']),
+      formatBytes(stats.movingAverages.dataSent['60000']),
+    ]
+  }
 }
 
 function renderSelectedNodeStats(nodeStats) {
@@ -513,4 +557,8 @@ function formatBytes(bytes) {
   }
   result = result.toFixed(1)
   return `${result}${unit}`
+}
+
+function peerIdToShortId(peerId) {
+  return peerId && `${peerId.slice(0,4)}...${peerId.slice(-4)}`
 }
