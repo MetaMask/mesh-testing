@@ -1,6 +1,5 @@
 'use strict'
 
-const wrtc = require('wrtc')
 const WS = require('libp2p-websockets')
 const Multiplex = require('libp2p-mplex')
 const SECIO = require('libp2p-secio')
