@@ -17,6 +17,8 @@ const peerPingInterval = 1 * min
 const peerPingTimeout = 20 * sec
 const autoConnectAttemptInterval = 10 * sec
 
+const kitsunetPeers = []
+
 const peers = []
 global.peers = peers
 const maxPeers = 8
@@ -245,11 +247,14 @@ async function connectKitsunet (peerInfo, conn) {
     console.log('MetaMask Mesh Testing - kitsunet already connected', peerId)
     return
   }
-  // create peer obj
-  const peer = { id: peerId, peerInfo }
-  updateClientStateForNewKitsunetPeer(peerId, { status: 'connecting' })
+
   // do connect
   const stream = pullStreamToStream(conn)
+
+  // create peer obj
+  const peer = { id: peerId, peerInfo, stream }
+  kitsunetPeers.push(peer)
+  updateClientStateForNewKitsunetPeer(peerId, { status: 'connecting' })
 
   const kitsunetRpcImplementationForPeer = cbifyObj({
     ping: async () => 'pong',
@@ -266,6 +271,7 @@ async function connectKitsunet (peerInfo, conn) {
     stream,
     (err) => {
       console.log(`peer rpcConnection disconnect ${peerId}`, err.message)
+      disconnectKitsunetPeer(peer.id, err)
     }
   )
 
@@ -274,10 +280,7 @@ async function connectKitsunet (peerInfo, conn) {
 
   console.log(`MetaMask Mesh Testing - kitsunet CONNECT ${peerId}`)
   updateClientStateForKitsunetPeer(peerId, { status: 'connected' })
-  // handle disconnect
-  endOfStream(stream, (err) => {
-    disconnectKitsunetPeer(peer.id, err)
-  })
+
   // ping until disconnected
   keepPinging(peer)
 }
@@ -297,8 +300,17 @@ async function keepPinging (peer) {
 }
 
 function disconnectKitsunetPeer (peerId, err) {
+  if (!clientState.peers[peerId]) return
   console.log(`MetaMask Mesh Testing - kitsunet peer DISCONNECT ${peerId}`, err && err.message)
+  // remove from clientState
   updateClientStateForKitsunetPeer(peerId, null)
+  // remove from kitsunet peers
+  const kitsunetPeer = kitsunetPeers.find(peer => peer.id === peerId)
+  if (!kitsunetPeer) return
+  removeFromArray(kitsunetPeer, kitsunetPeers)
+  kitsunetPeer.stream.destroy()
+  // remove from libp2p
+  hangupPeer(kitsunetPeer.peerInfo)
 }
 
 function autoConnectWhenLonely (node, { minPeers }) {
