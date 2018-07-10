@@ -39290,6 +39290,8 @@ function renderSelectedNodeStats(nodeStats) {
 }
 
 function renderSelectedNodePeerStats(nodeStats) {
+  // temporary guard against old stats format
+  if (nodeStats.global) return 'old stats format'
   const peers = Object.entries(nodeStats)
   return peers.map(([peerId, peerData]) => {
     const transports = Object.entries(peerData.transports)
