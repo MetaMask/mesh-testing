@@ -570,15 +570,15 @@ function buildGraph(networkState) {
 
   // first add kitsunet nodes
   Object.keys(networkState).forEach((clientId) => {
-    const peerData = networkState[clientId].peers
-    const badResponse = (typeof peerData !== 'object')
-    const newNode = { id: clientId, type: badResponse ? 'bad' : 'good' }
+    // const peerData = networkState[clientId].peers
+    // const badResponse = (typeof peerData !== 'object')
+    const newNode = { id: clientId, type: 'good' }
     graph.nodes.push(newNode)
   })
 
   // then links
   Object.keys(networkState).forEach((clientId) => {
-    const peerData = networkState[clientId].peers
+    const peerData = networkState[clientId].stats
     if (typeof peerData !== 'object') return
     Object.keys(peerData).forEach((peerId) => {
       // if connected to a missing node, create missing node
@@ -587,7 +587,7 @@ function buildGraph(networkState) {
         const newNode = { id: peerId, type: 'missing' }
         graph.nodes.push(newNode)
       }
-      const rtt = peerData[peerId].ping
+      // const rtt = peerData[peerId].ping
       // const didTimeout = rtt === 'timeout'
       // const linkValue = Math.pow((10 - Math.log(rtt)), 2)
       // const linkValue = didTimeout ? 0.1 : 2
