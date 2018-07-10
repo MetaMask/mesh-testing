@@ -3,6 +3,7 @@ telemetry:
   restart: always
   ports:
     - "9000"
+    - "9221"
   environment:
     VIRTUAL_PORT: "9000"
     VIRTUAL_HOST: "telemetry.lab.metamask.io"
