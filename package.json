@@ -54,7 +54,7 @@
   "scripts": {
     "start": "beefy src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
     "build": "browserify src/client/index.js > client-bundle.js && browserify src/admin/index.js > admin-bundle.js",
-    "server": "node src/server/server.js"
+    "server": "node --inspect=0.0.0.0:9221 src/server/server.js"
   },
   "repository": {
     "type": "git",
