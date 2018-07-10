@@ -9,7 +9,7 @@ const pump = require('pump')
 const pify = require('pify')
 const timeout = require('../util/timeout')
 const { createHttpClientHandler } = require('http-poll-stream')
-const handleClientTimeouts = require('./clientTimeout')
+const { pingAllClientsOnInterval } = require('../network/clientTimeout')
 const multiplexRpc = require('../network/multiplexRpc')
 const { cbifyObj } = require('../util/cbify')
 
@@ -83,11 +83,11 @@ app.listen(9000, () => {
 // handle client life cycle
 //
 
-handleClientTimeouts({
+pingAllClientsOnInterval({
   clients,
   disconnectClient,
   heartBeatInterval,
-  remoteCallTimeout,
+  pingTimeout: remoteCallTimeout,
 })
 
 // clear disconnect nodes from network state
@@ -105,11 +105,11 @@ setInterval(() => {
   networkStore.putState(networkState)
 }, 10 * sec)
 
-function disconnectClient(clientId) {
-  const index = clients.findIndex(client => client.peerId === clientId)
+function disconnectClient(client) {
+  const clientId = client.peerId
+  const index = clients.indexOf(client)
   console.log(`disconnecting client "${clientId}"`)
-  if (index === -1) return console.log(`unable to find client "${clientId}"`)
-  const client = clients[index]
+  if (index === -1) return console.log(`client already removed "${clientId}"`)
   // remove peer
   clients.splice(index, 1)
   // destroy stream
@@ -159,7 +159,7 @@ async function handleClient(stream, req) {
     },
     disconnect: async () => {
       console.log(`client "${client.peerId}" sent disconnect request`)
-      disconnectClient(client.peerId)
+      disconnectClient(client)
     },
   })
   const clientRpcInterfaceForServer = [
@@ -168,7 +168,6 @@ async function handleClient(stream, req) {
     'refreshShortDelay',
     'refreshLongDelay',
     'eval',
-    'pingAll',
   ]
 
   const rpcConnection = multiplexRpc(serverRpcImplementationForClient)

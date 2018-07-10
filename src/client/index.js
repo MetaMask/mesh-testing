@@ -5,6 +5,7 @@ const pullStreamToStream = require('pull-stream-to-stream')
 const endOfStream = require('end-of-stream')
 
 const { connectToTelemetryServerViaWs, connectToTelemetryServerViaPost } = require('../network/telemetry')
+const { pingClientWithTimeout } = require('../network/clientTimeout')
 const multiplexRpc = require('../network/multiplexRpc')
 const { sec, min, hour } = require('../util/time')
 const { cbifyObj } = require('../util/cbify')
@@ -15,9 +16,6 @@ const clientStateSubmitInterval = 15 * sec
 const peerPingInterval = 1 * min
 const peerPingTimeout = 20 * sec
 const autoConnectAttemptInterval = 10 * sec
-
-const kitsunetPeers = []
-global.kitsunetPeers = kitsunetPeers
 
 const peers = []
 global.peers = peers
@@ -84,9 +82,6 @@ async function setupClient () {
       const result = eval(src)
       console.log(`MetaMask Mesh Testing - eval result: "${result}"`)
       return result
-    },
-    pingAll: async () => {
-      return await Promise.all(kitsunetPeers.map(pingKitsunetPeerWithTimeout))
     },
   })
   const serverRpcInterfaceForClient = [
@@ -161,7 +156,7 @@ function startLibp2pNode (node, cb) {
     node.on('peer:disconnect', (peerInfo) => {
       const peerId = peerInfo.id.toB58String()
       removeFromArray(peerInfo, peers)
-      updatePeerState(peerId, null)
+      disconnectKitsunetPeer(peerId)
     })
 
     node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
@@ -226,9 +221,15 @@ function libp2pStatsToJson(statsObj) {
   }
 }
 
-function updatePeerState (peerId, value) {
+function updateClientStateForNewKitsunetPeer (peerId, value) {
+  clientState.peers[peerId] = value
+}
+
+function updateClientStateForKitsunetPeer (peerId, value) {
   if (value) {
     const oldValue = clientState.peers[peerId]
+    // dont update the state if the peer doesnt exist
+    if (!oldValue) return
     const newValue = Object.assign({}, oldValue, value)
     clientState.peers[peerId] = newValue
   } else {
@@ -246,8 +247,7 @@ async function connectKitsunet (peerInfo, conn) {
   }
   // create peer obj
   const peer = { id: peerId, peerInfo }
-  kitsunetPeers.push(peer)
-  updatePeerState(peerId, { status: 'connecting' })
+  updateClientStateForNewKitsunetPeer(peerId, { status: 'connecting' })
   // do connect
   const stream = pullStreamToStream(conn)
 
@@ -273,12 +273,10 @@ async function connectKitsunet (peerInfo, conn) {
   peer.rpcAsync = pify(peer.rpc)
 
   console.log(`MetaMask Mesh Testing - kitsunet CONNECT ${peerId}`)
-  updatePeerState(peerId, { status: 'connected' })
+  updateClientStateForKitsunetPeer(peerId, { status: 'connected' })
   // handle disconnect
   endOfStream(stream, (err) => {
-    console.log(`MetaMask Mesh Testing - kitsunet peer DISCONNECT ${peerId}`, err.message)
-    removeFromArray(peer, kitsunetPeers)
-    updatePeerState(peerId, null)
+    disconnectKitsunetPeer(peer.id, err)
   })
   // ping until disconnected
   keepPinging(peer)
@@ -286,26 +284,21 @@ async function connectKitsunet (peerInfo, conn) {
 
 async function keepPinging (peer) {
   while (!!clientState.peers[peer.id]) {
-    const ping = await pingKitsunetPeer(peer)
-    updatePeerState(peer.id, { ping })
+    const ping = await pingClientWithTimeout({ client: peer, disconnectClient, pingTimeout: peerPingTimeout })
+    updateClientStateForKitsunetPeer(peer.id, { ping })
     await timeout(peerPingInterval)
+  }
+
+  function disconnectClient (peer) {
+    if (!clientState.peers[peer.id]) return
+    console.log('MetaMask Mesh Testing - client failed to respond to ping', peer.id)
+    disconnectKitsunetPeer(peer.id)
   }
 }
 
-function pingKitsunetPeerWithTimeout (peer) {
-  return Promise.race([
-    timeout(peerPingTimeout, 'timeout'),
-    pingKitsunetPeer(peer)
-  ])
-}
-
-async function pingKitsunetPeer(peer) {
-  if (!peer.rpcAsync) return
-  const start = Date.now()
-  await peer.rpcAsync.ping()
-  const end = Date.now()
-  const rtt = end - start
-  return rtt
+function disconnectKitsunetPeer (peerId, err) {
+  console.log(`MetaMask Mesh Testing - kitsunet peer DISCONNECT ${peerId}`, err && err.message)
+  updateClientStateForKitsunetPeer(peerId, null)
 }
 
 function autoConnectWhenLonely (node, { minPeers }) {
