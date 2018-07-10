@@ -169,6 +169,11 @@ function startLibp2pNode (node, cb) {
       const peerId = peerInfo.id.toB58String()
       removeFromArray(peerInfo, peers)
       disconnectKitsunetPeer(peerId)
+      // remove stats associated with peer
+      // delay is added so final closing stats dont re-add it immediately
+      setTimeout(() => {
+        delete customStats[peerId]
+      }, 100)
     })
 
     node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
@@ -321,8 +326,16 @@ function updateClientStateWithLibp2pStats(node) {
 }
 
 function recordLibp2pStatsMessage(peerId, transport, protocol, direction, bufferLength) {
-  if (!peerId) return console.log('customStats message without peer', peerId, transport, protocol, direction, bufferLength)
-  const peerStats = customStats[peerId] || (customStats[peerId] = { transports: {}, protocols: {}, mystery: createStat() })
+  // sanity check
+  if (!peerId) return console.log('customStats message without peerId', peerId, transport, protocol, direction, bufferLength)
+  // setup peer stats
+  let peerStats = customStats[peerId]
+  if (!peerStats) {
+    peerStats = customStats[peerId] = { transports: {}, protocols: {}, mystery: createStat() }
+  }
+  // update timestamp
+  peerStats.timestamp = Date.now()
+  // record transport + protocol data (they come in seperately)
   if (transport) {
     const transportStats = peerStats.transports[transport] || (peerStats.transports[transport] = createStat())
     transportStats.push(statDirectionToEvent[direction], bufferLength)
@@ -331,6 +344,7 @@ function recordLibp2pStatsMessage(peerId, transport, protocol, direction, buffer
     const protocolStats = peerStats.protocols[protocol] || (peerStats.protocols[protocol] = createStat())
     protocolStats.push(statDirectionToEvent[direction], bufferLength)
   }
+  // record mysterious messages that dont have a transport or protocol
   if (!protocol && !transport) {
     peerStats.mystery.push(statDirectionToEvent[direction], bufferLength)
   }
