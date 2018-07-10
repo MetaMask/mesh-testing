@@ -11,11 +11,20 @@ const { sec, min, hour } = require('../util/time')
 const { cbifyObj } = require('../util/cbify')
 const timeout = require('../util/timeout')
 const createLibp2pNode = require('./createNode')
+const Stat = require('libp2p-switch/src/stats/stat')
 
 const clientStateSubmitInterval = 15 * sec
 const peerPingInterval = 1 * min
 const peerPingTimeout = 20 * sec
 const autoConnectAttemptInterval = 10 * sec
+
+// custom libp2p stats
+const customStats = {}
+const statDirectionToEvent = {
+  in: 'dataReceived',
+  out: 'dataSent'
+}
+global.getStats = libp2pStatsToJson
 
 const kitsunetPeers = []
 
@@ -29,7 +38,6 @@ const maxDiscovered = 25
 
 const clientState = { stats: {}, peers: {}, pubsub: [] }
 global.clientState = clientState
-
 
 setupClient().catch(console.error)
 
@@ -63,6 +71,9 @@ async function setupClient () {
       console.log(`published "${message}"`, err)
     })
   }
+
+  // record custom stats
+  node._switch.observer.on('message', recordLibp2pStatsMessage)
 
   // connect to telemetry server
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
@@ -127,7 +138,7 @@ async function submitClientStateOnInterval({ serverAsync, node }){
 }
 
 async function submitNetworkState({ serverAsync, node }) {
-  updateClientStateWithLibp2pStats(node)
+  updateClientStateWithLibp2pStats()
   await serverAsync.submitNetworkState(clientState)
 }
 
@@ -172,55 +183,6 @@ function startLibp2pNode (node, cb) {
     autoConnectWhenLonely(node, { minPeers: 4 })
     cb()
   })
-}
-
-function updateClientStateWithLibp2pStats(node) {
-  // client global
-  clientState.stats.global = libp2pStatsToJson(node.stats.global)
-  // transports
-  const transportStats = {}
-  node.stats.transports().forEach((transportName) => {
-    const rawTransportStats = node.stats.forTransport(transportName)
-    transportStats[transportName] = libp2pStatsToJson(rawTransportStats)
-  })
-  clientState.stats.transports = transportStats
-  // protocols
-  const protocolStats = {}
-  // some protocols are non-strings - weird, prolly a configuration bug
-  node.stats.protocols().filter(protocolName => typeof protocolName === 'string').forEach((protocolName) => {
-    const rawProtocolStats = node.stats.forProtocol(protocolName)
-    protocolStats[protocolName] = libp2pStatsToJson(rawProtocolStats)
-  })
-  clientState.stats.protocols = protocolStats
-  // peers
-  node.stats.peers().forEach((peerId) => {
-    let peer = clientState.peers[peerId]
-    if (!peer || peer.status !== 'connected') return
-    const rawPeerStats = node.stats.forPeer(peerId)
-    const peerStats = libp2pStatsToJson(rawPeerStats)
-    clientState.peers[peerId].stats = peerStats
-  })
-}
-
-function libp2pStatsToJson(statsObj) {
-  return {
-    snapshot: {
-      dataReceived: statsObj.snapshot.dataReceived.toString(),
-      dataSent: statsObj.snapshot.dataSent.toString(),
-    },
-    movingAverages: {
-      dataReceived: {
-        '60000': statsObj.movingAverages.dataReceived['60000'].movingAverage(),
-        '300000': statsObj.movingAverages.dataReceived['300000'].movingAverage(),
-        '900000': statsObj.movingAverages.dataReceived['900000'].movingAverage(),
-      },
-      dataSent: {
-        '60000': statsObj.movingAverages.dataSent['60000'].movingAverage(),
-        '300000': statsObj.movingAverages.dataSent['300000'].movingAverage(),
-        '900000': statsObj.movingAverages.dataSent['900000'].movingAverage(),
-      },
-    }
-  }
 }
 
 function updateClientStateForNewKitsunetPeer (peerId, value) {
@@ -353,6 +315,79 @@ function hangupPeer (peerInfo) {
   global.node.hangUp(peerInfo, () => {
     // console.log('MetaMask Mesh Testing - did hangup', peerId)
   })
+}
+
+function updateClientStateWithLibp2pStats(node) {
+  clientState.stats = libp2pStatsToJson()
+}
+
+function recordLibp2pStatsMessage(peerId, transport, protocol, direction, bufferLength) {
+  if (!peerId) return console.log('customStats message without peer', peerId, transport, protocol, direction, bufferLength)
+  const peerStats = customStats[peerId] || (customStats[peerId] = { transports: {}, protocols: {}, mystery: createStat() })
+  if (transport) {
+    const transportStats = peerStats.transports[transport] || (peerStats.transports[transport] = createStat())
+    transportStats.push(statDirectionToEvent[direction], bufferLength)
+  }
+  if (protocol) {
+    const protocolStats = peerStats.protocols[protocol] || (peerStats.protocols[protocol] = createStat())
+    protocolStats.push(statDirectionToEvent[direction], bufferLength)
+  }
+  if (!protocol && !transport) {
+    peerStats.mystery.push(statDirectionToEvent[direction], bufferLength)
+  }
+}
+
+function libp2pStatsToJson () {
+  const allStats = {}
+  // each peer
+  Object.keys(customStats).forEach((peerId) => {
+    const peerStatsContainer = customStats[peerId]
+    const peerStats = allStats[peerId] = { transports: {}, protocols: {}, mystery: statObjToJson(peerStatsContainer.mystery) }
+    // each transport
+    Object.keys(peerStatsContainer.transports).forEach((transport) => {
+      peerStats.transports[transport] = statObjToJson(peerStatsContainer.transports[transport])
+    })
+    // each protocol
+    Object.keys(peerStatsContainer.protocols).forEach((protocol) => {
+      peerStats.protocols[protocol] = statObjToJson(peerStatsContainer.protocols[protocol])
+    })
+  })
+  return allStats
+}
+
+function statObjToJson (statsObj) {
+  return {
+    snapshot: {
+      dataReceived: Number.parseInt(statsObj.snapshot.dataReceived.toString()),
+      dataSent: Number.parseInt(statsObj.snapshot.dataSent.toString()),
+    },
+    movingAverages: {
+      dataReceived: {
+        '60000': statsObj.movingAverages.dataReceived['60000'].movingAverage(),
+        '300000': statsObj.movingAverages.dataReceived['300000'].movingAverage(),
+        '900000': statsObj.movingAverages.dataReceived['900000'].movingAverage(),
+      },
+      dataSent: {
+        '60000': statsObj.movingAverages.dataSent['60000'].movingAverage(),
+        '300000': statsObj.movingAverages.dataSent['300000'].movingAverage(),
+        '900000': statsObj.movingAverages.dataSent['900000'].movingAverage(),
+      },
+    }
+  }
+}
+
+function createStat () {
+  const stat = new Stat([ 'dataReceived', 'dataSent' ], {
+    computeThrottleMaxQueueSize: 1000,
+    computeThrottleTimeout: 2000,
+    movingAverageIntervals: [
+      60 * 1000, // 1 minute
+      5 * 60 * 1000, // 5 minutes
+      15 * 60 * 1000 // 15 minutes
+    ],
+  })
+  stat.start()
+  return stat
 }
 
 function restartWithDelay (timeoutDuration) {

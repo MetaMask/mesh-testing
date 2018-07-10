@@ -219,7 +219,7 @@ function renderSelectedNodePanel(state, actions) {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),
 
-      selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
+      // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 
       selectedNodeStats && renderSelectedNodeStats(selectedNodeStats),
 
@@ -228,83 +228,130 @@ function renderSelectedNodePanel(state, actions) {
   )
 }
 
-function renderSelectedNodePeers(nodePeers) {
-  const peers = Object.entries(nodePeers).sort(([peerA], [peerB]) => peerA > peerB)
-  return h('div', [
-    renderNodePeersTable(peers),
-    h('div', [
-      renderNodeStatsPieChart('in 1min', peers, (peerData) => peerData.stats.movingAverages.dataReceived['60000']),
-      renderNodeStatsPieChart('in all', peers, (peerData) => Number.parseInt(peerData.stats.snapshot.dataReceived, 10)),
-    ]),
-    h('div', [
-      renderNodeStatsPieChart('out 1min', peers, (peerData) => peerData.stats.movingAverages.dataSent['60000']),
-      renderNodeStatsPieChart('out all', peers, (peerData) => Number.parseInt(peerData.stats.snapshot.dataSent, 10)),
-    ]),
-  ])
-}
-
-function renderNodePeersTable(peers) {
-
-  // create column labels
-  const columnLabels = ['peers', 'ping', 'in(1m)', 'out(1m)', 'in', 'out']
-  // create rows
-  const rows = peers.map(rowFromStats)
-
-  return renderTable({ columnLabels, rows })
-
-  function rowFromStats([peerId, peerData]) {
-    const { stats } = peerData
-    const amountRx = Number.parseInt(stats.snapshot.dataReceived, 10)
-    const amountTx = Number.parseInt(stats.snapshot.dataSent, 10)
-    const shortId = peerIdToShortId(peerId)
-
-    return [
-      shortId,
-      String(peerData.ping),
-      `${formatBytes(amountRx)}`,
-      `${formatBytes(amountTx)}`,
-      formatBytes(stats.movingAverages.dataReceived['60000']),
-      formatBytes(stats.movingAverages.dataSent['60000']),
-    ]
-  }
-}
+// function renderSelectedNodePeers(nodePeers) {
+//   const peers = Object.entries(nodePeers).sort(([peerA], [peerB]) => peerA > peerB)
+//   return h('div', [
+//     renderNodePeersTable(peers),
+//     h('div', [
+//       renderNodeStatsPieChart('in 1min', peers, (peerData) => peerData.stats.movingAverages.dataReceived['60000']),
+//       renderNodeStatsPieChart('in all', peers, (peerData) => peerData.stats.snapshot.dataReceived),
+//     ]),
+//     h('div', [
+//       renderNodeStatsPieChart('out 1min', peers, (peerData) => peerData.stats.movingAverages.dataSent['60000']),
+//       renderNodeStatsPieChart('out all', peers, (peerData) => peerData.stats.snapshot.dataSent),
+//     ]),
+//   ])
+// }
+//
+// function renderNodePeersTable(peers) {
+//
+//   // create column labels
+//   const columnLabels = ['peers', 'ping', 'in(1m)', 'out(1m)', 'in', 'out']
+//   // create rows
+//   const rows = peers.map(rowFromStats)
+//
+//   return renderTable({ columnLabels, rows })
+//
+//   function rowFromStats([peerId, peerData]) {
+//     const { stats } = peerData
+//     const amountRx = Number.parseInt(stats.snapshot.dataReceived, 10)
+//     const amountTx = Number.parseInt(stats.snapshot.dataSent, 10)
+//     const shortId = peerIdToShortId(peerId)
+//
+//     return [
+//       shortId,
+//       String(peerData.ping),
+//       `${formatBytes(amountRx)}`,
+//       `${formatBytes(amountTx)}`,
+//       formatBytes(stats.movingAverages.dataReceived['60000']),
+//       formatBytes(stats.movingAverages.dataSent['60000']),
+//     ]
+//   }
+// }
 
 function renderSelectedNodeStats(nodeStats) {
   return h('div', [
-    renderSelectedNodeTransportStats(nodeStats),
-    renderSelectedNodeProtocolStats(nodeStats),
+    h('h4', 'peers'),
+    renderSelectedNodePeerStats(nodeStats),
+    // renderSelectedNodeTransportStats(nodeStats),
+    // renderSelectedNodeProtocolStats(nodeStats),
   ])
 }
 
-function renderSelectedNodeProtocolStats(nodeStats) {
-  const protocols = Object.entries(nodeStats.protocols)
-  if (!protocols) return 'no protocol stats yet'
-  return renderNodeStats('protocol', protocols, nodeStats)
-}
-
-function renderSelectedNodeTransportStats(nodeStats) {
-  const transports = Object.entries(nodeStats.transports)
-  if (!transports) return 'no transport stats yet'
-  return renderNodeStats('transport', transports, nodeStats)
-}
-
-function renderNodeStats(primaryLabel, specificStats, nodeStats) {
-  return (
-    h('div', [
-      renderNodeStatsTable(primaryLabel, specificStats, nodeStats),
-      h('div', [
-        h('h4', 'in'),
-        renderNodeStatsPieChart('1min', specificStats, (stats) => stats.movingAverages.dataReceived['60000']),
-        renderNodeStatsPieChart('all', specificStats, (stats) => Number.parseInt(stats.snapshot.dataReceived, 10)),
-      ]),
-      h('div', [
-        h('h4', 'out'),
-        renderNodeStatsPieChart('1min', specificStats, (stats) => stats.movingAverages.dataSent['60000']),
-        renderNodeStatsPieChart('all', specificStats, (stats) => Number.parseInt(stats.snapshot.dataSent, 10)),
-      ]),
+function renderSelectedNodePeerStats(nodeStats) {
+  const peers = Object.entries(nodeStats)
+  return peers.map(([peerId, peerData]) => {
+    const transports = Object.entries(peerData.transports)
+    const protocols = Object.entries(peerData.protocols)
+    return h('details', [
+      h('summary', peerIdToShortId(peerId)),
+      renderNodePeerTransportStats(transports),
+      renderNodePeerProtocolStats(protocols),
     ])
-  )
+  })
 }
+
+function renderNodePeerTransportStats (transports) {
+  return h('div', [
+    h('h5', 'transports'),
+    h('div', [
+      renderNodeStatsPieChart('in 1min', transports, (stats) => get1Min(stats, 'dataReceived')),
+      renderNodeStatsPieChart('in all', transports, (stats) => stats.snapshot.dataReceived),
+    ]),
+    h('div', [
+      renderNodeStatsPieChart('out 1min', transports, (stats) => get1Min(stats, 'dataSent')),
+      renderNodeStatsPieChart('out all', transports, (stats) => stats.snapshot.dataSent),
+    ]),
+  ])
+}
+
+function renderNodePeerProtocolStats (protocols) {
+  return h('div', [
+    h('h5', 'protocols'),
+    h('div', [
+      renderNodeStatsPieChart('in 1min', protocols, (stats) => get1Min(stats, 'dataReceived')),
+      renderNodeStatsPieChart('in all', protocols, (stats) => stats.snapshot.dataReceived),
+    ]),
+    h('div', [
+      renderNodeStatsPieChart('out 1min', protocols, (stats) => get1Min(stats, 'dataSent')),
+      renderNodeStatsPieChart('out all', protocols, (stats) => stats.snapshot.dataSent),
+    ]),
+  ])
+}
+
+function get1Min(stats, direction) {
+  return stats.movingAverages[direction]['60000']
+}
+
+// function renderSelectedNodeProtocolStats(nodeStats) {
+//   const protocols = Object.entries(nodeStats.protocols)
+//   if (!protocols) return 'no protocol stats yet'
+//   return renderNodeStats('protocol', protocols, nodeStats)
+// }
+//
+// function renderSelectedNodeTransportStats(nodeStats) {
+//   const transports = Object.entries(nodeStats.transports)
+//   if (!transports) return 'no transport stats yet'
+//   return renderNodeStats('transport', transports, nodeStats)
+// }
+//
+// function renderNodeStats(primaryLabel, specificStats, nodeStats) {
+//   return (
+//     h('div', [
+//       renderNodeStatsTable(primaryLabel, specificStats, nodeStats),
+//       h('div', [
+//         h('h4', 'in'),
+//         renderNodeStatsPieChart('1min', specificStats, (stats) => stats.movingAverages.dataReceived['60000']),
+//         renderNodeStatsPieChart('all', specificStats, (stats) => Number.parseInt(stats.snapshot.dataReceived, 10)),
+//       ]),
+//       h('div', [
+//         h('h4', 'out'),
+//         renderNodeStatsPieChart('1min', specificStats, (stats) => stats.movingAverages.dataSent['60000']),
+//         renderNodeStatsPieChart('all', specificStats, (stats) => Number.parseInt(stats.snapshot.dataSent, 10)),
+//       ]),
+//     ])
+//   )
+// }
 
 function renderNodeStatsPieChart(label, specificStats, mapFn) {
   const data = specificStats.map(([name, stats]) => {
