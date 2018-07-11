@@ -150,7 +150,6 @@ async function handleClient(stream, req) {
       const networkState = networkStore.getState()
       networkState.clients[peerId] = {}
       networkStore.putState(networkState)
-      return 'yuss'
     },
     submitNetworkState: async (clientState) => {
       const peerId = client.peerId
@@ -206,8 +205,7 @@ async function handleAdmin(stream, request) {
       const client = clients.find(c => c.peerId === clientId)
       if (!client) {
         console.log(`no client found ${clientId}`)
-        // znode doesnt like undefined responses
-        return 'error: missing client'
+        return
       }
       return await sendCallWithTimeout(client.rpcAsync, method, args, remoteCallTimeout)
     },
