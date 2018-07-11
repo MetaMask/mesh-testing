@@ -148,7 +148,7 @@ async function handleClient(stream, req) {
       client.peerId = peerId
       // update network state
       const networkState = networkStore.getState()
-      networkState.clients[peerId] = { peers: [] }
+      networkState.clients[peerId] = {}
       networkStore.putState(networkState)
       return 'yuss'
     },
