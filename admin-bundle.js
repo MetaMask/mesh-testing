@@ -41339,7 +41339,8 @@ function toDiffs() {
   let lastObj = {}
   return through(function (newObj, _, cb) {
     const patch = compare(lastObj, newObj)
-    this.push(patch)
+    // only push non-noop
+    if (patch.length) this.push(patch)
     // deep clone to ensure diff is good
     // warning: increases memory footprint
     lastObj = deepClone(newObj)
