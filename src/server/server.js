@@ -8,6 +8,7 @@ const ObservableStore = require('obs-store')
 const pump = require('pump')
 const pify = require('pify')
 const asStream = require('obs-store/lib/asStream')
+const debounceStream = require('debounce-stream')
 
 const { toDiffs } = require('../util/jsonPatchStream')
 const { createJsonSerializeStream } = require('../util/jsonSerializeStream')
@@ -223,6 +224,8 @@ async function handleAdmin(stream, request) {
     const serializeStream = createJsonSerializeStream()
     pump(
       asStream(networkStore),
+      // dont emit new values more than 1/sec
+      debounceStream(1000),
       toDiffs(),
       serializeStream,
       (err) => {

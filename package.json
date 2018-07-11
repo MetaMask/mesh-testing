@@ -12,6 +12,7 @@
     "babelify": "^8.0.0",
     "cors": "^2.8.4",
     "d3": "^4.13.0",
+    "debounce-stream": "^2.0.0",
     "end-of-stream": "^1.4.1",
     "express": "^4.16.2",
     "express-ws": "^3.0.0",
