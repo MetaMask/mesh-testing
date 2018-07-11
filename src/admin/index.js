@@ -2,11 +2,14 @@ const pump = require('pump')
 const qs = require('qs')
 const pify = require('pify')
 const ObservableStore = require('obs-store')
-
+const asStream = require('obs-store/lib/asStream')
 const { connectToTelemetryServerViaWs, connectToTelemetryServerViaPost } = require('../network/telemetry')
 const startAdminApp = require('./app')
 const multiplexRpc = require('../network/multiplexRpc')
 const { cbifyObj } = require('../util/cbify')
+const { fromDiffs } = require('../util/jsonPatchStream')
+const { createJsonParseStream } = require('../util/jsonSerializeStream')
+
 
 
 setupAdmin().catch(console.error)
@@ -29,9 +32,6 @@ async function setupAdmin () {
   // setup admin rpc
   const adminRpcImplementationForServer = cbifyObj({
     ping: async () => 'pong',
-    sendNetworkState: async (networkState) => {
-      store.putState(networkState)
-    }
   })
   const serverRpcInterfaceForAdmin = [
     'ping',
@@ -42,6 +42,7 @@ async function setupAdmin () {
     'refresh',
     'refreshShortDelay',
     'refreshLongDelay',
+    'createNetworkUpdateStream:s',
   ]
 
   const rpcConnection = multiplexRpc(adminRpcImplementationForServer)
@@ -59,10 +60,17 @@ async function setupAdmin () {
   global.serverAsync = serverAsync
   console.log('MetaMask Mesh Testing - connected!')
 
-  // request current network state
-  console.log('MetaMask Mesh Testing - fetching network state')
-  const networkState = await serverAsync.getNetworkState()
-  store.putState(networkState)
+  const updateStream = server.createNetworkUpdateStream()
+  console.log(updateStream)
+  pump(
+    updateStream,
+    createJsonParseStream(),
+    fromDiffs(),
+    asStream(store),
+    (err) => {
+      if (err) console.log('server diff stream broke', err)
+    }
+  )
 
   // in admin mode, we dont boot libp2p node
 }

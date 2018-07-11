@@ -7,6 +7,10 @@ const hat = require('hat')
 const ObservableStore = require('obs-store')
 const pump = require('pump')
 const pify = require('pify')
+const asStream = require('obs-store/lib/asStream')
+
+const { toDiffs } = require('../util/jsonPatchStream')
+const { createJsonSerializeStream } = require('../util/jsonSerializeStream')
 const timeout = require('../util/timeout')
 const { createHttpClientHandler } = require('http-poll-stream')
 const { pingAllClientsOnInterval } = require('../network/clientTimeout')
@@ -190,15 +194,7 @@ async function handleClient(stream, req) {
 
 async function handleAdmin(stream, request) {
 
-  // // handle disconnect
-  // stream.on('error', (error) => {
-  //   console.log('admin disconnected - stream end')
-  //   // Ignore network errors like `ECONNRESET`, `EPIPE`, etc.
-  //   if (error.errno) return
-  //   throw error
-  // })
-
-  // attempt connect
+  // wrap promise-y api with cbify for multiplexRpc support
   const serverRpcImplementationForAdmin = cbifyObj({
     ping: async () => 'pong',
     // server data
@@ -224,9 +220,22 @@ async function handleAdmin(stream, request) {
     refreshShortDelay: async () => await broadcastCall('refreshShortDelay', [], remoteCallTimeout),
     refreshLongDelay: async () => await broadcastCall('refreshLongDelay', [], remoteCallTimeout),
   })
+  // dont cbify stream producers
+  serverRpcImplementationForAdmin.createNetworkUpdateStream = () => {
+    const serializeStream = createJsonSerializeStream()
+    pump(
+      asStream(networkStore),
+      toDiffs(),
+      serializeStream,
+      (err) => {
+        if (err) console.log('admin diff stream broke', err)
+      }
+    )
+    return serializeStream
+  }
+
   const adminRpcInterfaceForServer = [
     'ping',
-    'sendNetworkState',
   ]
 
   const rpcConnection = multiplexRpc(serverRpcImplementationForAdmin)
@@ -242,12 +251,6 @@ async function handleAdmin(stream, request) {
   const adminRpc = rpcConnection.wrap(adminRpcInterfaceForServer)
   const adminRpcAsync = pify(adminRpc)
   console.log('admin connected')
-
-  // send network state on updates
-  networkStore.subscribe(networkState => {
-    adminRpcAsync.sendNetworkState(networkState)
-  })
-
 }
 
 //

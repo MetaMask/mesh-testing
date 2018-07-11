@@ -10,7 +10,6 @@ module.exports = function (api) {
             if (typeof api[name] !== 'function') return;
             var stream = api[name].apply(null, args);
             if (!stream || typeof stream.pipe !== 'function') return;
-            console.log(`multiplexRpc internal child "${id}" created`)
             pump(
               stream,
               mx.createSharedStream(id),
