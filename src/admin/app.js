@@ -18,7 +18,7 @@ function startApp(opts = {}) {
   const { store } = opts
 
   // view state
-  const viewModes = ['normal', 'pie(tx)', 'pie(rx)', 'mesh', 'pubsub']
+  const viewModes = ['normal', 'kitsunet', 'pie(tx)', 'pie(rx)', 'mesh', 'pubsub']
   let viewMode = viewModes[0]
   let selectedNode = undefined
   let pubsubTarget = undefined
@@ -35,7 +35,7 @@ function startApp(opts = {}) {
     // ui state
     selectViewMode: (mode) => {
       viewMode = mode
-      rerender()
+      rebuildGraph()
     },
     selectNode: (nodeId) => {
       if (!currentGraph.nodes.find(node => node.id === nodeId)) return
@@ -75,16 +75,20 @@ function startApp(opts = {}) {
   // setup rerender hooks
   simulation.on('tick', rerender)
   store.subscribe(rerender)
-  store.subscribe((state) => {
+  store.subscribe((state) => rebuildGraph())
+
+  function rebuildGraph () {
+    const networkState = store.getState()
     // merge state
-    const clientData = state.clients
-    const newGraph = buildGraph(clientData)
+    const clientData = networkState.clients
+    const networkFilter = viewMode === 'kitsunet' ? 'kitsunet' : null
+    const newGraph = buildGraph(clientData, networkFilter)
     currentGraph = mergeGraph(currentGraph, newGraph)
     // reset simulation
     setupSimulationForces(simulation, currentGraph)
     // trigger redraw
     rerender()
-  })
+  }
 
   // mix in local graph over store state
   function getState() {
@@ -161,6 +165,7 @@ function renderGraph(state, actions) {
   const { viewMode } = state
   switch(viewMode) {
     case 'normal': return renderGraphNormal(state, actions)
+    case 'kitsunet': return renderGraphNormal(state, actions)
     case 'pie(tx)': return renderGraphPieTransportTx(state, actions)
     case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
     case 'mesh': return renderGraphMesh(state, actions)
@@ -565,7 +570,7 @@ StatsObj shape
 }
 */
 
-function buildGraph(networkState) {
+function buildGraph(networkState, networkFilter) {
   const graph = { nodes: [], links: [] }
 
   // first add kitsunet nodes
@@ -578,15 +583,19 @@ function buildGraph(networkState) {
 
   // then links
   Object.keys(networkState).forEach((clientId) => {
-    const peerData = networkState[clientId].stats
-    if (typeof peerData !== 'object') return
-    Object.keys(peerData).forEach((peerId) => {
+    const clientData = networkState[clientId].stats
+    if (typeof clientData !== 'object') return
+    Object.keys(clientData).forEach((peerId) => {
+      const peerData = clientData[peerId]
       // if connected to a missing node, create missing node
       const alreadyExists = !!graph.nodes.find(item => item.id === peerId)
       if (!alreadyExists) {
         const newNode = { id: peerId, type: 'missing' }
         graph.nodes.push(newNode)
       }
+      // abort if network filter miss
+      const protocolNames = Object.keys(peerData.protocols)
+      if (networkFilter && !protocolNames.some(name => name.includes(networkFilter))) return
       // const rtt = peerData[peerId].ping
       // const didTimeout = rtt === 'timeout'
       // const linkValue = Math.pow((10 - Math.log(rtt)), 2)
