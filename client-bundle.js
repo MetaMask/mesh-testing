@@ -51573,7 +51573,7 @@ class ConnectionManager {
     this.switch.handle(muxer.multicodec, (protocol, conn) => {
       const muxedConn = muxer.listener(conn)
 
-      muxedConn.on('stream', this.switch.protocolMuxer(null))
+      muxedConn.on('stream', this.switch.protocolMuxer('virtual:muxedConn'))
 
       // If identify is enabled
       //   1. overload getPeerInfo
@@ -51658,7 +51658,7 @@ class ConnectionManager {
     this.switch.handle(tag, (protocol, conn) => {
       const myId = this.switch._peerInfo.id
       const secure = encrypt(myId, conn, undefined, () => {
-        this.switch.protocolMuxer(null)(secure)
+        this.switch.protocolMuxer('connection.crypto')(secure)
       })
     })
 
@@ -51984,7 +51984,7 @@ class Dialer {
           // For incoming streams, in case identify is on
           muxedConn.on('stream', (conn) => {
             conn.setPeerInfo(this.peerInfo)
-            this.switch.protocolMuxer(null)(conn)
+            this.switch.protocolMuxer('virtual:muxedConn')(conn)
           })
 
           setImmediate(() => this.switch.emit('peer-mux-established', this.peerInfo))
@@ -52262,7 +52262,7 @@ class Switch extends EE {
     this.handle(this.crypto.tag, (protocol, conn) => {
       const peerId = this._peerInfo.id
       const wrapped = this.crypto.encrypt(peerId, conn, undefined, () => {})
-      return this.protocolMuxer(null)(wrapped)
+      return this.protocolMuxer('crypto')(wrapped)
     })
 
     // higher level (public) API
@@ -52675,6 +52675,8 @@ module.exports = (swtch) => {
 
   function observe (direction) {
     return (transport, protocol, peerInfo) => {
+      console.log('observe', transport, protocol)
+      if (!transport && !protocol) debugger
       return pull.map((buffer) => {
         willObserve(peerInfo, transport, protocol, direction, buffer.length)
         return buffer
@@ -52722,34 +52724,43 @@ const multistream = require('multistream-select')
 const observeConn = require('./observe-connection')
 
 module.exports = function protocolMuxer (protocols, observer) {
-  return (transport) => (_parentConn) => {
-    const parentConn = observeConn(transport, null, _parentConn, observer)
-    const ms = new multistream.Listener()
+  return (transport) => {
+    if (!transport) debugger
+    return (_parentConn) => {
+      const parentConn = observeConn(transport, null, _parentConn, observer)
+      const ms = new multistream.Listener()
 
-    Object.keys(protocols).forEach((protocol) => {
-      if (!protocol) {
-        return
-      }
+      const includesKitsunet = Object.keys(protocols).some(proto => proto.includes('kitsunet'))
+      if (!includesKitsunet) debugger
+      Object.keys(protocols).forEach((protocol) => {
+        const xxx = protocol
 
-      const handler = (protocolName, _conn) => {
-        const protocol = protocols[protocolName]
-        if (protocol) {
-          const handlerFunc = protocol && protocol.handlerFunc
-          if (handlerFunc) {
-            const conn = observeConn(null, protocolName, _conn, observer)
-            handlerFunc(protocol, conn)
+        if (!protocol) {
+          return
+        }
+
+        const handler = (protocolName, _conn) => {
+          if (!protocolName) debugger
+          if (!protocolName || protocolName !== xxx) debugger
+          const protocol = protocols[protocolName]
+          if (protocol) {
+            const handlerFunc = protocol && protocol.handlerFunc
+            if (handlerFunc) {
+              const conn = observeConn(null, protocolName, _conn, observer)
+              handlerFunc(protocol, conn)
+            }
           }
         }
-      }
 
-      ms.addHandler(protocol, handler, protocols[protocol].matchFunc)
-    })
+        ms.addHandler(protocol, handler, protocols[protocol].matchFunc)
+      })
 
-    ms.handle(parentConn, (err) => {
-      if (err) {
-        // the multistream handshake failed
-      }
-    })
+      ms.handle(parentConn, (err) => {
+        if (err) {
+          // the multistream handshake failed
+        }
+      })
+    }
   }
 }
 
@@ -145241,6 +145252,8 @@ function autoConnectWhenLonely (node, { minPeers }) {
 }
 
 async function attemptDial (peerInfo) {
+  // allow "skipDial" option from url (for debugging)
+  if (location.search.includes('skipDial')) return
   const peerId = peerInfo.id.toB58String()
   // too many peers
   if (peers.length > maxPeers) {

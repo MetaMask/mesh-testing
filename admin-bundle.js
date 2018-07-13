@@ -39991,7 +39991,7 @@ function startApp(opts = {}) {
   const { store } = opts
 
   // view state
-  const viewModes = ['normal', 'kitsunet', 'pie(tx)', 'pie(rx)', 'mesh', 'pubsub']
+  const viewModes = ['normal', 'kitsunet', 'pubsub', 'pie(tx)', 'pie(rx)', 'mesh']
   let viewMode = viewModes[0]
   let selectedNode = undefined
   let pubsubTarget = undefined
@@ -40054,7 +40054,15 @@ function startApp(opts = {}) {
     const networkState = store.getState()
     // merge state
     const clientData = networkState.clients
-    const networkFilter = viewMode === 'kitsunet' ? 'kitsunet' : null
+    let networkFilter
+    switch(viewMode) {
+      case 'kitsunet':
+        networkFilter = 'kitsunet'
+        break
+      case 'pubsub':
+        networkFilter = 'floodsub'
+        break
+    }
     const newGraph = buildGraph(clientData, networkFilter)
     currentGraph = mergeGraph(currentGraph, newGraph)
     // reset simulation
