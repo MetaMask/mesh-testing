@@ -23,6 +23,7 @@
     "libp2p-bootstrap": "^0.9.3",
     "libp2p-circuit": "0.2.0",
     "libp2p-mplex": "^0.8.0",
+    "libp2p-multicast-experiment": "metamask/js-libp2p-multicast-experiment#1509284728b269464ac9400076f212dce547bd51",
     "libp2p-railing": "^0.9.1",
     "libp2p-secio": "^0.10.0",
     "libp2p-switch": "0.40.5",

@@ -18,7 +18,7 @@ function startApp(opts = {}) {
   const { store } = opts
 
   // view state
-  const viewModes = ['normal', 'kitsunet', 'pubsub', 'pie(tx)', 'pie(rx)', 'mesh']
+  const viewModes = ['normal', 'kitsunet', 'pubsub', 'multicast', 'pie(tx)', 'pie(rx)', 'mesh']
   let viewMode = viewModes[0]
   let selectedNode = undefined
   let pubsubTarget = undefined
@@ -52,6 +52,12 @@ function startApp(opts = {}) {
       viewMode = 'pubsub'
       rerender()
       await sendToClient(nodeId, 'eval', [`pubsubPublish('${pubsubTarget}')`])
+    },
+    sendMulticast: async (nodeId, hops) => {
+      pubsubTarget = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString()
+      viewMode = 'multicast'
+      rerender()
+      await sendToClient(nodeId, 'eval', [`multicastPublish('${pubsubTarget}', ${hops})`])
     },
     restartNode: async (nodeId) => {
       await sendToClient(nodeId, 'refresh', [])
@@ -88,6 +94,9 @@ function startApp(opts = {}) {
         break
       case 'pubsub':
         networkFilter = 'floodsub'
+        break
+      case 'multicast':
+        networkFilter = 'multicast'
         break
     }
     const newGraph = buildGraph(clientData, networkFilter)
@@ -177,7 +186,8 @@ function renderGraph(state, actions) {
     case 'pie(tx)': return renderGraphPieTransportTx(state, actions)
     case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
     case 'mesh': return renderGraphMesh(state, actions)
-    case 'pubsub': return renderGraphPubsub(state, actions)
+    case 'pubsub': return renderGraphPubsub('pubsub', state, actions)
+    case 'multicast': return renderGraphPubsub('multicast', state, actions)
   }
 }
 
@@ -228,6 +238,15 @@ function renderSelectedNodePanel(state, actions) {
       h('button', {
         onclick: () => actions.sendPubsub(selectedNode),
       }, 'pubsub'),
+      h('button', {
+        onclick: () => actions.sendMulticast(selectedNode, 1),
+      }, 'multicast 1'),
+      h('button', {
+        onclick: () => actions.sendMulticast(selectedNode, 3),
+      }, 'multicast 3'),
+      h('button', {
+        onclick: () => actions.sendMulticast(selectedNode, 6),
+      }, 'multicast 6'),
       h('button', {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),

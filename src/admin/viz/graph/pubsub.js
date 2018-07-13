@@ -4,13 +4,13 @@ const renderBaseGraph = require('./base')
 
 module.exports = renderGraph
 
-function renderGraph(state, actions) {
+function renderGraph(messagesKey, state, actions) {
   return renderBaseGraph(state, actions, { renderNode, renderLink })
 
   function renderNode(node, state, actions) {
     const { selectedNode, pubsubTarget, networkState } = state
     const nodeData = state.networkState.clients[node.id] || {}
-    const pubsubMessages = nodeData.pubsub || []
+    const pubsubMessages = nodeData[messagesKey] || []
 
     const isSelected = selectedNode === node.id
     const matchingPubsubMessage = pubsubMessages.find(m => m.data === pubsubTarget)

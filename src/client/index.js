@@ -3,6 +3,7 @@ const qs = require('qs')
 const pify = require('pify')
 const pullStreamToStream = require('pull-stream-to-stream')
 const endOfStream = require('end-of-stream')
+const createMulticast = require('libp2p-multicast-experiment/src/api')
 
 const { connectToTelemetryServerViaWs, connectToTelemetryServerViaPost } = require('../network/telemetry')
 const { pingClientWithTimeout } = require('../network/clientTimeout')
@@ -36,7 +37,7 @@ const discoveredPeers = []
 global.discoveredPeers = discoveredPeers
 const maxDiscovered = 25
 
-const clientState = { stats: {}, peers: {}, pubsub: [] }
+const clientState = { stats: {}, peers: {}, pubsub: [], multicast: [] }
 global.clientState = clientState
 
 setupClient().catch(console.error)
@@ -68,7 +69,12 @@ async function setupClient () {
   })
   global.pubsubPublish = (message) => {
     node.pubsub.publish('kitsunet-test1', Buffer.from(message, 'utf8'), (err) => {
-      console.log(`published "${message}"`, err)
+      console.log(`pubsub published "${message}"`, err)
+    })
+  }
+  global.multicastPublish = (message, hops) => {
+    node.multicast.publish('kitsunet-test2', Buffer.from(message, 'utf8'), hops, (err) => {
+      console.log(`multicast published "${message}"`, err)
     })
   }
 
@@ -181,6 +187,28 @@ function startLibp2pNode (node, cb) {
       conn.getPeerInfo((err, peerInfo) => {
         if (err) return console.error(err)
         connectKitsunet(peerInfo, conn)
+      })
+    })
+
+    const multicast = createMulticast(node)
+    node.multicast = multicast
+    global.multicast = multicast
+    node._multicast.start(() => {
+      multicast.subscribe('kitsunet-test2', (message) => {
+        const { from, data, seqno, hops, topicIDs } = message
+        console.log(`multicast message on "kitsunet-test2" from ${from}: ${data.toString()}`)
+        // record message in client state
+        clientState.multicast.push({
+          from,
+          data: data.toString(),
+          seqno: seqno.toString(),
+          hops,
+          topicIDs,
+        })
+        // publish new data to server
+        if (serverAsync) submitNetworkState({ node, serverAsync })
+      }, (err) => {
+        console.log('subscribed to "kitsunet-test1"', err)
       })
     })
 
