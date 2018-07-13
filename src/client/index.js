@@ -291,6 +291,8 @@ function autoConnectWhenLonely (node, { minPeers }) {
 }
 
 async function attemptDial (peerInfo) {
+  // allow "skipDial" option from url (for debugging)
+  if (location.search.includes('skipDial')) return
   const peerId = peerInfo.id.toB58String()
   // too many peers
   if (peers.length > maxPeers) {
