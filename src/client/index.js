@@ -96,11 +96,11 @@ async function setupClient () {
     refreshLongDelay: async () => {
       restartWithDelay(randomFromRange(2 * min, 10 * min))
     },
-    eval: async (src) => {
-      console.log(`MetaMask Mesh Testing - evaling "${src}"`)
-      const result = eval(src)
-      console.log(`MetaMask Mesh Testing - eval result: "${result}"`)
-      return result
+    pubsubPublish: async (message) => {
+      global.pubsubPublish(message)
+    },
+    multicastPublish: async (message, hops) => {
+      global.multicastPublish(message, hops)
     },
   })
   const serverRpcInterfaceForClient = [

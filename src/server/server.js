@@ -171,7 +171,8 @@ async function handleClient(stream, req) {
     'refresh',
     'refreshShortDelay',
     'refreshLongDelay',
-    'eval',
+    'pubsubPublish',
+    'multicastPublish',
   ]
 
   const rpcConnection = multiplexRpc(serverRpcImplementationForClient)
