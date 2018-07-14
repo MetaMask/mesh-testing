@@ -40024,13 +40024,13 @@ function startApp(opts = {}) {
       pubsubTarget = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString()
       viewMode = 'pubsub'
       rerender()
-      await sendToClient(nodeId, 'eval', [`pubsubPublish('${pubsubTarget}')`])
+      await sendToClient(nodeId, 'pubsubPublish', [pubsubTarget])
     },
     sendMulticast: async (nodeId, hops) => {
       pubsubTarget = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString()
       viewMode = 'multicast'
       rerender()
-      await sendToClient(nodeId, 'eval', [`multicastPublish('${pubsubTarget}', ${hops})`])
+      await sendToClient(nodeId, 'multicastPublish', [pubsubTarget, hops])
     },
     restartNode: async (nodeId) => {
       await sendToClient(nodeId, 'refresh', [])
