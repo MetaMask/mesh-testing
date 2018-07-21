@@ -10,8 +10,6 @@ const { cbifyObj } = require('../util/cbify')
 const { fromDiffs } = require('../util/jsonPatchStream')
 const { createJsonParseStream } = require('../util/jsonSerializeStream')
 
-
-
 setupAdmin().catch(console.error)
 
 async function setupAdmin () {

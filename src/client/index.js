@@ -5,7 +5,10 @@ const pullStreamToStream = require('pull-stream-to-stream')
 const endOfStream = require('end-of-stream')
 const createMulticast = require('libp2p-multicast-experiment/src/api')
 
-const { connectToTelemetryServerViaWs, connectToTelemetryServerViaPost } = require('../network/telemetry')
+const { 
+  connectToTelemetryServerViaWs, 
+  connectToTelemetryServerViaPost 
+} = require('../network/telemetry')
 const { pingClientWithTimeout } = require('../network/clientTimeout')
 const multiplexRpc = require('../network/multiplexRpc')
 const { sec, min, hour } = require('../util/time')
@@ -13,6 +16,9 @@ const { cbifyObj } = require('../util/cbify')
 const timeout = require('../util/timeout')
 const createLibp2pNode = require('./createNode')
 const Stat = require('libp2p-switch/src/stats/stat')
+const blockHeaderFromRpc = require('ethereumjs-block/header-from-rpc')
+const createEthProvider = require('../eth-provider')
+const hexUtils = require('../eth-provider/hexUtils')
 
 const clientStateSubmitInterval = 15 * sec
 const peerPingInterval = 1 * min
@@ -37,7 +43,14 @@ const discoveredPeers = []
 global.discoveredPeers = discoveredPeers
 const maxDiscovered = 25
 
-const clientState = { stats: {}, peers: {}, pubsub: [], multicast: [] }
+const clientState = { 
+  stats: {}, 
+  peers: {}, 
+  pubsub: [], 
+  multicast: [], 
+  block: {} 
+}
+
 global.clientState = clientState
 
 setupClient().catch(console.error)
@@ -67,16 +80,49 @@ async function setupClient () {
   }, (err) => {
     console.log('subscribed to "kitsunet-test1"', err)
   })
+
   global.pubsubPublish = (message) => {
     node.pubsub.publish('kitsunet-test1', Buffer.from(message, 'utf8'), (err) => {
       console.log(`pubsub published "${message}"`, err)
     })
   }
+
   global.multicastPublish = (message, hops) => {
     node.multicast.publish('kitsunet-test2', Buffer.from(message, 'utf8'), hops, (err) => {
       console.log(`multicast published "${message}"`, err)
     })
   }
+  
+  global.blockPublish = (blockHeader) => {
+    node.multicast.publish('block-header', blockHeader, -1, (err) => {
+      if (err) {
+        console.error(err)
+        return
+      }
+      blockHeader = blockHeader ? JSON.parse(blockHeader.toString()) : {}
+      console.log(`block published "${blockHeader.number}"`, err)
+      clientState.block = blockHeader
+
+      // publish new data to server
+      if (serverAsync) submitNetworkState({ node, serverAsync })
+    })
+  }
+
+  global.ethProvider = createEthProvider({ rpcUrl: 'https://mainnet.infura.io/' })
+
+  // setup block storage
+  global.ethProvider.blockTracker.on('latest', (blockNumber) => {
+    // add to ipfs
+    console.log(`latest block is: ${Number(blockNumber)}`)
+    const cleanHex = hexUtils.formatHex(blockNumber)
+    global.ethProvider.ethQuery.getBlockByNumber(cleanHex, false, (err, block) => {
+      if (err) {
+        console.error(err)
+        return
+      }
+      global.blockPublish(Buffer.from(JSON.stringify(block)))
+    })
+  })
 
   // record custom stats
   node._switch.observer.on('message', recordLibp2pStatsMessage)
@@ -210,6 +256,24 @@ function startLibp2pNode (node, cb) {
       }, (err) => {
         console.log('subscribed to "kitsunet-test1"', err)
       })
+
+      multicast.subscribe('block-header', (message) => {
+        const { from, data, seqno, hops, topicIDs } = message
+        console.log(`got new block header from ${from}`)
+        // record message in client state
+        clientState.multicast.push({
+          from,
+          data: data.toString(),
+          seqno: seqno.toString(),
+          hops,
+          topicIDs,
+        })
+        // publish new data to server
+        if (serverAsync) submitNetworkState({ node, serverAsync })
+      }, (err) => {
+        console.log('subscribed to "kitsunet-test1"', err)
+      })
+
     })
 
     autoConnectWhenLonely(node, { minPeers: 4 })
