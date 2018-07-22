@@ -48,7 +48,8 @@ const clientState = {
   peers: {}, 
   pubsub: [], 
   multicast: [], 
-  block: {} 
+  block: {},
+  blockTrackerEnabled: false
 }
 
 global.clientState = clientState
@@ -99,19 +100,11 @@ async function setupClient () {
         console.error(err)
         return
       }
-      blockHeader = blockHeader ? JSON.parse(blockHeader.toString()) : {}
-      console.log(`block published "${blockHeader.number}"`, err)
-      clientState.block = blockHeader
-
-      // publish new data to server
-      if (serverAsync) submitNetworkState({ node, serverAsync })
     })
   }
 
   global.ethProvider = createEthProvider({ rpcUrl: 'https://mainnet.infura.io/' })
-
-  // setup block storage
-  global.ethProvider.blockTracker.on('latest', (blockNumber) => {
+  const trackerCb = (blockNumber) => {
     // add to ipfs
     console.log(`latest block is: ${Number(blockNumber)}`)
     const cleanHex = hexUtils.formatHex(blockNumber)
@@ -122,7 +115,17 @@ async function setupClient () {
       }
       global.blockPublish(Buffer.from(JSON.stringify(block)))
     })
-  })
+  }
+
+  global.enableBlockTracker = (enabled) => {
+    clientState.blockTrackerEnabled = enabled
+    if (clientState.blockTrackerEnabled) {
+      // setup block storage
+      global.ethProvider.blockTracker.on('latest', trackerCb)
+    } else {
+      global.ethProvider.blockTracker.removeListener('latest', trackerCb)
+    }
+  }
 
   // record custom stats
   node._switch.observer.on('message', recordLibp2pStatsMessage)
@@ -148,6 +151,9 @@ async function setupClient () {
     multicastPublish: async (message, hops) => {
       global.multicastPublish(message, hops)
     },
+    enableBlockTracker: (enabled) => {
+      global.enableBlockTracker(enabled)
+    }
   })
   const serverRpcInterfaceForClient = [
     'ping',
@@ -258,22 +264,18 @@ function startLibp2pNode (node, cb) {
       })
 
       multicast.subscribe('block-header', (message) => {
-        const { from, data, seqno, hops, topicIDs } = message
+        const { from, data } = message
+
+        let blockHeader = JSON.parse(data.toString())
+        blockHeader = blockHeader || {}
+        clientState.block = blockHeader
+
         console.log(`got new block header from ${from}`)
-        // record message in client state
-        clientState.multicast.push({
-          from,
-          data: data.toString(),
-          seqno: seqno.toString(),
-          hops,
-          topicIDs,
-        })
         // publish new data to server
         if (serverAsync) submitNetworkState({ node, serverAsync })
       }, (err) => {
         console.log('subscribed to "kitsunet-test1"', err)
       })
-
     })
 
     autoConnectWhenLonely(node, { minPeers: 4 })

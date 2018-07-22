@@ -80,6 +80,9 @@ function startApp(opts = {}) {
     restartAllLongDelay: () => {
       global.serverAsync.refreshLongDelay()
     },
+    enableBlockTracker: async (nodeId, enabled) => {
+      await sendToClient(nodeId, 'enableBlockTracker', [enabled])
+    }
   }
 
   // setup dom + render
@@ -121,6 +124,15 @@ function startApp(opts = {}) {
   // mix in local graph over store state
   function getState() {
     const networkState = store.getState()
+
+    let latestBlock = 0
+    Object.keys(networkState.clients || {}).forEach((id) => {
+      if (networkState.clients[id].block && 
+        Number(networkState.clients[id].block.number) > latestBlock) {
+        latestBlock = Number(networkState.clients[id].block.number)
+      }
+    })
+
     return Object.assign({},
       {
         viewModes,
@@ -129,6 +141,7 @@ function startApp(opts = {}) {
         pubsubTarget,
         networkState,
         graph: currentGraph,
+        latestBlock,
       },
     )
   }
@@ -262,6 +275,12 @@ function renderSelectedNodePanel(state, actions) {
       h('button', {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),
+      h('button', {
+        onclick: () => {
+          selectedNodeData.blockTrackerEnabled = !selectedNodeData.blockTrackerEnabled
+          actions.enableBlockTracker(selectedNode, selectedNodeData.blockTrackerEnabled)
+        },
+      }, `${selectedNodeData.blockTrackerEnabled ? 'disable' : 'enable'} block tracker`),
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 
