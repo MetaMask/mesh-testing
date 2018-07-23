@@ -33,7 +33,7 @@
     "libp2p-bootstrap": "^0.9.3",
     "libp2p-circuit": "0.2.0",
     "libp2p-mplex": "^0.8.0",
-    "libp2p-multicast-experiment": "metamask/js-libp2p-multicast-experiment#6bc0579ed9244a8dd0caa86f7b1fb02a47f3e3fd",
+    "libp2p-multicast-experiment": "dryajov/js-libp2p-multicast-experiment.git#feat/forward-hook",
     "libp2p-railing": "^0.9.1",
     "libp2p-secio": "^0.10.0",
     "libp2p-switch": "0.40.5",
