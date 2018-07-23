@@ -211,7 +211,7 @@ function renderGraph(state, actions) {
     case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
     case 'mesh': return renderGraphMesh(state, actions)
     case 'pubsub': return renderGraphPubsub('pubsub', state, actions)
-    case 'multicast': retrenderGraphBlocksubsub('multicast', state, actions)
+    case 'multicast': return renderGraphBlocksubsub('multicast', state, actions)
     case 'block': return renderGraphBlocks(state, actions)
   }
 }
