@@ -40184,7 +40184,7 @@ function renderGraph(state, actions) {
     case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
     case 'mesh': return renderGraphMesh(state, actions)
     case 'pubsub': return renderGraphPubsub('pubsub', state, actions)
-    case 'multicast': retrenderGraphBlocksubsub('multicast', state, actions)
+    case 'multicast': return renderGraphBlocksubsub('multicast', state, actions)
     case 'block': return renderGraphBlocks(state, actions)
   }
 }
@@ -40223,6 +40223,15 @@ function renderSelectedNodePanel(state, actions) {
   return (
 
     h('div', [
+
+      h(
+        'h2', 
+        `Latest block: ${
+          selectedNodeData.block && typeof selectedNodeData.block.number !== 'undefined'
+          ? Number(selectedNodeData.block.number) 
+          : 'N/A'
+        }`
+      ),
 
       h('h2', 'selected node'),
 
@@ -40854,15 +40863,20 @@ function renderGraph(state, actions) {
       return
     }
 
-    let color = colors['GOOD']
-    const blockNumber = Number(state.networkState.clients[node.id].block.number)
-    const number = state.latestBlock - blockNumber
-    if (number <= 5) {
-      color = colors['GOOD']
-    } else if (number > 5 && number <= 10) {
-      color = colors['BAD']
-    } else if (number > 10 && number <= 20) {
-      color = colors['TERRIBLE']
+    let color = colors['TERRIBLE']
+    const blockNumber = state.networkState.clients[node.id].block.number 
+    ? Number(state.networkState.clients[node.id].block.number)
+    : 0
+    
+    if (blockNumber > 0) {
+      const number = state.latestBlock - blockNumber
+      if (number <= 3) {
+        color = colors['GOOD']
+      } else if (number > 3 && number <= 5) {
+        color = colors['BAD']
+      } else if (number > 5) {
+        color = colors['TERRIBLE']
+      }
     }
 
     const radius = isSelected ? 10 : 5
@@ -40884,6 +40898,19 @@ function renderGraph(state, actions) {
 
   function renderLink(link, state, actions) {
     const { source, target } = link
+
+    if (!state.networkState.clients[source.id]
+      || !(state.networkState.clients[source.id]
+        && state.networkState.clients[source.id].block)) {
+      return
+    }
+
+    if (!state.networkState.clients[target.id]
+      || !(state.networkState.clients[target.id]
+        && state.networkState.clients[target.id].block)) {
+      return
+    }
+
     return (
 
       s('line', {
