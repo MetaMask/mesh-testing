@@ -56,7 +56,7 @@ global.clientState = clientState
 
 setupClient().catch(console.error)
 
-const blocks = new Set()
+const blocks = new Map()
 
 async function setupClient () {
   // configure libp2p client
@@ -96,16 +96,17 @@ async function setupClient () {
     })
   }
 
-  // global.multicast.addFrwdHooks('block-header', [(peer, msg) => {
-  //   const block = JSON.parse(msg.data.toString())
-  //   if (!block) { return }
-  //   if (blocks.has(block.number)) {
-  //     console.log(`skipping block ${block.number}`)
-  //     return false
-  //   }
-  //   blocks.add(block.number)
-  //   return true
-  // }])
+  global.multicast.addFrwdHooks('block-header', [(peer, msg) => {
+    const block = JSON.parse(msg.data.toString())
+    if (!block) { return }
+    const peerBlocs = blocks.has(peer.info.id.toB58String()) || new Set()
+    if (peerBlocs.has(block.number)) {
+      console.log(`skipping block ${block.number}`)
+      return false
+    }
+    peerBlocs.add(block.number)
+    return true
+  }])
 
   global.blockPublish = (blockHeader) => {
     node.multicast.publish('block-header', blockHeader, -1, (err) => {
