@@ -251,6 +251,15 @@ function renderSelectedNodePanel(state, actions) {
 
     h('div', [
 
+      h(
+        'h2', 
+        `Latest block: ${
+          selectedNodeData.block && typeof selectedNodeData.block.number !== 'undefined'
+          ? Number(selectedNodeData.block.number) 
+          : 'N/A'
+        }`
+      ),
+
       h('h2', 'selected node'),
 
       h('.app-selected-node', [

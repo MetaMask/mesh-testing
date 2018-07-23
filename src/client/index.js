@@ -96,16 +96,16 @@ async function setupClient () {
     })
   }
 
-  global.multicast.addFrwdHooks('block-header', [(peer, msg) => {
-    const block = JSON.parse(msg.data.toString())
-    if (!block) { return }
-    if (blocks.has(block.number)) {
-      console.log(`skipping block ${block.number}`)
-      return false
-    }
-    blocks.add(block.number)
-    return true
-  }])
+  // global.multicast.addFrwdHooks('block-header', [(peer, msg) => {
+  //   const block = JSON.parse(msg.data.toString())
+  //   if (!block) { return }
+  //   if (blocks.has(block.number)) {
+  //     console.log(`skipping block ${block.number}`)
+  //     return false
+  //   }
+  //   blocks.add(block.number)
+  //   return true
+  // }])
 
   global.blockPublish = (blockHeader) => {
     node.multicast.publish('block-header', blockHeader, -1, (err) => {
