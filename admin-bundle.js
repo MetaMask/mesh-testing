@@ -39975,6 +39975,7 @@ const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const setupDom = require('./engine')
 const renderGraphNormal = require('./viz/graph/normal')
+const renderGraphBlocks = require('./viz/graph/blocks')
 const renderGraphPieTransportTx = require('./viz/graph/pie-transport-tx')
 const renderGraphPieTransportRx = require('./viz/graph/pie-transport-rx')
 const renderGraphMesh = require('./viz/graph/mesh')
@@ -39991,7 +39992,17 @@ function startApp(opts = {}) {
   const { store } = opts
 
   // view state
-  const viewModes = ['normal', 'kitsunet', 'pubsub', 'multicast', 'pie(tx)', 'pie(rx)', 'mesh']
+  const viewModes = [
+    'normal', 
+    'kitsunet', 
+    'pubsub', 
+    'multicast', 
+    'pie(tx)', 
+    'pie(rx)', 
+    'mesh', 
+    'block'
+  ]
+
   let viewMode = viewModes[0]
   let selectedNode = undefined
   let pubsubTarget = undefined
@@ -40042,6 +40053,9 @@ function startApp(opts = {}) {
     restartAllLongDelay: () => {
       global.serverAsync.refreshLongDelay()
     },
+    enableBlockTracker: async (nodeId, enabled) => {
+      await sendToClient(nodeId, 'enableBlockTracker', [enabled])
+    }
   }
 
   // setup dom + render
@@ -40083,6 +40097,15 @@ function startApp(opts = {}) {
   // mix in local graph over store state
   function getState() {
     const networkState = store.getState()
+
+    let latestBlock = 0
+    Object.keys(networkState.clients || {}).forEach((id) => {
+      if (networkState.clients[id].block && 
+        Number(networkState.clients[id].block.number) > latestBlock) {
+        latestBlock = Number(networkState.clients[id].block.number)
+      }
+    })
+
     return Object.assign({},
       {
         viewModes,
@@ -40091,6 +40114,7 @@ function startApp(opts = {}) {
         pubsubTarget,
         networkState,
         graph: currentGraph,
+        latestBlock,
       },
     )
   }
@@ -40160,7 +40184,8 @@ function renderGraph(state, actions) {
     case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
     case 'mesh': return renderGraphMesh(state, actions)
     case 'pubsub': return renderGraphPubsub('pubsub', state, actions)
-    case 'multicast': return renderGraphPubsub('multicast', state, actions)
+    case 'multicast': retrenderGraphBlocksubsub('multicast', state, actions)
+    case 'block': return renderGraphBlocks(state, actions)
   }
 }
 
@@ -40223,6 +40248,12 @@ function renderSelectedNodePanel(state, actions) {
       h('button', {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),
+      h('button', {
+        onclick: () => {
+          selectedNodeData.blockTrackerEnabled = !selectedNodeData.blockTrackerEnabled
+          actions.enableBlockTracker(selectedNode, selectedNodeData.blockTrackerEnabled)
+        },
+      }, `${selectedNodeData.blockTrackerEnabled ? 'disable' : 'enable'} block tracker`),
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 
@@ -40629,7 +40660,7 @@ function peerIdToShortId(peerId) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./engine":181,"./simulation":183,"./viz/graph/mesh":185,"./viz/graph/normal":186,"./viz/graph/pie-transport-rx":187,"./viz/graph/pie-transport-tx":188,"./viz/graph/pubsub":190,"./viz/pie":191,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],181:[function(require,module,exports){
+},{"./engine":181,"./simulation":183,"./viz/graph/blocks":185,"./viz/graph/mesh":186,"./viz/graph/normal":187,"./viz/graph/pie-transport-rx":188,"./viz/graph/pie-transport-tx":189,"./viz/graph/pubsub":191,"./viz/pie":192,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],181:[function(require,module,exports){
 const h = require('virtual-dom/h')
 const diff = require('virtual-dom/diff')
 const patch = require('virtual-dom/patch')
@@ -40660,14 +40691,15 @@ const qs = require('qs')
 const pify = require('pify')
 const ObservableStore = require('obs-store')
 const asStream = require('obs-store/lib/asStream')
-const { connectToTelemetryServerViaWs, connectToTelemetryServerViaPost } = require('../network/telemetry')
+const { 
+  connectToTelemetryServerViaWs, 
+  connectToTelemetryServerViaPost 
+} = require('../network/telemetry')
 const startAdminApp = require('./app')
 const multiplexRpc = require('../network/multiplexRpc')
 const { cbifyObj } = require('../util/cbify')
 const { fromDiffs } = require('../util/jsonPatchStream')
 const { createJsonParseStream } = require('../util/jsonSerializeStream')
-
-
 
 setupAdmin().catch(console.error)
 
@@ -40733,7 +40765,7 @@ async function setupAdmin () {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../network/multiplexRpc":192,"../network/telemetry":193,"../util/cbify":194,"../util/jsonPatchStream":195,"../util/jsonSerializeStream":196,"./app":180,"obs-store":88,"obs-store/lib/asStream":89,"pify":91,"pump":97,"qs":100}],183:[function(require,module,exports){
+},{"../network/multiplexRpc":193,"../network/telemetry":194,"../util/cbify":195,"../util/jsonPatchStream":196,"../util/jsonSerializeStream":197,"./app":180,"obs-store":88,"obs-store/lib/asStream":89,"pify":91,"pump":97,"qs":100}],183:[function(require,module,exports){
 const d3 = require('d3')
 
 const graphWidth = 960
@@ -40807,7 +40839,47 @@ function renderGraph(state, actions) {
   return renderBaseGraph(state, actions, { renderNode, renderLink })
 
   function renderNode(node, state, actions) {
-    return null
+    const { selectedNode, networkState } = state
+    const isSelected = selectedNode === node.id
+
+    const colors = {
+      GOOD: '#53FD43',
+      BAD: '#FFF971',
+      TERRIBLE: '#FD675C',
+    }
+
+    if (!state.networkState.clients[node.id]
+      || !(state.networkState.clients[node.id]
+        && state.networkState.clients[node.id].block)) {
+      return
+    }
+
+    let color = colors['GOOD']
+    const blockNumber = Number(state.networkState.clients[node.id].block.number)
+    const number = state.latestBlock - blockNumber
+    if (number <= 5) {
+      color = colors['GOOD']
+    } else if (number > 5 && number <= 10) {
+      color = colors['BAD']
+    } else if (number > 10 && number <= 20) {
+      color = colors['TERRIBLE']
+    }
+
+    const radius = isSelected ? 10 : 5
+
+    return (
+
+      s('circle', {
+        r: radius,
+        fill: color,
+        cx: node.x,
+        cy: node.y,
+        onclick: () => actions.selectNode(node.id)
+      }, [
+          s('title', `${node.id}`),
+        ])
+
+    )
   }
 
   function renderLink(link, state, actions) {
@@ -40828,6 +40900,37 @@ function renderGraph(state, actions) {
 }
 
 },{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],186:[function(require,module,exports){
+const h = require('virtual-dom/h')
+const s = require('virtual-dom/virtual-hyperscript/svg')
+const renderBaseGraph = require('./base')
+
+module.exports = renderGraph
+
+function renderGraph(state, actions) {
+  return renderBaseGraph(state, actions, { renderNode, renderLink })
+
+  function renderNode(node, state, actions) {
+    return null
+  }
+
+  function renderLink(link, state, actions) {
+    const { source, target } = link
+    return (
+
+      s('line', {
+        strokeWidth: link.value,
+        x1: source.x,
+        y1: source.y,
+        x2: target.x,
+        y2: target.y,
+      })
+
+    )
+  }
+
+}
+
+},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],187:[function(require,module,exports){
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const renderBaseGraph = require('./base')
@@ -40882,7 +40985,7 @@ function renderGraph(state, actions) {
 
 }
 
-},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],187:[function(require,module,exports){
+},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],188:[function(require,module,exports){
 const renderPieBaseGraph = require('./pie')
 
 module.exports = renderGraph
@@ -40895,7 +40998,7 @@ function renderGraph(state, actions) {
     const nodeData = networkState.clients[node.id]
     const nodeStats = nodeData && nodeData.stats
     if (!nodeStats) return
-    const transports = Object.entries(nodeStats.transports)
+    const transports = Object.entries(nodeStats.transports || {})
     if (!transports.length) return
     const data = transports.map(([transportName, stats]) => {
       return {
@@ -40908,7 +41011,7 @@ function renderGraph(state, actions) {
 
 }
 
-},{"./pie":189}],188:[function(require,module,exports){
+},{"./pie":190}],189:[function(require,module,exports){
 const renderPieBaseGraph = require('./pie')
 
 module.exports = renderGraph
@@ -40921,7 +41024,7 @@ function renderGraph(state, actions) {
     const nodeData = networkState.clients[node.id]
     const nodeStats = nodeData && nodeData.stats
     if (!nodeStats) return
-    const transports = Object.entries(nodeStats.transports)
+    const transports = Object.entries(nodeStats.transports || {})
     if (!transports.length) return
     const data = transports.map(([transportName, stats]) => {
       return {
@@ -40934,7 +41037,7 @@ function renderGraph(state, actions) {
 
 }
 
-},{"./pie":189}],189:[function(require,module,exports){
+},{"./pie":190}],190:[function(require,module,exports){
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const renderBaseGraph = require('./base')
@@ -41012,7 +41115,7 @@ function renderGraph(state, actions, { nodeToPieData }) {
 
 }
 
-},{"../pie":191,"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],190:[function(require,module,exports){
+},{"../pie":192,"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],191:[function(require,module,exports){
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const renderBaseGraph = require('./base')
@@ -41073,7 +41176,7 @@ function renderGraph(messagesKey, state, actions) {
 
 }
 
-},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],191:[function(require,module,exports){
+},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],192:[function(require,module,exports){
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const d3 = require('d3')
 
@@ -41220,7 +41323,7 @@ function renderPieChart({
   }
 }
 
-},{"d3":42,"virtual-dom/virtual-hyperscript/svg":161}],192:[function(require,module,exports){
+},{"d3":42,"virtual-dom/virtual-hyperscript/svg":161}],193:[function(require,module,exports){
 var RPC = require('rpc-stream');
 var multiplex = require('multiplex');
 const pump = require('pump')
@@ -41299,7 +41402,7 @@ module.exports = function (api) {
     }
 };
 
-},{"multiplex":83,"pump":97,"rpc-stream":121}],193:[function(require,module,exports){
+},{"multiplex":83,"pump":97,"rpc-stream":121}],194:[function(require,module,exports){
 const websocket = require('websocket-stream')
 const createHttpClientStream = require('http-poll-stream/src/client')
 
@@ -41326,7 +41429,7 @@ function connectToTelemetryServerViaWs (opts = {}) {
   return ws
 }
 
-},{"http-poll-stream/src/client":63,"websocket-stream":174}],194:[function(require,module,exports){
+},{"http-poll-stream/src/client":63,"websocket-stream":174}],195:[function(require,module,exports){
 const promiseToCallback = require('promise-to-callback')
 const noop = function () {}
 
@@ -41365,7 +41468,7 @@ function cbify (fn, context) {
   }
 }
 
-},{"promise-to-callback":93}],195:[function(require,module,exports){
+},{"promise-to-callback":93}],196:[function(require,module,exports){
 const { compare, applyPatch, deepClone } = require('fast-json-patch')
 const through = require('through2').obj
 
@@ -41396,7 +41499,7 @@ function fromDiffs() {
   })
 }
 
-},{"fast-json-patch":60,"through2":135}],196:[function(require,module,exports){
+},{"fast-json-patch":60,"through2":135}],197:[function(require,module,exports){
 (function (Buffer){
 const through = require('through2').obj
 

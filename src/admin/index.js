@@ -3,14 +3,15 @@ const qs = require('qs')
 const pify = require('pify')
 const ObservableStore = require('obs-store')
 const asStream = require('obs-store/lib/asStream')
-const { connectToTelemetryServerViaWs, connectToTelemetryServerViaPost } = require('../network/telemetry')
+const { 
+  connectToTelemetryServerViaWs, 
+  connectToTelemetryServerViaPost 
+} = require('../network/telemetry')
 const startAdminApp = require('./app')
 const multiplexRpc = require('../network/multiplexRpc')
 const { cbifyObj } = require('../util/cbify')
 const { fromDiffs } = require('../util/jsonPatchStream')
 const { createJsonParseStream } = require('../util/jsonSerializeStream')
-
-
 
 setupAdmin().catch(console.error)
 

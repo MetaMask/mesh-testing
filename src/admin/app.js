@@ -2,6 +2,7 @@ const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const setupDom = require('./engine')
 const renderGraphNormal = require('./viz/graph/normal')
+const renderGraphBlocks = require('./viz/graph/blocks')
 const renderGraphPieTransportTx = require('./viz/graph/pie-transport-tx')
 const renderGraphPieTransportRx = require('./viz/graph/pie-transport-rx')
 const renderGraphMesh = require('./viz/graph/mesh')
@@ -18,7 +19,17 @@ function startApp(opts = {}) {
   const { store } = opts
 
   // view state
-  const viewModes = ['normal', 'kitsunet', 'pubsub', 'multicast', 'pie(tx)', 'pie(rx)', 'mesh']
+  const viewModes = [
+    'normal', 
+    'kitsunet', 
+    'pubsub', 
+    'multicast', 
+    'pie(tx)', 
+    'pie(rx)', 
+    'mesh', 
+    'block'
+  ]
+
   let viewMode = viewModes[0]
   let selectedNode = undefined
   let pubsubTarget = undefined
@@ -69,6 +80,9 @@ function startApp(opts = {}) {
     restartAllLongDelay: () => {
       global.serverAsync.refreshLongDelay()
     },
+    enableBlockTracker: async (nodeId, enabled) => {
+      await sendToClient(nodeId, 'enableBlockTracker', [enabled])
+    }
   }
 
   // setup dom + render
@@ -110,6 +124,15 @@ function startApp(opts = {}) {
   // mix in local graph over store state
   function getState() {
     const networkState = store.getState()
+
+    let latestBlock = 0
+    Object.keys(networkState.clients || {}).forEach((id) => {
+      if (networkState.clients[id].block && 
+        Number(networkState.clients[id].block.number) > latestBlock) {
+        latestBlock = Number(networkState.clients[id].block.number)
+      }
+    })
+
     return Object.assign({},
       {
         viewModes,
@@ -118,6 +141,7 @@ function startApp(opts = {}) {
         pubsubTarget,
         networkState,
         graph: currentGraph,
+        latestBlock,
       },
     )
   }
@@ -187,7 +211,8 @@ function renderGraph(state, actions) {
     case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
     case 'mesh': return renderGraphMesh(state, actions)
     case 'pubsub': return renderGraphPubsub('pubsub', state, actions)
-    case 'multicast': return renderGraphPubsub('multicast', state, actions)
+    case 'multicast': return renderGraphBlocksubsub('multicast', state, actions)
+    case 'block': return renderGraphBlocks(state, actions)
   }
 }
 
@@ -226,6 +251,15 @@ function renderSelectedNodePanel(state, actions) {
 
     h('div', [
 
+      h(
+        'h2', 
+        `Latest block: ${
+          selectedNodeData.block && typeof selectedNodeData.block.number !== 'undefined'
+          ? Number(selectedNodeData.block.number) 
+          : 'N/A'
+        }`
+      ),
+
       h('h2', 'selected node'),
 
       h('.app-selected-node', [
@@ -250,6 +284,12 @@ function renderSelectedNodePanel(state, actions) {
       h('button', {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),
+      h('button', {
+        onclick: () => {
+          selectedNodeData.blockTrackerEnabled = !selectedNodeData.blockTrackerEnabled
+          actions.enableBlockTracker(selectedNode, selectedNodeData.blockTrackerEnabled)
+        },
+      }, `${selectedNodeData.blockTrackerEnabled ? 'disable' : 'enable'} block tracker`),
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 

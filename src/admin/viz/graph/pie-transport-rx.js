@@ -10,7 +10,7 @@ function renderGraph(state, actions) {
     const nodeData = networkState.clients[node.id]
     const nodeStats = nodeData && nodeData.stats
     if (!nodeStats) return
-    const transports = Object.entries(nodeStats.transports)
+    const transports = Object.entries(nodeStats.transports || {})
     if (!transports.length) return
     const data = transports.map(([transportName, stats]) => {
       return {
