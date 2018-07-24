@@ -40557,10 +40557,10 @@ function appStyle() {
       stroke-opacity: 0.6;
     }
 
-    .nodes circle {
-      stroke: #fff;
-      stroke-width: 1.5px;
-    }
+    // .nodes circle {
+    //   stroke: #fff;
+    //   stroke-width: 1.5px;
+    // }
 
     .legend {
       font-family: "Arial", sans-serif;
@@ -40853,26 +40853,29 @@ function renderGraph(state, actions) {
 
     const colors = {
       GOOD: '#53FD43',
-      BAD: '#FFF971',
-      TERRIBLE: '#FD675C',
+      SOSO: '#FFF971',
+      BAD: '#FFB73A',
+      TERRIBLE: '#FF0000',
     }
 
-    if (!state.networkState.clients[node.id]
-      || !(state.networkState.clients[node.id]
-        && state.networkState.clients[node.id].block)) {
+    if (!networkState.clients[node.id]
+      || !(networkState.clients[node.id]
+        && networkState.clients[node.id].block)) {
       return
     }
 
     let color = colors['TERRIBLE']
-    const blockNumber = state.networkState.clients[node.id].block.number 
-    ? Number(state.networkState.clients[node.id].block.number)
-    : 0
-    
+    const blockNumber = networkState.clients[node.id].block.number
+      ? Number(networkState.clients[node.id].block.number)
+      : 0
+
     if (blockNumber > 0) {
       const number = state.latestBlock - blockNumber
-      if (number <= 3) {
+      if (number < 1) {
         color = colors['GOOD']
-      } else if (number > 3 && number <= 5) {
+      } else if (number < 2) {
+        color = colors['SOSO']
+      } else if (number >= 2 && number <= 5) {
         color = colors['BAD']
       } else if (number > 5) {
         color = colors['TERRIBLE']
@@ -40881,15 +40884,19 @@ function renderGraph(state, actions) {
 
     const radius = isSelected ? 10 : 5
 
+    const isTracking = networkState.clients[node.id].blockTrackerEnabled
     return (
 
-      s('circle', {
+      s('circle', Object.assign({
         r: radius,
         fill: color,
         cx: node.x,
         cy: node.y,
         onclick: () => actions.selectNode(node.id)
-      }, [
+      }, isTracking ? {
+        stroke: 'black',
+        'stroke-width': 1,
+      } : {}), [
           s('title', `${node.id}`),
         ])
 
