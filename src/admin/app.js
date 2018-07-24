@@ -584,10 +584,10 @@ function appStyle() {
       stroke-opacity: 0.6;
     }
 
-    .nodes circle {
-      stroke: #fff;
-      stroke-width: 1.5px;
-    }
+    // .nodes circle {
+    //   stroke: #fff;
+    //   stroke-width: 1.5px;
+    // }
 
     .legend {
       font-family: "Arial", sans-serif;
