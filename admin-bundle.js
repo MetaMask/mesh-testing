@@ -40895,7 +40895,7 @@ function renderGraph(state, actions) {
         onclick: () => actions.selectNode(node.id)
       }, isTracking ? {
         stroke: 'black',
-        'stroke-width': 1,
+        'stroke-width': 2,
       } : {}), [
           s('title', `${node.id}`),
         ])
