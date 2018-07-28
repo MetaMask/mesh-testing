@@ -296,6 +296,7 @@ function startLibp2pNode (node, cb) {
         }
 
         blockHeader = blockHeader || {}
+        if (blockHeader.number && Number(blockHeader.number) <= Number(clientState.block.number)) return
         clientState.block = blockHeader
 
         console.log(`got new block header from ${from}`)
