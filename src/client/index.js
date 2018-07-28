@@ -97,8 +97,15 @@ async function setupClient () {
   }
 
   global.multicast.addFrwdHooks('block-header', [(peer, msg) => {
-    const block = JSON.parse(msg.data.toString())
-    if (!block) { return }
+    let block = null
+    try {
+      block = JSON.parse(msg.data.toString())
+    } catch (err) {
+      console.error(err)
+      return false
+    }
+
+    if (!block) { return false }
     const peerBlocs = blocks.has(peer.info.id.toB58String()) || new Set()
     if (peerBlocs.has(block.number)) {
       console.log(`skipping block ${block.number}`)
@@ -280,8 +287,16 @@ function startLibp2pNode (node, cb) {
       multicast.subscribe('block-header', (message) => {
         const { from, data } = message
 
-        let blockHeader = JSON.parse(data.toString())
+        let blockHeader = null
+        try {
+          blockHeader = JSON.parse(data.toString())
+        } catch (err) {
+          console.error(err)
+          return
+        }
+
         blockHeader = blockHeader || {}
+        if (blockHeader.number && Number(blockHeader.number) <= Number(clientState.block.number)) return
         clientState.block = blockHeader
 
         console.log(`got new block header from ${from}`)
