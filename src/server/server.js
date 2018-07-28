@@ -42,6 +42,10 @@ process.on('unhandledRejection', (reason, p) => {
   console.error(reason)
 });
 
+process.on('uncaughtException', (err) => {
+  console.log('Uncaught Exception:', err)
+})
+
 //
 // setup server routes
 //
