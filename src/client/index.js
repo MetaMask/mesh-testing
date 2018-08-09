@@ -18,7 +18,7 @@ const createLibp2pNode = require('./createNode')
 const Stat = require('libp2p-switch/src/stats/stat')
 const blockHeaderFromRpc = require('ethereumjs-block/header-from-rpc')
 const createEthProvider = require('../eth-provider')
-const hexUtils = require('../eth-provider/hexUtils')
+const hexUtils = require('../eth-provider/hex-utils')
 
 const clientStateSubmitInterval = 15 * sec
 const peerPingInterval = 1 * min
