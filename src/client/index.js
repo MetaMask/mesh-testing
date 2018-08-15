@@ -104,6 +104,7 @@ async function setupClient () {
   console.log('MetaMask Mesh Testing - libp2p node started')
 
   global.ebt = createEbt(peerId)
+  global.ebt.request(peerId, true)
   global.ebtCreateStream = () => toPull(global.ebt.createStream(peerId))
 
   global.ebtAppend = (msg) => {
@@ -118,7 +119,7 @@ async function setupClient () {
   }
 
   setInterval(() => {
-    console.dir(global.ebt.progress())
+    console.dir(global.ebt)
     clientState.ebt = Array
     .from(new Set(Object.values(global.ebt.store).reduce(
       (accumulator, currentValue) => accumulator.concat(currentValue),
@@ -316,8 +317,8 @@ function startLibp2pNode (node, cb) {
           console.error(err)
           return
         }
-        const stream = global.ebtCreateStream()
         global.ebt.request(peerInfo.id.toB58String(), true)
+        const stream = toPull(global.ebt.createStream(peerInfo.id.toB58String()))
         pull(stream, conn, stream)
       })
     })
@@ -523,7 +524,8 @@ async function attemptDialEbt (peerInfo) {
     const conn = await pify(global.node.dialProtocol).call(global.node, peerInfo, '/kitsunet/test/ebt/0.0.1')
     console.log('MetaMask Mesh Testing - kitsunet-ebt dial success', peerId)
     global.ebt.request(peerId, true)
-    pull(conn, global.ebtCreateStream(), conn)
+    const stream = toPull(global.ebt.createStream(peerId))
+    pull(stream, conn, stream)
   } catch (err) {
     console.log('MetaMask Mesh Testing - kitsunet-ebt dial failed:', peerId, err.message)
     // hangupPeer(peerInfo)
