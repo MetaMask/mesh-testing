@@ -14,13 +14,6 @@ function renderGraph(messagesKey, state, actions) {
 
     const isSelected = selectedNode === node.id
 
-    // {
-    //   from,
-    //   data: data.toString(),
-    //   seqno: seqno.toString(),
-    //   topicIDs,
-    // }
-
     const idx = ebtMessages.length - 1 > 0 ? ebtMessages.length - 1 : 0
     const target = ebtMessages.find(m => m === ebtTarget)
     let color = target ? target : ebtMessages[idx] || '#000000'
