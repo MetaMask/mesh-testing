@@ -1,3 +1,5 @@
+'use strict'
+
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const setupDom = require('./engine')
@@ -7,6 +9,7 @@ const renderGraphPieTransportTx = require('./viz/graph/pie-transport-tx')
 const renderGraphPieTransportRx = require('./viz/graph/pie-transport-rx')
 const renderGraphMesh = require('./viz/graph/mesh')
 const renderGraphPubsub = require('./viz/graph/pubsub')
+const renderGraphEbt = require('./viz/graph/ebt')
 const renderPieChart = require('./viz/pie')
 const { setupSimulation, setupSimulationForces } = require('./simulation')
 
@@ -34,6 +37,7 @@ function startApp(opts = {}) {
   let viewMode = viewModes[0]
   let selectedNode = undefined
   let pubsubTarget = undefined
+  let ebtTarget = undefined
   let currentGraph = {
     nodes: [],
     links: [],
@@ -85,7 +89,7 @@ function startApp(opts = {}) {
       await sendToClient(nodeId, 'enableBlockTracker', [enabled])
     },
     appendEbtMessage: async (nodeId, sequence) => {
-      ebtTarget = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString()
+      ebtTarget = `#${Math.floor(Math.random() * 16777215).toString(16)}`
       viewMode = 'ebt'
       rerender()
       sequence = sequence || 0
@@ -151,6 +155,7 @@ function startApp(opts = {}) {
         viewMode,
         selectedNode,
         pubsubTarget,
+        ebtTarget,
         networkState,
         graph: currentGraph,
         latestBlock,
@@ -224,7 +229,7 @@ function renderGraph(state, actions) {
     case 'mesh': return renderGraphMesh(state, actions)
     case 'pubsub': return renderGraphPubsub('pubsub', state, actions)
     case 'multicast': return renderGraphPubsub('multicast', state, actions)
-    case 'ebt': return renderGraphPubsub('ebt', state, actions)
+    case 'ebt': return renderGraphEbt('ebt', state, actions)
     case 'block': return renderGraphBlocks(state, actions)
   }
 }
