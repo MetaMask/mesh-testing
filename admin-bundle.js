@@ -40234,7 +40234,7 @@ function renderGlobalPanel(state, actions) {
 
 function renderSelectedNodePanel(state, actions) {
   const { selectedNode, networkState } = state
-  const selectedNodeData = networkState.clients[selectedNode] || {}
+  const selectedNodeData = networkState.clients[selectedNode] || { ebtState: {} }
   const selectedNodePeers = selectedNodeData.peers
   const selectedNodeStats = selectedNodeData.stats
   const shortId = peerIdToShortId(selectedNode)
