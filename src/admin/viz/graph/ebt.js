@@ -8,15 +8,12 @@ function renderGraph(messagesKey, state, actions) {
   return renderBaseGraph(state, actions, { renderNode, renderLink })
 
   function renderNode(node, state, actions) {
-    const { selectedNode, pubsubTarget, networkState } = state
+    const { selectedNode, ebtTarget, networkState } = state
     const nodeData = state.networkState.clients[node.id] || {}
-    const pubsubMessages = nodeData[messagesKey] || []
+    const ebtMessages = nodeData[messagesKey] || []
 
     const isSelected = selectedNode === node.id
-    const matchingPubsubMessage = pubsubMessages.find((m) => {
-      m.data === pubsubTarget
-    })
-    
+
     // {
     //   from,
     //   data: data.toString(),
@@ -24,7 +21,9 @@ function renderGraph(messagesKey, state, actions) {
     //   topicIDs,
     // }
 
-    let color = matchingPubsubMessage ? '#66c2a5' : '#1f77b4'
+    const idx = ebtMessages.length - 1 > 0 ? ebtMessages.length - 1 : 0
+    const target = ebtMessages.find(m => m === ebtTarget)
+    let color = target ? target : ebtMessages[idx] || '#000000'
     if (node.type !== 'good') color = '#ff7f0e'
     const radius = isSelected ? 10 : 5
 

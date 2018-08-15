@@ -177,7 +177,8 @@ async function handleClient(stream, req) {
     'refreshLongDelay',
     'pubsubPublish',
     'multicastPublish',
-    'enableBlockTracker'
+    'enableBlockTracker',
+    'ebtAppend'
   ]
 
   const rpcConnection = multiplexRpc(serverRpcImplementationForClient)

@@ -1,3 +1,5 @@
+'use strict'
+
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const setupDom = require('./engine')
@@ -7,6 +9,7 @@ const renderGraphPieTransportTx = require('./viz/graph/pie-transport-tx')
 const renderGraphPieTransportRx = require('./viz/graph/pie-transport-rx')
 const renderGraphMesh = require('./viz/graph/mesh')
 const renderGraphPubsub = require('./viz/graph/pubsub')
+const renderGraphEbt = require('./viz/graph/ebt')
 const renderPieChart = require('./viz/pie')
 const { setupSimulation, setupSimulationForces } = require('./simulation')
 
@@ -24,6 +27,7 @@ function startApp(opts = {}) {
     'kitsunet', 
     'pubsub', 
     'multicast', 
+    'ebt', 
     'pie(tx)', 
     'pie(rx)', 
     'mesh', 
@@ -33,6 +37,7 @@ function startApp(opts = {}) {
   let viewMode = viewModes[0]
   let selectedNode = undefined
   let pubsubTarget = undefined
+  let ebtTarget = undefined
   let currentGraph = {
     nodes: [],
     links: [],
@@ -82,6 +87,17 @@ function startApp(opts = {}) {
     },
     enableBlockTracker: async (nodeId, enabled) => {
       await sendToClient(nodeId, 'enableBlockTracker', [enabled])
+    },
+    appendEbtMessage: async (nodeId, sequence) => {
+      ebtTarget = `#${Math.floor(Math.random() * 16777215).toString(16)}`
+      viewMode = 'ebt'
+      rerender()
+      sequence = sequence || 0
+      await sendToClient(nodeId, 'ebtAppend', [{ 
+        author: nodeId, 
+        sequence: ++sequence, 
+        content: ebtTarget 
+      }])
     }
   }
 
@@ -139,6 +155,7 @@ function startApp(opts = {}) {
         viewMode,
         selectedNode,
         pubsubTarget,
+        ebtTarget,
         networkState,
         graph: currentGraph,
         latestBlock,
@@ -212,6 +229,7 @@ function renderGraph(state, actions) {
     case 'mesh': return renderGraphMesh(state, actions)
     case 'pubsub': return renderGraphPubsub('pubsub', state, actions)
     case 'multicast': return renderGraphPubsub('multicast', state, actions)
+    case 'ebt': return renderGraphEbt('ebt', state, actions)
     case 'block': return renderGraphBlocks(state, actions)
   }
 }
@@ -281,6 +299,9 @@ function renderSelectedNodePanel(state, actions) {
       h('button', {
         onclick: () => actions.sendMulticast(selectedNode, 6),
       }, 'multicast 6'),
+      h('button', {
+        onclick: () => actions.appendEbtMessage(selectedNode, selectedNodeData.ebtState.sequence),
+      }, 'ebt'),
       h('button', {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),
