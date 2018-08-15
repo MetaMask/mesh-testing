@@ -39971,6 +39971,8 @@ function extend() {
 
 },{}],180:[function(require,module,exports){
 (function (global){
+'use strict'
+
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const setupDom = require('./engine')
@@ -39980,6 +39982,7 @@ const renderGraphPieTransportTx = require('./viz/graph/pie-transport-tx')
 const renderGraphPieTransportRx = require('./viz/graph/pie-transport-rx')
 const renderGraphMesh = require('./viz/graph/mesh')
 const renderGraphPubsub = require('./viz/graph/pubsub')
+const renderGraphEbt = require('./viz/graph/ebt')
 const renderPieChart = require('./viz/pie')
 const { setupSimulation, setupSimulationForces } = require('./simulation')
 
@@ -39997,6 +40000,7 @@ function startApp(opts = {}) {
     'kitsunet', 
     'pubsub', 
     'multicast', 
+    'ebt', 
     'pie(tx)', 
     'pie(rx)', 
     'mesh', 
@@ -40006,6 +40010,7 @@ function startApp(opts = {}) {
   let viewMode = viewModes[0]
   let selectedNode = undefined
   let pubsubTarget = undefined
+  let ebtTarget = undefined
   let currentGraph = {
     nodes: [],
     links: [],
@@ -40055,6 +40060,17 @@ function startApp(opts = {}) {
     },
     enableBlockTracker: async (nodeId, enabled) => {
       await sendToClient(nodeId, 'enableBlockTracker', [enabled])
+    },
+    appendEbtMessage: async (nodeId, sequence) => {
+      ebtTarget = `#${Math.floor(Math.random() * 16777215).toString(16)}`
+      viewMode = 'ebt'
+      rerender()
+      sequence = sequence || 0
+      await sendToClient(nodeId, 'ebtAppend', [{ 
+        author: nodeId, 
+        sequence: ++sequence, 
+        content: ebtTarget 
+      }])
     }
   }
 
@@ -40112,6 +40128,7 @@ function startApp(opts = {}) {
         viewMode,
         selectedNode,
         pubsubTarget,
+        ebtTarget,
         networkState,
         graph: currentGraph,
         latestBlock,
@@ -40185,6 +40202,7 @@ function renderGraph(state, actions) {
     case 'mesh': return renderGraphMesh(state, actions)
     case 'pubsub': return renderGraphPubsub('pubsub', state, actions)
     case 'multicast': return renderGraphPubsub('multicast', state, actions)
+    case 'ebt': return renderGraphEbt('ebt', state, actions)
     case 'block': return renderGraphBlocks(state, actions)
   }
 }
@@ -40254,6 +40272,9 @@ function renderSelectedNodePanel(state, actions) {
       h('button', {
         onclick: () => actions.sendMulticast(selectedNode, 6),
       }, 'multicast 6'),
+      h('button', {
+        onclick: () => actions.appendEbtMessage(selectedNode, selectedNodeData.ebtState.sequence),
+      }, 'ebt'),
       h('button', {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),
@@ -40669,7 +40690,7 @@ function peerIdToShortId(peerId) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./engine":181,"./simulation":183,"./viz/graph/blocks":185,"./viz/graph/mesh":186,"./viz/graph/normal":187,"./viz/graph/pie-transport-rx":188,"./viz/graph/pie-transport-tx":189,"./viz/graph/pubsub":191,"./viz/pie":192,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],181:[function(require,module,exports){
+},{"./engine":181,"./simulation":183,"./viz/graph/blocks":185,"./viz/graph/ebt":186,"./viz/graph/mesh":187,"./viz/graph/normal":188,"./viz/graph/pie-transport-rx":189,"./viz/graph/pie-transport-tx":190,"./viz/graph/pubsub":192,"./viz/pie":193,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],181:[function(require,module,exports){
 const h = require('virtual-dom/h')
 const diff = require('virtual-dom/diff')
 const patch = require('virtual-dom/patch')
@@ -40774,7 +40795,7 @@ async function setupAdmin () {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../network/multiplexRpc":193,"../network/telemetry":194,"../util/cbify":195,"../util/jsonPatchStream":196,"../util/jsonSerializeStream":197,"./app":180,"obs-store":88,"obs-store/lib/asStream":89,"pify":91,"pump":97,"qs":100}],183:[function(require,module,exports){
+},{"../network/multiplexRpc":194,"../network/telemetry":195,"../util/cbify":196,"../util/jsonPatchStream":197,"../util/jsonSerializeStream":198,"./app":180,"obs-store":88,"obs-store/lib/asStream":89,"pify":91,"pump":97,"qs":100}],183:[function(require,module,exports){
 const d3 = require('d3')
 
 const graphWidth = 960
@@ -40940,6 +40961,61 @@ const renderBaseGraph = require('./base')
 
 module.exports = renderGraph
 
+function renderGraph(messagesKey, state, actions) {
+  return renderBaseGraph(state, actions, { renderNode, renderLink })
+
+  function renderNode(node, state, actions) {
+    const { selectedNode, ebtTarget, networkState } = state
+    const nodeData = state.networkState.clients[node.id] || {}
+    const ebtMessages = nodeData[messagesKey] || []
+
+    const isSelected = selectedNode === node.id
+
+    const idx = ebtMessages.length - 1 > 0 ? ebtMessages.length - 1 : 0
+    const target = ebtMessages.find(m => m === ebtTarget)
+    let color = target ? target : ebtMessages[idx] || '#000000'
+    if (node.type !== 'good') color = '#ff7f0e'
+    const radius = isSelected ? 10 : 5
+
+    return (
+
+      s('circle', {
+        r: radius,
+        fill: color,
+        cx: node.x,
+        cy: node.y,
+        onclick: () => actions.selectNode(node.id)
+      }, [
+        s('title', `${node.id}`),
+      ])
+
+    )
+  }
+
+  function renderLink(link, state, actions) {
+    const { source, target } = link
+    return (
+
+      s('line', {
+        strokeWidth: link.value,
+        x1: source.x,
+        y1: source.y,
+        x2: target.x,
+        y2: target.y,
+      })
+
+    )
+  }
+
+}
+
+},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],187:[function(require,module,exports){
+const h = require('virtual-dom/h')
+const s = require('virtual-dom/virtual-hyperscript/svg')
+const renderBaseGraph = require('./base')
+
+module.exports = renderGraph
+
 function renderGraph(state, actions) {
   return renderBaseGraph(state, actions, { renderNode, renderLink })
 
@@ -40964,7 +41040,7 @@ function renderGraph(state, actions) {
 
 }
 
-},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],187:[function(require,module,exports){
+},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],188:[function(require,module,exports){
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const renderBaseGraph = require('./base')
@@ -41019,7 +41095,7 @@ function renderGraph(state, actions) {
 
 }
 
-},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],188:[function(require,module,exports){
+},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],189:[function(require,module,exports){
 const renderPieBaseGraph = require('./pie')
 
 module.exports = renderGraph
@@ -41045,7 +41121,7 @@ function renderGraph(state, actions) {
 
 }
 
-},{"./pie":190}],189:[function(require,module,exports){
+},{"./pie":191}],190:[function(require,module,exports){
 const renderPieBaseGraph = require('./pie')
 
 module.exports = renderGraph
@@ -41071,7 +41147,7 @@ function renderGraph(state, actions) {
 
 }
 
-},{"./pie":190}],190:[function(require,module,exports){
+},{"./pie":191}],191:[function(require,module,exports){
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const renderBaseGraph = require('./base')
@@ -41149,7 +41225,7 @@ function renderGraph(state, actions, { nodeToPieData }) {
 
 }
 
-},{"../pie":192,"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],191:[function(require,module,exports){
+},{"../pie":193,"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],192:[function(require,module,exports){
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const renderBaseGraph = require('./base')
@@ -41165,8 +41241,10 @@ function renderGraph(messagesKey, state, actions) {
     const pubsubMessages = nodeData[messagesKey] || []
 
     const isSelected = selectedNode === node.id
-    const matchingPubsubMessage = pubsubMessages.find(m => m.data === pubsubTarget)
-
+    const matchingPubsubMessage = pubsubMessages.find((m) => {
+      m.data === pubsubTarget
+    })
+    
     // {
     //   from,
     //   data: data.toString(),
@@ -41210,7 +41288,7 @@ function renderGraph(messagesKey, state, actions) {
 
 }
 
-},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],192:[function(require,module,exports){
+},{"./base":184,"virtual-dom/h":147,"virtual-dom/virtual-hyperscript/svg":161}],193:[function(require,module,exports){
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const d3 = require('d3')
 
@@ -41357,7 +41435,7 @@ function renderPieChart({
   }
 }
 
-},{"d3":42,"virtual-dom/virtual-hyperscript/svg":161}],193:[function(require,module,exports){
+},{"d3":42,"virtual-dom/virtual-hyperscript/svg":161}],194:[function(require,module,exports){
 var RPC = require('rpc-stream');
 var multiplex = require('multiplex');
 const pump = require('pump')
@@ -41436,7 +41514,7 @@ module.exports = function (api) {
     }
 };
 
-},{"multiplex":83,"pump":97,"rpc-stream":121}],194:[function(require,module,exports){
+},{"multiplex":83,"pump":97,"rpc-stream":121}],195:[function(require,module,exports){
 const websocket = require('websocket-stream')
 const createHttpClientStream = require('http-poll-stream/src/client')
 
@@ -41463,7 +41541,7 @@ function connectToTelemetryServerViaWs (opts = {}) {
   return ws
 }
 
-},{"http-poll-stream/src/client":63,"websocket-stream":174}],195:[function(require,module,exports){
+},{"http-poll-stream/src/client":63,"websocket-stream":174}],196:[function(require,module,exports){
 const promiseToCallback = require('promise-to-callback')
 const noop = function () {}
 
@@ -41502,7 +41580,7 @@ function cbify (fn, context) {
   }
 }
 
-},{"promise-to-callback":93}],196:[function(require,module,exports){
+},{"promise-to-callback":93}],197:[function(require,module,exports){
 const { compare, applyPatch, deepClone } = require('fast-json-patch')
 const through = require('through2').obj
 
@@ -41533,7 +41611,7 @@ function fromDiffs() {
   })
 }
 
-},{"fast-json-patch":60,"through2":135}],197:[function(require,module,exports){
+},{"fast-json-patch":60,"through2":135}],198:[function(require,module,exports){
 (function (Buffer){
 const through = require('through2').obj
 
