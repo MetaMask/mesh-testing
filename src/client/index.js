@@ -64,7 +64,8 @@ setupClient().catch(console.error)
 const blocks = new Map()
 
 function createEbt(id) {
-  var store = {}
+  const store = {}
+  const clocks = {}
 
   function append(msg, cb) {
     store[msg.author] = store[msg.author] || []
@@ -80,12 +81,20 @@ function createEbt(id) {
   var p = EBT({
     id: id,
     getClock: function (id, cb) {
-      cb(null, {})
+      //load the peer clock for id.
+      cb(null, clocks[id] || {})
     },
-    setClock: function () { },
+    setClock: function (id, clock) {
+      //set clock doesn't have take a cb, but it's okay to be async.
+      clocks[id] = clock
+    },
     getAt: function (pair, cb) {
-      if (!store[pair.id] || !store[pair.id][pair.sequence]) cb(new Error('not found'))
-      else cb(null, store[pair.id][pair.sequence])
+      if (!store[pair.id] || !store[pair.id][pair.sequence]) {
+        cb(new Error(`not found - ${pair.id}:${pair.sequence}`))
+      }
+      else {
+        cb(null, store[pair.id][pair.sequence])
+      }
     },
     append: append
   })
@@ -119,7 +128,7 @@ async function setupClient () {
   }
 
   setInterval(() => {
-    console.dir(global.ebt)
+    // console.dir(global.ebt)
     clientState.ebt = Array
     .from(new Set(Object.values(global.ebt.store).reduce(
       (accumulator, currentValue) => accumulator.concat(currentValue),
@@ -319,7 +328,18 @@ function startLibp2pNode (node, cb) {
         }
         global.ebt.request(peerInfo.id.toB58String(), true)
         const stream = toPull(global.ebt.createStream(peerInfo.id.toB58String()))
-        pull(stream, conn, stream)
+        pull(
+          stream,
+          pull.map(m => {
+            console.dir(m)
+            return Buffer.from(JSON.stringify(m))
+          }),
+          conn,
+          pull.map(m => {
+            return JSON.parse(m.toString())
+          }),
+          stream
+        )
       })
     })
 
@@ -525,7 +545,17 @@ async function attemptDialEbt (peerInfo) {
     console.log('MetaMask Mesh Testing - kitsunet-ebt dial success', peerId)
     global.ebt.request(peerId, true)
     const stream = toPull(global.ebt.createStream(peerId))
-    pull(stream, conn, stream)
+    pull(
+      stream,
+      pull.map(m => { 
+        return Buffer.from(JSON.stringify(m))
+      }),
+      conn,
+      pull.map(m => {
+        return JSON.parse(m.toString())
+      }),
+      stream
+    )
   } catch (err) {
     console.log('MetaMask Mesh Testing - kitsunet-ebt dial failed:', peerId, err.message)
     // hangupPeer(peerInfo)
