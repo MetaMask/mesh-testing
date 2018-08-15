@@ -24,6 +24,7 @@ function startApp(opts = {}) {
     'kitsunet', 
     'pubsub', 
     'multicast', 
+    'ebt', 
     'pie(tx)', 
     'pie(rx)', 
     'mesh', 
@@ -82,6 +83,17 @@ function startApp(opts = {}) {
     },
     enableBlockTracker: async (nodeId, enabled) => {
       await sendToClient(nodeId, 'enableBlockTracker', [enabled])
+    },
+    appendEbtMessage: async (nodeId, sequence) => {
+      ebtTarget = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString()
+      viewMode = 'ebt'
+      rerender()
+      sequence = sequence || 0
+      await sendToClient(nodeId, 'ebtAppend', [{ 
+        author: nodeId, 
+        sequence: ++sequence, 
+        content: ebtTarget 
+      }])
     }
   }
 
@@ -212,6 +224,7 @@ function renderGraph(state, actions) {
     case 'mesh': return renderGraphMesh(state, actions)
     case 'pubsub': return renderGraphPubsub('pubsub', state, actions)
     case 'multicast': return renderGraphPubsub('multicast', state, actions)
+    case 'ebt': return renderGraphPubsub('ebt', state, actions)
     case 'block': return renderGraphBlocks(state, actions)
   }
 }
@@ -281,6 +294,9 @@ function renderSelectedNodePanel(state, actions) {
       h('button', {
         onclick: () => actions.sendMulticast(selectedNode, 6),
       }, 'multicast 6'),
+      h('button', {
+        onclick: () => actions.appendEbtMessage(selectedNode, selectedNodeData.ebtState.sequence),
+      }, 'ebt'),
       h('button', {
         onclick: () => actions.restartNode(selectedNode),
       }, 'restart'),

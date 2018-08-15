@@ -4,6 +4,9 @@ const pify = require('pify')
 const pullStreamToStream = require('pull-stream-to-stream')
 const endOfStream = require('end-of-stream')
 const createMulticast = require('libp2p-multicast-experiment/src/api')
+const EBT = require('epidemic-broadcast-trees')
+const toPull = require('push-stream-to-pull-stream')
+const pull = require('pull-stream')
 
 const { 
   connectToTelemetryServerViaWs, 
@@ -48,6 +51,8 @@ const clientState = {
   peers: {}, 
   pubsub: [], 
   multicast: [], 
+  ebt: [],
+  ebtState: {},
   block: {},
   blockTrackerEnabled: false
 }
@@ -58,6 +63,37 @@ setupClient().catch(console.error)
 
 const blocks = new Map()
 
+function createEbt(id) {
+  var store = {}
+
+  function append(msg, cb) {
+    store[msg.author] = store[msg.author] || []
+    if (msg.sequence - 1 != store[msg.author].length)
+      cb(new Error('out of order'))
+    else {
+      store[msg.author].push(msg)
+      p.onAppend(msg)
+      cb(null, msg)
+    }
+  }
+
+  var p = EBT({
+    id: id,
+    getClock: function (id, cb) {
+      cb(null, {})
+    },
+    setClock: function () { },
+    getAt: function (pair, cb) {
+      if (!store[pair.id] || !store[pair.id][pair.sequence]) cb(new Error('not found'))
+      else cb(null, store[pair.id][pair.sequence])
+    },
+    append: append
+  })
+  p.store = store
+  p.append = append
+  return p
+}
+
 async function setupClient () {
   // configure libp2p client
   const node = await pify(createLibp2pNode)()
@@ -67,22 +103,28 @@ async function setupClient () {
   await pify(startLibp2pNode)(node)
   console.log('MetaMask Mesh Testing - libp2p node started')
 
-  // setup pubsub
-  node.pubsub.subscribe('kitsunet-test1', (message) => {
-    const { from, data, seqno, topicIDs } = message
-    console.log(`pubsub message on "kitsunet-test1" from ${from}: ${data.toString()}`)
-    // record message in client state
-    clientState.pubsub.push({
-      from,
-      data: data.toString(),
-      seqno: seqno.toString(),
-      topicIDs,
+  global.ebt = createEbt(peerId)
+  global.ebtCreateStream = () => toPull(global.ebt.createStream(peerId))
+
+  global.ebtAppend = (msg) => {
+    global.ebt.append(msg, (err) => {
+      if (err) {
+        console.error(err)
+        return
+      }
+      clientState.ebtState = msg
+      if (serverAsync) submitNetworkState({ node, serverAsync })
     })
-    // publish new data to server
-    if (serverAsync) submitNetworkState({ node, serverAsync })
-  }, (err) => {
-    console.log('subscribed to "kitsunet-test1"', err)
-  })
+  }
+
+  setInterval(() => {
+    console.dir(global.ebt.progress())
+    clientState.ebt = Array
+    .from(new Set(Object.values(global.ebt.store).reduce(
+      (accumulator, currentValue) => accumulator.concat(currentValue),
+      []
+    ).map((m) => m.content)))
+  }, 1000)
 
   global.pubsubPublish = (message) => {
     node.pubsub.publish('kitsunet-test1', Buffer.from(message, 'utf8'), (err) => {
@@ -172,6 +214,9 @@ async function setupClient () {
     multicastPublish: async (message, hops) => {
       global.multicastPublish(message, hops)
     },
+    ebtAppend: async (message) => {
+      global.ebtAppend(message)
+    },
     enableBlockTracker: (enabled) => {
       global.enableBlockTracker(enabled)
     }
@@ -242,6 +287,7 @@ function startLibp2pNode (node, cb) {
       peers.push(peerInfo)
       // attempt to upgrage to kitsunet connection
       attemptDial(peerInfo)
+      attemptDialEbt(peerInfo)
     })
 
     node.on('peer:disconnect', (peerInfo) => {
@@ -261,6 +307,36 @@ function startLibp2pNode (node, cb) {
         if (err) return console.error(err)
         connectKitsunet(peerInfo, conn)
       })
+    })
+
+    node.handle('/kitsunet/test/ebt/0.0.1', (protocol, conn) => {
+      console.log('MetaMask Mesh Testing - incomming kitsunet connection')
+      conn.getPeerInfo((err, peerInfo) => {
+        if (err) {
+          console.error(err)
+          return
+        }
+        const stream = global.ebtCreateStream()
+        global.ebt.request(peerInfo.id.toB58String(), true)
+        pull(stream, conn, stream)
+      })
+    })
+
+    // setup pubsub
+    node.pubsub.subscribe('kitsunet-test1', (message) => {
+      const { from, data, seqno, topicIDs } = message
+      console.log(`pubsub message on "kitsunet-test1" from ${from}: ${data.toString()}`)
+      // record message in client state
+      clientState.pubsub.push({
+        from,
+        data: data.toString(),
+        seqno: seqno.toString(),
+        topicIDs,
+      })
+      // publish new data to server
+      if (serverAsync) submitNetworkState({ node, serverAsync })
+    }, (err) => {
+      console.log('subscribed to "kitsunet-test1"', err)
     })
 
     const multicast = createMulticast(node)
@@ -435,6 +511,21 @@ async function attemptDial (peerInfo) {
     await connectKitsunet(peerInfo, conn)
   } catch (err) {
     console.log('MetaMask Mesh Testing - kitsunet dial failed:', peerId, err.message)
+    // hangupPeer(peerInfo)
+  }
+}
+
+async function attemptDialEbt (peerInfo) {
+  const peerId = peerInfo.id.toB58String()
+  // attempt connection
+  try {
+    // console.log('MetaMask Mesh Testing - kitsunet dial', peerId)
+    const conn = await pify(global.node.dialProtocol).call(global.node, peerInfo, '/kitsunet/test/ebt/0.0.1')
+    console.log('MetaMask Mesh Testing - kitsunet-ebt dial success', peerId)
+    global.ebt.request(peerId, true)
+    pull(conn, global.ebtCreateStream(), conn)
+  } catch (err) {
+    console.log('MetaMask Mesh Testing - kitsunet-ebt dial failed:', peerId, err.message)
     // hangupPeer(peerInfo)
   }
 }
