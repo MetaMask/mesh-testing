@@ -89,11 +89,10 @@ function createEbt(id) {
       clocks[id] = clock
     },
     getAt: function (pair, cb) {
-      if (!store[pair.id] || !store[pair.id][pair.sequence]) {
+      if (!store[pair.id] || !store[pair.id][pair.sequence-1]) {
         cb(new Error(`not found - ${pair.id}:${pair.sequence}`))
-      }
-      else {
-        cb(null, store[pair.id][pair.sequence])
+      } else {
+        cb(null, store[pair.id][pair.sequence-1])
       }
     },
     append: append
