@@ -41241,10 +41241,8 @@ function renderGraph(messagesKey, state, actions) {
     const pubsubMessages = nodeData[messagesKey] || []
 
     const isSelected = selectedNode === node.id
-    const matchingPubsubMessage = pubsubMessages.find((m) => {
-      m.data === pubsubTarget
-    })
-    
+    const matchingPubsubMessage = pubsubMessages.find(m => m.data === pubsubTarget)
+
     // {
     //   from,
     //   data: data.toString(),
