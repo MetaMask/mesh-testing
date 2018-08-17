@@ -50,7 +50,8 @@ class Node extends Libp2p {
         relay: {
           enabled: true,
           hop: {
-            enabled: true
+            enabled: true,
+            active: true
           }
         }
       }

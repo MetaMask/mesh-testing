@@ -207,8 +207,21 @@ async function setupClient () {
   // connect to telemetry server
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
   const devMode = (!opts.prod && location.hostname === 'localhost')
+
+  await setupTelemetry(devMode, peerId, 5)
+
+  // submit network state to backend on interval
+  // this also keeps the connection alive
+  submitClientStateOnInterval({ serverAsync, node })
+
+  // schedule refresh every hour so everyone stays hot and fresh
+  restartWithDelay(randomFromRange(1 * hour, 1.5 * hour))
+}
+
+async function setupTelemetry (devMode, peerId, retries) {
   // const serverConnection = connectToTelemetryServerViaWs()
   const serverConnection = connectToTelemetryServerViaPost({ devMode })
+  let curRetries = retries
 
   const clientRpcImplementationForServer = cbifyObj({
     ping: async () => 'pong',
@@ -240,7 +253,14 @@ async function setupClient () {
   ]
 
   const rpcConnection = multiplexRpc(clientRpcImplementationForServer)
-  endOfStream(rpcConnection, (err) => console.log('rpcConnection ended', err))
+  endOfStream(rpcConnection, (err) => {
+    console.log('rpcConnection ended', err)
+    if (retries) {
+      return setupTelemetry(devMode, peerId, --curRetries)
+    }
+
+    curRetries = retries
+  })
   pump(
     serverConnection,
     rpcConnection,
@@ -256,13 +276,6 @@ async function setupClient () {
   global.serverAsync = serverAsync
   console.log('MetaMask Mesh Testing - connected to telemetry!')
   await serverAsync.setPeerId(peerId)
-
-  // submit network state to backend on interval
-  // this also keeps the connection alive
-  submitClientStateOnInterval({ serverAsync, node })
-
-  // schedule refresh every hour so everyone stays hot and fresh
-  restartWithDelay(randomFromRange(1 * hour, 1.5 * hour))
 }
 
 async function submitClientStateOnInterval ({ serverAsync, node }) {
@@ -624,7 +637,7 @@ function libp2pStatsToJson () {
   })
   return allStats
 
-  function addStatsToGlobal(accumulator, name, newStats) {
+  function addStatsToGlobal (accumulator, name, newStats) {
     const container = accumulator[name] = accumulator[name] || createEmptyStatsJson()
     container.snapshot.dataReceived += newStats.snapshot.dataReceived
     container.snapshot.dataSent += newStats.snapshot.dataSent
@@ -637,22 +650,22 @@ function libp2pStatsToJson () {
   }
 }
 
-function createEmptyStatsJson() {
+function createEmptyStatsJson () {
   return {
     snapshot: {
       dataReceived: 0,
-      dataSent: 0,
+      dataSent: 0
     },
     movingAverages: {
       dataReceived: {
         '60000': 0,
         '300000': 0,
-        '900000': 0,
+        '900000': 0
       },
       dataSent: {
         '60000': 0,
         '300000': 0,
-        '900000': 0,
+        '900000': 0
       }
     }
   }
