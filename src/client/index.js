@@ -34,7 +34,7 @@ const peerPingTimeout = 20 * sec
 const autoConnectAttemptInterval = 10 * sec
 
 // custom libp2p stats
-const customStats = {}
+const libp2pPeerStats = {}
 const statDirectionToEvent = {
   in: 'dataReceived',
   out: 'dataSent'
@@ -307,6 +307,7 @@ function startLibp2pNode (node, cb) {
     })
 
     node.on('peer:connect', (peerInfo) => {
+      updateClientStateForLibp2pPeerConnect(peerInfo)
       // console.log('MetaMask Mesh Testing - node/peer:connect', peerInfo.id.toB58String())
       peers.push(peerInfo)
       // attempt to upgrage to kitsunet connection
@@ -319,10 +320,7 @@ function startLibp2pNode (node, cb) {
       removeFromArray(peerInfo, peers)
       disconnectKitsunetPeer(peerId)
       // remove stats associated with peer
-      // delay is added so final closing stats dont re-add it immediately
-      setTimeout(() => {
-        delete customStats[peerId]
-      }, 100)
+      updateClientStateForLibp2pPeerDisconnect(peerId)
     })
 
     node.handle('/kitsunet/test/0.0.1', (protocol, conn) => {
@@ -421,6 +419,14 @@ function startLibp2pNode (node, cb) {
     autoConnectWhenLonely(node, { minPeers: 4 })
     cb()
   })
+}
+
+function updateClientStateForLibp2pPeerConnect (peerId) {
+  libp2pPeerStats[peerId] = { transports: {}, protocols: {}, mystery: createStat() }
+}
+
+function updateClientStateForLibp2pPeerDisconnect (peerId) {
+  delete libp2pPeerStats[peerId]
 }
 
 function updateClientStateForNewKitsunetPeer (peerId, value) {
@@ -589,12 +595,10 @@ function updateClientStateWithLibp2pStats (node) {
 
 function recordLibp2pStatsMessage (peerId, transport, protocol, direction, bufferLength) {
   // sanity check
-  if (!peerId) return console.log('customStats message without peerId', peerId, transport, protocol, direction, bufferLength)
+  if (!peerId) return console.log('libp2pPeerStats message without peerId', peerId, transport, protocol, direction, bufferLength)
   // setup peer stats
-  let peerStats = customStats[peerId]
-  if (!peerStats) {
-    peerStats = customStats[peerId] = { transports: {}, protocols: {}, mystery: createStat() }
-  }
+  let peerStats = libp2pPeerStats[peerId]
+  if (!peerStats) return console.log('libp2pPeerStats message for missing peer', peerId, transport, protocol, direction, bufferLength)
   // update timestamp
   peerStats.timestamp = Date.now()
   // record transport + protocol data (they come in seperately)
@@ -615,8 +619,7 @@ function recordLibp2pStatsMessage (peerId, transport, protocol, direction, buffe
 function libp2pStatsToJson () {
   const allStats = { global: { transports: {}, protocols: {}, mystery: null }, peers: {} }
   // each peer
-  Object.keys(customStats).forEach((peerId) => {
-    const peerStatsContainer = customStats[peerId]
+  Object.entries(libp2pPeerStats).forEach(([peerId, peerStatsContainer]) => {
     const peerStats = allStats.peers[peerId] = { transports: {}, protocols: {}, mystery: null }
     // mystery
     const mysteryStats = statObjToJson(peerStatsContainer.mystery)
