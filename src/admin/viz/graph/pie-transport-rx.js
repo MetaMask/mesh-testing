@@ -9,8 +9,8 @@ function renderGraph(state, actions) {
     const { networkState } = state
     const nodeData = networkState.clients[node.id]
     const nodeStats = nodeData && nodeData.stats
-    if (!nodeStats) return
-    const transports = Object.entries(nodeStats.transports || {})
+    if (!nodeStats || !nodeStats.global) return
+    const transports = Object.entries(nodeStats.global.transports || {})
     if (!transports.length) return
     const data = transports.map(([transportName, stats]) => {
       return {

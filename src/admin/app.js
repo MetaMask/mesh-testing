@@ -23,14 +23,14 @@ function startApp(opts = {}) {
 
   // view state
   const viewModes = [
-    'normal', 
-    'kitsunet', 
-    'pubsub', 
-    'multicast', 
-    'ebt', 
-    'pie(tx)', 
-    'pie(rx)', 
-    'mesh', 
+    'normal',
+    'kitsunet',
+    'pubsub',
+    'multicast',
+    'ebt',
+    'pie(tx)',
+    'pie(rx)',
+    'mesh',
     'block'
   ]
 
@@ -93,10 +93,10 @@ function startApp(opts = {}) {
       viewMode = 'ebt'
       rerender()
       sequence = sequence || 0
-      await sendToClient(nodeId, 'ebtAppend', [{ 
-        author: nodeId, 
-        sequence: ++sequence, 
-        content: ebtTarget 
+      await sendToClient(nodeId, 'ebtAppend', [{
+        author: nodeId,
+        sequence: ++sequence,
+        content: ebtTarget
       }])
     }
   }
@@ -143,7 +143,7 @@ function startApp(opts = {}) {
 
     let latestBlock = 0
     Object.keys(networkState.clients || {}).forEach((id) => {
-      if (networkState.clients[id].block && 
+      if (networkState.clients[id].block &&
         Number(networkState.clients[id].block.number) > latestBlock) {
         latestBlock = Number(networkState.clients[id].block.number)
       }
@@ -270,10 +270,10 @@ function renderSelectedNodePanel(state, actions) {
     h('div', [
 
       h(
-        'h2', 
+        'h2',
         `Latest block: ${
           selectedNodeData.block && typeof selectedNodeData.block.number !== 'undefined'
-          ? Number(selectedNodeData.block.number) 
+          ? Number(selectedNodeData.block.number)
           : 'N/A'
         }`
       ),
@@ -364,17 +364,37 @@ function renderSelectedNodePanel(state, actions) {
 
 function renderSelectedNodeStats(nodeStats, state, actions) {
   return h('div', [
-    h('h4', 'peers'),
-    renderSelectedNodePeerStats(nodeStats, state, actions),
+    renderSelectedNodeGlobalStats(nodeStats, state, actions),
+    h('div', [
+      h('h4', 'peers'),
+      renderSelectedNodePeerStats(nodeStats, state, actions),
+    ])
     // renderSelectedNodeTransportStats(nodeStats),
     // renderSelectedNodeProtocolStats(nodeStats),
   ])
 }
 
+function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
+  // global stats
+  if (nodeStats.global) {
+    const transports = Object.entries(nodeStats.global.transports)
+    const protocols = Object.entries(nodeStats.global.protocols)
+    return (
+      h('div', [
+        renderNodePeerTransportStats(transports),
+        renderNodePeerProtocolStats(protocols),
+      ])
+    )
+  } else {
+    return (
+      'no global stats'
+    )
+  }
+}
+
 function renderSelectedNodePeerStats(nodeStats, state, actions) {
-  // temporary guard against old stats format
-  if (nodeStats.global) return 'old stats format'
-  const peers = Object.entries(nodeStats)
+  // peer stats
+  const peers = Object.entries(nodeStats).filter(peerId !== 'global')
   return peers.map(([peerId, peerData]) => {
     const transports = Object.entries(peerData.transports)
     const protocols = Object.entries(peerData.protocols)
