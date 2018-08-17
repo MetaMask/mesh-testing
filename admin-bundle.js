@@ -40221,14 +40221,14 @@ function startApp(opts = {}) {
 
   // view state
   const viewModes = [
-    'normal', 
-    'kitsunet', 
-    'pubsub', 
-    'multicast', 
-    'ebt', 
-    'pie(tx)', 
-    'pie(rx)', 
-    'mesh', 
+    'normal',
+    'kitsunet',
+    'pubsub',
+    'multicast',
+    'ebt',
+    'pie(tx)',
+    'pie(rx)',
+    'mesh',
     'block'
   ]
 
@@ -40291,10 +40291,10 @@ function startApp(opts = {}) {
       viewMode = 'ebt'
       rerender()
       sequence = sequence || 0
-      await sendToClient(nodeId, 'ebtAppend', [{ 
-        author: nodeId, 
-        sequence: ++sequence, 
-        content: ebtTarget 
+      await sendToClient(nodeId, 'ebtAppend', [{
+        author: nodeId,
+        sequence: ++sequence,
+        content: ebtTarget
       }])
     }
   }
@@ -40341,7 +40341,7 @@ function startApp(opts = {}) {
 
     let latestBlock = 0
     Object.keys(networkState.clients || {}).forEach((id) => {
-      if (networkState.clients[id].block && 
+      if (networkState.clients[id].block &&
         Number(networkState.clients[id].block.number) > latestBlock) {
         latestBlock = Number(networkState.clients[id].block.number)
       }
@@ -40468,10 +40468,10 @@ function renderSelectedNodePanel(state, actions) {
     h('div', [
 
       h(
-        'h2', 
+        'h2',
         `Latest block: ${
           selectedNodeData.block && typeof selectedNodeData.block.number !== 'undefined'
-          ? Number(selectedNodeData.block.number) 
+          ? Number(selectedNodeData.block.number)
           : 'N/A'
         }`
       ),
@@ -40562,17 +40562,37 @@ function renderSelectedNodePanel(state, actions) {
 
 function renderSelectedNodeStats(nodeStats, state, actions) {
   return h('div', [
-    h('h4', 'peers'),
-    renderSelectedNodePeerStats(nodeStats, state, actions),
+    renderSelectedNodeGlobalStats(nodeStats, state, actions),
+    h('div', [
+      h('h4', 'peers'),
+      renderSelectedNodePeerStats(nodeStats, state, actions),
+    ])
     // renderSelectedNodeTransportStats(nodeStats),
     // renderSelectedNodeProtocolStats(nodeStats),
   ])
 }
 
+function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
+  // global stats
+  if (nodeStats.global) {
+    const transports = Object.entries(nodeStats.global.transports)
+    const protocols = Object.entries(nodeStats.global.protocols)
+    return (
+      h('div', [
+        renderNodePeerTransportStats(transports),
+        renderNodePeerProtocolStats(protocols),
+      ])
+    )
+  } else {
+    return (
+      'no global stats'
+    )
+  }
+}
+
 function renderSelectedNodePeerStats(nodeStats, state, actions) {
-  // temporary guard against old stats format
-  if (nodeStats.global) return 'old stats format'
-  const peers = Object.entries(nodeStats)
+  // peer stats
+  const peers = Object.entries(nodeStats).filter(peerId !== 'global')
   return peers.map(([peerId, peerData]) => {
     const transports = Object.entries(peerData.transports)
     const protocols = Object.entries(peerData.protocols)
@@ -40943,7 +40963,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/home/user/Development/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/home/user/Development/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/home/user/Development/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/home/user/Development/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/home/user/Development/mesh-testing/node_modules/virtual-dom/patch.js"}],"/home/user/Development/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1534538450 || 'development')
+const buildVersion = String(1534540974 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -41339,8 +41359,8 @@ function renderGraph(state, actions) {
     const { networkState } = state
     const nodeData = networkState.clients[node.id]
     const nodeStats = nodeData && nodeData.stats
-    if (!nodeStats) return
-    const transports = Object.entries(nodeStats.transports || {})
+    if (!nodeStats || !nodeStats.global) return
+    const transports = Object.entries(nodeStats.global.transports || {})
     if (!transports.length) return
     const data = transports.map(([transportName, stats]) => {
       return {
@@ -41365,8 +41385,8 @@ function renderGraph(state, actions) {
     const { networkState } = state
     const nodeData = networkState.clients[node.id]
     const nodeStats = nodeData && nodeData.stats
-    if (!nodeStats) return
-    const transports = Object.entries(nodeStats.transports || {})
+    if (!nodeStats || !nodeStats.global) return
+    const transports = Object.entries(nodeStats.global.transports || {})
     if (!transports.length) return
     const data = transports.map(([transportName, stats]) => {
       return {
