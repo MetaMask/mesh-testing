@@ -35,7 +35,7 @@ class Node extends Libp2p {
           SECIO
         ],
         peerDiscovery: [
-          Bootstrap,
+          // Bootstrap,
           wstar.discovery
         ]
       },
@@ -46,13 +46,13 @@ class Node extends Libp2p {
             enabled: true,
             list: bootstrapers
           }
-        },
-        relay: {
-          enabled: true,
-          hop: {
-            enabled: true
-          }
         }
+        // relay: {
+        //   enabled: true,
+        //   hop: {
+        //     enabled: true
+        //   }
+        // }
       }
     }
 
