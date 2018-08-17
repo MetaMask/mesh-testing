@@ -600,21 +600,62 @@ function recordLibp2pStatsMessage (peerId, transport, protocol, direction, buffe
 }
 
 function libp2pStatsToJson () {
-  const allStats = {}
+  const allStats = { global: { transports: {}, protocols: {}, mystery: null } }
   // each peer
   Object.keys(customStats).forEach((peerId) => {
     const peerStatsContainer = customStats[peerId]
-    const peerStats = allStats[peerId] = { transports: {}, protocols: {}, mystery: statObjToJson(peerStatsContainer.mystery) }
+    const peerStats = allStats[peerId] = { transports: {}, protocols: {}, mystery: null }
+    // mystery
+    const mysteryStats = statObjToJson(peerStatsContainer.mystery)
+    addStatsToGlobal(allStats.global, 'mystery', mysteryStats)
+    peerStats.mystery = mysteryStats
     // each transport
-    Object.keys(peerStatsContainer.transports).forEach((transport) => {
-      peerStats.transports[transport] = statObjToJson(peerStatsContainer.transports[transport])
+    Object.keys(peerStatsContainer.transports).forEach((transportName) => {
+      const transportStats = statObjToJson(peerStatsContainer.transports[transportName])
+      addStatsToGlobal(allStats.global.transports, transportName, transportStats)
+      peerStats.transports[transportName] = transportStats
     })
     // each protocol
-    Object.keys(peerStatsContainer.protocols).forEach((protocol) => {
-      peerStats.protocols[protocol] = statObjToJson(peerStatsContainer.protocols[protocol])
+    Object.keys(peerStatsContainer.protocols).forEach((protocolName) => {
+      const protocolStats = statObjToJson(peerStatsContainer.protocols[protocolName])
+      addStatsToGlobal(allStats.global.protocols, protocolName, protocolStats)
+      peerStats.protocols[protocolName] = protocolStats
     })
   })
   return allStats
+
+  function addStatsToGlobal(accumulator, name, newStats) {
+    const container = accumulator[name] = accumulator[name] || createEmptyStatsJson()
+    container.snapshot.dataReceived += newStats.snapshot.dataReceived
+    container.snapshot.dataSent += newStats.snapshot.dataSent
+    container.movingAverages.dataReceived['60000'] += newStats.movingAverages.dataReceived['60000']
+    container.movingAverages.dataReceived['300000'] += newStats.movingAverages.dataReceived['300000']
+    container.movingAverages.dataReceived['900000'] += newStats.movingAverages.dataReceived['900000']
+    container.movingAverages.dataSent['60000'] += newStats.movingAverages.dataSent['60000']
+    container.movingAverages.dataSent['300000'] += newStats.movingAverages.dataSent['300000']
+    container.movingAverages.dataSent['900000'] += newStats.movingAverages.dataSent['900000']
+  }
+}
+
+function createEmptyStatsJson() {
+  return {
+    snapshot: {
+      dataReceived: 0,
+      dataSent: 0,
+    },
+    movingAverages: {
+      dataReceived: {
+        '60000': 0,
+        '300000': 0,
+        '900000': 0,
+      },
+      dataSent: {
+        '60000': 0,
+        '300000': 0,
+        '900000': 0,
+      }
+    }
+  }
 }
 
 function statObjToJson (statsObj) {
