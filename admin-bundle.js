@@ -40592,7 +40592,7 @@ function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
 
 function renderSelectedNodePeerStats(nodeStats, state, actions) {
   // peer stats
-  const peers = Object.entries(nodeStats).filter(peerId => peerId !== 'global')
+  const peers = Object.entries(nodeStats.peers || {})
   return peers.map(([peerId, peerData]) => {
     const transports = Object.entries(peerData.transports)
     const protocols = Object.entries(peerData.protocols)
@@ -40888,19 +40888,20 @@ function buildGraph(networkState, networkFilter) {
   })
 
   // then links
-  Object.keys(networkState).forEach((clientId) => {
-    const clientData = networkState[clientId].stats
-    if (typeof clientData !== 'object') return
-    Object.keys(clientData).forEach((peerId) => {
-      const peerData = clientData[peerId]
+  Object.entries(networkState).forEach(([clientId, clientData]) => {
+    const clientStats = clientData.stats || {}
+    const peers = clientStats.peers
+    if (!peers) return
+
+    Object.entries(peers).forEach(([peerId, peerData]) => {
       // if connected to a missing node, create missing node
       const alreadyExists = !!graph.nodes.find(item => item.id === peerId)
       if (!alreadyExists) {
         const newNode = { id: peerId, type: 'missing' }
         graph.nodes.push(newNode)
       }
-      // abort if network filter miss
       const protocolNames = Object.keys(peerData.protocols)
+      // abort if network filter miss
       if (networkFilter && !protocolNames.some(name => name.includes(networkFilter))) return
       // const rtt = peerData[peerId].ping
       // const didTimeout = rtt === 'timeout'
@@ -40963,7 +40964,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/home/user/Development/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/home/user/Development/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/home/user/Development/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/home/user/Development/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/home/user/Development/mesh-testing/node_modules/virtual-dom/patch.js"}],"/home/user/Development/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1534542657 || 'development')
+const buildVersion = String(1534544839 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
