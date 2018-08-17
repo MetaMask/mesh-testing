@@ -394,7 +394,7 @@ function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
 
 function renderSelectedNodePeerStats(nodeStats, state, actions) {
   // peer stats
-  const peers = Object.entries(nodeStats).filter(peerId !== 'global')
+  const peers = Object.entries(nodeStats).filter(peerId => peerId !== 'global')
   return peers.map(([peerId, peerData]) => {
     const transports = Object.entries(peerData.transports)
     const protocols = Object.entries(peerData.protocols)
