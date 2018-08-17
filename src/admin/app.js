@@ -394,7 +394,7 @@ function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
 
 function renderSelectedNodePeerStats(nodeStats, state, actions) {
   // peer stats
-  const peers = Object.entries(nodeStats).filter(peerId => peerId !== 'global')
+  const peers = Object.entries(nodeStats.peers || {})
   return peers.map(([peerId, peerData]) => {
     const transports = Object.entries(peerData.transports)
     const protocols = Object.entries(peerData.protocols)
@@ -690,19 +690,20 @@ function buildGraph(networkState, networkFilter) {
   })
 
   // then links
-  Object.keys(networkState).forEach((clientId) => {
-    const clientData = networkState[clientId].stats
-    if (typeof clientData !== 'object') return
-    Object.keys(clientData).forEach((peerId) => {
-      const peerData = clientData[peerId]
+  Object.entries(networkState).forEach(([clientId, clientData]) => {
+    const clientStats = clientData.stats || {}
+    const peers = clientStats.peers
+    if (!peers) return
+
+    Object.entries(peers).forEach(([peerId, peerData]) => {
       // if connected to a missing node, create missing node
       const alreadyExists = !!graph.nodes.find(item => item.id === peerId)
       if (!alreadyExists) {
         const newNode = { id: peerId, type: 'missing' }
         graph.nodes.push(newNode)
       }
-      // abort if network filter miss
       const protocolNames = Object.keys(peerData.protocols)
+      // abort if network filter miss
       if (networkFilter && !protocolNames.some(name => name.includes(networkFilter))) return
       // const rtt = peerData[peerId].ping
       // const didTimeout = rtt === 'timeout'

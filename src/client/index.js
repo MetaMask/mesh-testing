@@ -600,11 +600,11 @@ function recordLibp2pStatsMessage (peerId, transport, protocol, direction, buffe
 }
 
 function libp2pStatsToJson () {
-  const allStats = { global: { transports: {}, protocols: {}, mystery: null } }
+  const allStats = { global: { transports: {}, protocols: {}, mystery: null }, peers: {} }
   // each peer
   Object.keys(customStats).forEach((peerId) => {
     const peerStatsContainer = customStats[peerId]
-    const peerStats = allStats[peerId] = { transports: {}, protocols: {}, mystery: null }
+    const peerStats = allStats.peers[peerId] = { transports: {}, protocols: {}, mystery: null }
     // mystery
     const mysteryStats = statObjToJson(peerStatsContainer.mystery)
     addStatsToGlobal(allStats.global, 'mystery', mysteryStats)
