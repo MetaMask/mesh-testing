@@ -13,6 +13,7 @@
     "cors": "^2.8.4",
     "d3": "^4.13.0",
     "end-of-stream": "^1.4.1",
+    "envify": "^4.1.0",
     "epidemic-broadcast-trees": "^6.3.3",
     "eth-block-tracker": "^4.0.1",
     "eth-json-rpc-ipfs": "^2.0.0",
