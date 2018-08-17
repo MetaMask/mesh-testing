@@ -599,7 +599,7 @@ function recordLibp2pStatsMessage (peerId, transport, protocol, direction, buffe
   if (!peerId) return console.log('libp2pPeerStats message without peerId', peerId, transport, protocol, direction, bufferLength)
   // setup peer stats
   let peerStats = libp2pPeerStats[peerId]
-  if (!peerStats) return console.log('libp2pPeerStats message for missing peer', peerId, transport, protocol, direction, bufferLength)
+  if (!peerStats) return
   // update timestamp
   peerStats.timestamp = Date.now()
   // record transport + protocol data (they come in seperately)
