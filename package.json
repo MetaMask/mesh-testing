@@ -74,7 +74,8 @@
     "build": "npm run build-client && npm run build-admin",
     "build-client": "browserify src/client/index.js --full-paths --debug | exorcist client-bundle.js.map > client-bundle.js",
     "build-admin": "browserify src/admin/index.js --full-paths --debug | exorcist admin-bundle.js.map > admin-bundle.js",
-    "server": "node --inspect=0.0.0.0:9221 src/server/server.js",
+    "server": "node src/server/server.js",
+    "server-debug": "node --inspect=0.0.0.0:9221 src/server/server.js",
     "postinstall": "patch-package"
   },
   "repository": {
