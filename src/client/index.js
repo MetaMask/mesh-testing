@@ -8,9 +8,9 @@ const EBT = require('epidemic-broadcast-trees')
 const toPull = require('push-stream-to-pull-stream')
 const pull = require('pull-stream')
 
-const { 
-  connectToTelemetryServerViaWs, 
-  connectToTelemetryServerViaPost 
+const {
+  connectToTelemetryServerViaWs,
+  connectToTelemetryServerViaPost
 } = require('../network/telemetry')
 const { pingClientWithTimeout } = require('../network/clientTimeout')
 const multiplexRpc = require('../network/multiplexRpc')
@@ -46,11 +46,11 @@ const discoveredPeers = []
 global.discoveredPeers = discoveredPeers
 const maxDiscovered = 25
 
-const clientState = { 
-  stats: {}, 
-  peers: {}, 
-  pubsub: [], 
-  multicast: [], 
+const clientState = {
+  stats: {},
+  peers: {},
+  pubsub: [],
+  multicast: [],
   ebt: [],
   ebtState: {},
   block: {},
@@ -63,15 +63,13 @@ setupClient().catch(console.error)
 
 const blocks = new Map()
 
-function createEbt(id) {
+function createEbt (id) {
   const store = {}
   const clocks = {}
 
-  function append(msg, cb) {
+  function append (msg, cb) {
     store[msg.author] = store[msg.author] || []
-    if (msg.sequence - 1 != store[msg.author].length)
-      cb(new Error('out of order'))
-    else {
+    if (msg.sequence - 1 != store[msg.author].length) { cb(new Error('out of order')) } else {
       store[msg.author].push(msg)
       p.onAppend(msg)
       cb(null, msg)
@@ -81,18 +79,18 @@ function createEbt(id) {
   var p = EBT({
     id: id,
     getClock: function (id, cb) {
-      //load the peer clock for id.
+      // load the peer clock for id.
       cb(null, clocks[id] || {})
     },
     setClock: function (id, clock) {
-      //set clock doesn't have take a cb, but it's okay to be async.
+      // set clock doesn't have take a cb, but it's okay to be async.
       clocks[id] = clock
     },
     getAt: function (pair, cb) {
-      if (!store[pair.id] || !store[pair.id][pair.sequence-1]) {
+      if (!store[pair.id] || !store[pair.id][pair.sequence - 1]) {
         cb(new Error(`not found - ${pair.id}:${pair.sequence}`))
       } else {
-        cb(null, store[pair.id][pair.sequence-1])
+        cb(null, store[pair.id][pair.sequence - 1])
       }
     },
     append: append
@@ -109,7 +107,7 @@ async function setupClient () {
   const peerId = node.idStr
   // start libp2p node
   await pify(startLibp2pNode)(node)
-  console.log('MetaMask Mesh Testing - libp2p node started')
+  console.log(`MetaMask Mesh Testing - libp2p node started with id ${peerId}`)
 
   global.ebt = createEbt(peerId)
   global.ebt.request(peerId, true)
@@ -129,10 +127,10 @@ async function setupClient () {
   setInterval(() => {
     // console.dir(global.ebt)
     clientState.ebt = Array
-    .from(new Set(Object.values(global.ebt.store).reduce(
-      (accumulator, currentValue) => accumulator.concat(currentValue),
-      []
-    ).map((m) => m.content)))
+      .from(new Set(Object.values(global.ebt.store).reduce(
+        (accumulator, currentValue) => accumulator.concat(currentValue),
+        []
+      ).map((m) => m.content)))
   }, 1000)
 
   global.pubsubPublish = (message) => {
@@ -168,10 +166,9 @@ async function setupClient () {
 
   global.blockPublish = (blockHeader) => {
     node.multicast.publish('block-header', blockHeader, -1, (err) => {
-        if (err) {
-          console.error(err)
-          return
-        }
+      if (err) {
+        console.error(err)
+      }
     })
   }
 
@@ -234,7 +231,7 @@ async function setupClient () {
     'ping',
     'setPeerId',
     'submitNetworkState',
-    'disconnect',
+    'disconnect'
   ]
 
   const rpcConnection = multiplexRpc(clientRpcImplementationForServer)
@@ -263,14 +260,14 @@ async function setupClient () {
   restartWithDelay(randomFromRange(1 * hour, 1.5 * hour))
 }
 
-async function submitClientStateOnInterval({ serverAsync, node }){
+async function submitClientStateOnInterval ({ serverAsync, node }) {
   while (true) {
     await submitNetworkState({ serverAsync, node })
     await timeout(clientStateSubmitInterval)
   }
 }
 
-async function submitNetworkState({ serverAsync, node }) {
+async function submitNetworkState ({ serverAsync, node }) {
   updateClientStateWithLibp2pStats()
   await serverAsync.submitNetworkState(clientState)
 }
@@ -351,7 +348,7 @@ function startLibp2pNode (node, cb) {
         from,
         data: data.toString(),
         seqno: seqno.toString(),
-        topicIDs,
+        topicIDs
       })
       // publish new data to server
       if (serverAsync) submitNetworkState({ node, serverAsync })
@@ -372,7 +369,7 @@ function startLibp2pNode (node, cb) {
           data: data.toString(),
           seqno: seqno.toString(),
           hops,
-          topicIDs,
+          topicIDs
         })
         // publish new data to server
         if (serverAsync) submitNetworkState({ node, serverAsync })
@@ -442,7 +439,7 @@ async function connectKitsunet (peerInfo, conn) {
   updateClientStateForNewKitsunetPeer(peerId, { status: 'connecting' })
 
   const kitsunetRpcImplementationForPeer = cbifyObj({
-    ping: async () => 'pong',
+    ping: async () => 'pong'
   })
 
   const kistunetRpcInterfaceForPeer = [
@@ -471,7 +468,7 @@ async function connectKitsunet (peerInfo, conn) {
 }
 
 async function keepPinging (peer) {
-  while (!!clientState.peers[peer.id]) {
+  while (clientState.peers[peer.id]) {
     const ping = await pingClientWithTimeout({ client: peer, disconnectClient, pingTimeout: peerPingTimeout })
     updateClientStateForKitsunetPeer(peer.id, { ping })
     await timeout(peerPingInterval)
@@ -546,7 +543,7 @@ async function attemptDialEbt (peerInfo) {
     const stream = toPull(global.ebt.createStream(peerId))
     pull(
       stream,
-      pull.map(m => { 
+      pull.map(m => {
         return Buffer.from(JSON.stringify(m))
       }),
       conn,
@@ -568,11 +565,11 @@ function hangupPeer (peerInfo) {
   })
 }
 
-function updateClientStateWithLibp2pStats(node) {
+function updateClientStateWithLibp2pStats (node) {
   clientState.stats = libp2pStatsToJson()
 }
 
-function recordLibp2pStatsMessage(peerId, transport, protocol, direction, bufferLength) {
+function recordLibp2pStatsMessage (peerId, transport, protocol, direction, bufferLength) {
   // sanity check
   if (!peerId) return console.log('customStats message without peerId', peerId, transport, protocol, direction, bufferLength)
   // setup peer stats
@@ -619,19 +616,19 @@ function statObjToJson (statsObj) {
   return {
     snapshot: {
       dataReceived: Number.parseInt(statsObj.snapshot.dataReceived.toString()),
-      dataSent: Number.parseInt(statsObj.snapshot.dataSent.toString()),
+      dataSent: Number.parseInt(statsObj.snapshot.dataSent.toString())
     },
     movingAverages: {
       dataReceived: {
         '60000': statsObj.movingAverages.dataReceived['60000'].movingAverage(),
         '300000': statsObj.movingAverages.dataReceived['300000'].movingAverage(),
-        '900000': statsObj.movingAverages.dataReceived['900000'].movingAverage(),
+        '900000': statsObj.movingAverages.dataReceived['900000'].movingAverage()
       },
       dataSent: {
         '60000': statsObj.movingAverages.dataSent['60000'].movingAverage(),
         '300000': statsObj.movingAverages.dataSent['300000'].movingAverage(),
-        '900000': statsObj.movingAverages.dataSent['900000'].movingAverage(),
-      },
+        '900000': statsObj.movingAverages.dataSent['900000'].movingAverage()
+      }
     }
   }
 }
@@ -644,7 +641,7 @@ function createStat () {
       60 * 1000, // 1 minute
       5 * 60 * 1000, // 5 minutes
       15 * 60 * 1000 // 15 minutes
-    ],
+    ]
   })
   stat.start()
   return stat
