@@ -221,7 +221,6 @@ async function setupClient () {
 async function setupTelemetry (devMode, peerId, retries) {
   // const serverConnection = connectToTelemetryServerViaWs()
   const serverConnection = connectToTelemetryServerViaPost({ devMode })
-  let curRetries = retries
 
   const clientRpcImplementationForServer = cbifyObj({
     ping: async () => 'pong',
@@ -253,13 +252,11 @@ async function setupTelemetry (devMode, peerId, retries) {
   ]
 
   const rpcConnection = multiplexRpc(clientRpcImplementationForServer)
-  endOfStream(rpcConnection, (err) => {
+  endOfStream(rpcConnection, async (err) => {
     console.log('rpcConnection ended', err)
     if (retries) {
-      return setupTelemetry(devMode, peerId, --curRetries)
+      await setupTelemetry(devMode, peerId, --retries)
     }
-
-    curRetries = retries
   })
   pump(
     serverConnection,
