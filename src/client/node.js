@@ -58,6 +58,28 @@ class Node extends Libp2p {
 
     super(defaultsDeep(_options, defaults))
   }
+
+  start (callback) {
+    super.start((err) => {
+      if (err) {
+        return callback(err)
+      }
+
+      this.on('peer:discovery', (peerInfo) => {
+        this.peerBook.put(peerInfo)
+        this.dial(peerInfo, () => { })
+      })
+
+      this.on('peer:connect', (peerInfo) => {
+        this.peerBook.put(peerInfo)
+      })
+
+      this.peerInfo.multiaddrs.forEach((ma) => {
+        console.log('Swarm listening on', ma.toString())
+      })
+    })
+    callback()
+  }
 }
 
 module.exports = Node
