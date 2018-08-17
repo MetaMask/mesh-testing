@@ -35,7 +35,7 @@ class Node extends Libp2p {
           SECIO
         ],
         peerDiscovery: [
-          Bootstrap,
+          // Bootstrap,
           wstar.discovery
         ]
       },
