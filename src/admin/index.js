@@ -1,11 +1,16 @@
+// setup error reporting before anything else
+const buildVersion = process.env.BUILD_VERSION || 'development'
+console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
+Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
+
 const pump = require('pump')
 const qs = require('qs')
 const pify = require('pify')
 const ObservableStore = require('obs-store')
 const asStream = require('obs-store/lib/asStream')
-const { 
-  connectToTelemetryServerViaWs, 
-  connectToTelemetryServerViaPost 
+const {
+  connectToTelemetryServerViaWs,
+  connectToTelemetryServerViaPost
 } = require('../network/telemetry')
 const startAdminApp = require('./app')
 const multiplexRpc = require('../network/multiplexRpc')
