@@ -1,5 +1,5 @@
 // setup error reporting before anything else
-const buildVersion = process.env.BUILD_VERSION || 'development'
+const buildVersion = String(process.env.BUILD_VERSION) || 'development'
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 

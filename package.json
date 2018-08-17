@@ -71,9 +71,9 @@
   },
   "scripts": {
     "start": "beefy src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
-    "build": "BUILD_VERSION=$(date +%s); echo \"building $BUILD_VERSION\" && npm run build-client && npm run build-admin",
-    "build-client": "browserify src/client/index.js --full-paths --debug -t [ envify --VERSION $BUILD_VERSION  ] | exorcist client-bundle.js.map > client-bundle.js",
-    "build-admin": "browserify src/admin/index.js --full-paths --debug -t [ envify --VERSION $BUILD_VERSION  ] | exorcist admin-bundle.js.map > admin-bundle.js",
+    "build": "date +%s > ./BUILD_VERSION; echo \"building $(cat BUILD_VERSION)\" && npm run build-client && npm run build-admin",
+    "build-client": "browserify src/client/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist client-bundle.js.map > client-bundle.js",
+    "build-admin": "browserify src/admin/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist admin-bundle.js.map > admin-bundle.js",
     "server": "node src/server/server.js",
     "server-debug": "node --inspect=0.0.0.0:9221 src/server/server.js",
     "postinstall": "patch-package"
