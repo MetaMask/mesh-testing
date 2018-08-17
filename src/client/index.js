@@ -221,6 +221,7 @@ async function setupClient () {
 async function setupTelemetry (devMode, peerId, retries) {
   // const serverConnection = connectToTelemetryServerViaWs()
   const serverConnection = connectToTelemetryServerViaPost({ devMode })
+  let curRetries = retries
 
   const clientRpcImplementationForServer = cbifyObj({
     ping: async () => 'pong',
@@ -255,8 +256,10 @@ async function setupTelemetry (devMode, peerId, retries) {
   endOfStream(rpcConnection, (err) => {
     console.log('rpcConnection ended', err)
     if (retries) {
-      setupTelemetry(devMode, peerId, --retries)
+      return setupTelemetry(devMode, peerId, --curRetries)
     }
+
+    curRetries = retries
   })
   pump(
     serverConnection,
@@ -634,7 +637,7 @@ function libp2pStatsToJson () {
   })
   return allStats
 
-  function addStatsToGlobal(accumulator, name, newStats) {
+  function addStatsToGlobal (accumulator, name, newStats) {
     const container = accumulator[name] = accumulator[name] || createEmptyStatsJson()
     container.snapshot.dataReceived += newStats.snapshot.dataReceived
     container.snapshot.dataSent += newStats.snapshot.dataSent
@@ -647,22 +650,22 @@ function libp2pStatsToJson () {
   }
 }
 
-function createEmptyStatsJson() {
+function createEmptyStatsJson () {
   return {
     snapshot: {
       dataReceived: 0,
-      dataSent: 0,
+      dataSent: 0
     },
     movingAverages: {
       dataReceived: {
         '60000': 0,
         '300000': 0,
-        '900000': 0,
+        '900000': 0
       },
       dataSent: {
         '60000': 0,
         '300000': 0,
-        '900000': 0,
+        '900000': 0
       }
     }
   }
