@@ -264,6 +264,10 @@ async function setupTelemetry (devMode, peerId, retries) {
     serverConnection,
     (err) => {
       console.log('server rpcConnection disconnect', err)
+      // throw error on fresh stack so it is not accidently caught anywhere
+      setTimeout(() => {
+        throw err
+      })
     }
   )
 
