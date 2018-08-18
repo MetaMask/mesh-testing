@@ -308,7 +308,8 @@ function startLibp2pNode (node, cb) {
     })
 
     node.on('peer:connect', (peerInfo) => {
-      updateClientStateForLibp2pPeerConnect(peerInfo)
+      const peerId = peerInfo.id.toB58String()
+      updateClientStateForLibp2pPeerConnect(peerId)
       // console.log('MetaMask Mesh Testing - node/peer:connect', peerInfo.id.toB58String())
       peers.push(peerInfo)
       // attempt to upgrage to kitsunet connection
