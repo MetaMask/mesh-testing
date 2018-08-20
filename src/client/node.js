@@ -42,7 +42,7 @@ class Node extends Libp2p {
       config: {
         peerDiscovery: {
           bootstrap: {
-            interval: 2000,
+            interval: 10000,
             enabled: true,
             list: bootstrapers
           }
