@@ -2,11 +2,11 @@ const timeout = require('../util/timeout')
 
 module.exports = { pingAllClientsOnInterval, pingClientWithTimeout }
 
-async function pingAllClientsOnInterval({
+async function pingAllClientsOnInterval ({
   clients,
   disconnectClient,
   heartBeatInterval,
-  pingTimeout,
+  pingTimeout
 }) {
   while (true) {
     try {
@@ -18,22 +18,21 @@ async function pingAllClientsOnInterval({
   }
 
   // poll for connection status
-  async function pingClientsWithTimeout() {
+  async function pingClientsWithTimeout () {
     // try all clients in sync
     await Promise.all(clients.map(async (client) => {
-      return await pingClientWithTimeout({ client, disconnectClient, pingTimeout })
+      return pingClientWithTimeout({ client, disconnectClient, pingTimeout })
     }))
   }
-
 }
 
-async function pingClientWithTimeout({ client, disconnectClient, pingTimeout }) {
+async function pingClientWithTimeout ({ client, disconnectClient, pingTimeout }) {
   // mark client as not responded yet
   let heardPing = false
 
   // race against ping response or timeout
   // console.log('timeout check - start')
-  return await Promise.race([
+  return Promise.race([
     // await ping response
     (async () => {
       const start = Date.now()
@@ -50,6 +49,6 @@ async function pingClientWithTimeout({ client, disconnectClient, pingTimeout }) 
       if (heardPing) return
       // console.log('timeout check - failed', client.peerId)
       disconnectClient(client)
-    })(),
+    })()
   ])
 }

@@ -18,7 +18,7 @@ const graphHeight = 600
 
 module.exports = startApp
 
-function startApp(opts = {}) {
+function startApp (opts = {}) {
   const { store } = opts
 
   // view state
@@ -35,12 +35,12 @@ function startApp(opts = {}) {
   ]
 
   let viewMode = viewModes[0]
-  let selectedNode = undefined
-  let pubsubTarget = undefined
-  let ebtTarget = undefined
+  let selectedNode
+  let pubsubTarget
+  let ebtTarget
   let currentGraph = {
     nodes: [],
-    links: [],
+    links: []
   }
 
   // for debugging
@@ -118,7 +118,7 @@ function startApp(opts = {}) {
     // merge state
     const clientData = networkState.clients
     let networkFilter
-    switch(viewMode) {
+    switch (viewMode) {
       case 'kitsunet':
         networkFilter = 'kitsunet'
         break
@@ -138,7 +138,7 @@ function startApp(opts = {}) {
   }
 
   // mix in local graph over store state
-  function getState() {
+  function getState () {
     const networkState = store.getState()
 
     let latestBlock = 0
@@ -158,8 +158,8 @@ function startApp(opts = {}) {
         ebtTarget,
         networkState,
         graph: currentGraph,
-        latestBlock,
-      },
+        latestBlock
+      }
     )
   }
 
@@ -172,13 +172,13 @@ function startApp(opts = {}) {
     console.log(`END sending to "${nodeId}" "${method}" ${args} - ${result} ${duration}ms`)
   }
 
-  function rerender() {
+  function rerender () {
     const state = getState()
     updateDom(render(state, actions))
   }
 }
 
-function render(state, actions) {
+function render (state, actions) {
   const { selectedNode } = state
   return (
 
@@ -190,15 +190,15 @@ function render(state, actions) {
         h('div.main', [
           renderViewModeButons(state, actions),
           renderNodeSelect(state, actions),
-          renderGraph(state, actions),
+          renderGraph(state, actions)
         ]),
 
         h('div.sidebar', [
 
           renderGlobalPanel(state, actions),
-          selectedNode && renderSelectedNodePanel(state, actions),
+          selectedNode && renderSelectedNodePanel(state, actions)
 
-        ]),
+        ])
       ])
 
     ])
@@ -206,22 +206,22 @@ function render(state, actions) {
   )
 }
 
-function renderViewModeButons(state, actions) {
+function renderViewModeButons (state, actions) {
   return h('div', state.viewModes.map((mode) => h('button', {
-    onclick: () => actions.selectViewMode(mode),
+    onclick: () => actions.selectViewMode(mode)
   }, mode)))
 }
 
-function renderNodeSelect(state, actions) {
+function renderNodeSelect (state, actions) {
   return h('input', {
     placeholder: 'nodeId to select',
-    oninput: (event) => actions.selectNode(event.target.value),
+    oninput: (event) => actions.selectNode(event.target.value)
   })
 }
 
-function renderGraph(state, actions) {
+function renderGraph (state, actions) {
   const { viewMode } = state
-  switch(viewMode) {
+  switch (viewMode) {
     case 'normal': return renderGraphNormal(state, actions)
     case 'kitsunet': return renderGraphNormal(state, actions)
     case 'pie(tx)': return renderGraphPieTransportTx(state, actions)
@@ -234,7 +234,7 @@ function renderGraph(state, actions) {
   }
 }
 
-function renderGlobalPanel(state, actions) {
+function renderGlobalPanel (state, actions) {
   const { graph } = state
   return (
 
@@ -244,7 +244,7 @@ function renderGlobalPanel(state, actions) {
 
       h('div', [
         h('.app-info-count', `nodes: ${graph.nodes.length}`),
-        h('.app-info-count', `links: ${graph.links.length}`),
+        h('.app-info-count', `links: ${graph.links.length}`)
       ]),
 
       h('button', {
@@ -252,14 +252,14 @@ function renderGlobalPanel(state, actions) {
       }, 'restart all (5-10s delay)'),
       h('button', {
         onclick: () => actions.restartAllLongDelay()
-      }, 'restart all (2-10m delay)'),
+      }, 'restart all (2-10m delay)')
 
     ])
 
   )
 }
 
-function renderSelectedNodePanel(state, actions) {
+function renderSelectedNodePanel (state, actions) {
   const { selectedNode, networkState } = state
   const selectedNodeData = networkState.clients[selectedNode] || { ebtState: {} }
   const selectedNodePeers = selectedNodeData.peers
@@ -273,48 +273,48 @@ function renderSelectedNodePanel(state, actions) {
         'h2',
         `Latest block: ${
           selectedNodeData.block && typeof selectedNodeData.block.number !== 'undefined'
-          ? Number(selectedNodeData.block.number)
-          : 'N/A'
+            ? Number(selectedNodeData.block.number)
+            : 'N/A'
         }`
       ),
 
       h('h2', 'selected node'),
 
       h('.app-selected-node', [
-        `id: ${shortId}`,
+        `id: ${shortId}`
       ]),
 
       h('button', {
-        onclick: () => actions.pingNode(selectedNode),
+        onclick: () => actions.pingNode(selectedNode)
       }, 'ping'),
       h('button', {
-        onclick: () => actions.sendPubsub(selectedNode),
+        onclick: () => actions.sendPubsub(selectedNode)
       }, 'pubsub'),
       h('button', {
-        onclick: () => actions.sendMulticast(selectedNode, 1),
+        onclick: () => actions.sendMulticast(selectedNode, 1)
       }, 'multicast 1'),
       h('button', {
-        onclick: () => actions.sendMulticast(selectedNode, 3),
+        onclick: () => actions.sendMulticast(selectedNode, 3)
       }, 'multicast 3'),
       h('button', {
-        onclick: () => actions.sendMulticast(selectedNode, 6),
+        onclick: () => actions.sendMulticast(selectedNode, 6)
       }, 'multicast 6'),
       h('button', {
-        onclick: () => actions.appendEbtMessage(selectedNode, selectedNodeData.ebtState.sequence),
+        onclick: () => actions.appendEbtMessage(selectedNode, selectedNodeData.ebtState.sequence)
       }, 'ebt'),
       h('button', {
-        onclick: () => actions.restartNode(selectedNode),
+        onclick: () => actions.restartNode(selectedNode)
       }, 'restart'),
       h('button', {
         onclick: () => {
           selectedNodeData.blockTrackerEnabled = !selectedNodeData.blockTrackerEnabled
           actions.enableBlockTracker(selectedNode, selectedNodeData.blockTrackerEnabled)
-        },
+        }
       }, `${selectedNodeData.blockTrackerEnabled ? 'disable' : 'enable'} block tracker`),
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 
-      selectedNodeStats && renderSelectedNodeStats(selectedNodeStats, state, actions),
+      selectedNodeStats && renderSelectedNodeStats(selectedNodeStats, state, actions)
 
     ])
 
@@ -362,19 +362,19 @@ function renderSelectedNodePanel(state, actions) {
 //   }
 // }
 
-function renderSelectedNodeStats(nodeStats, state, actions) {
+function renderSelectedNodeStats (nodeStats, state, actions) {
   return h('div', [
     renderSelectedNodeGlobalStats(nodeStats, state, actions),
     h('div', [
       h('h4', 'peers'),
-      renderSelectedNodePeerStats(nodeStats, state, actions),
+      renderSelectedNodePeerStats(nodeStats, state, actions)
     ])
     // renderSelectedNodeTransportStats(nodeStats),
     // renderSelectedNodeProtocolStats(nodeStats),
   ])
 }
 
-function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
+function renderSelectedNodeGlobalStats (nodeStats, state, actions) {
   // global stats
   if (nodeStats.global) {
     const transports = Object.entries(nodeStats.global.transports)
@@ -382,7 +382,7 @@ function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
     return (
       h('div', [
         renderNodePeerTransportStats(transports),
-        renderNodePeerProtocolStats(protocols),
+        renderNodePeerProtocolStats(protocols)
       ])
     )
   } else {
@@ -392,7 +392,7 @@ function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
   }
 }
 
-function renderSelectedNodePeerStats(nodeStats, state, actions) {
+function renderSelectedNodePeerStats (nodeStats, state, actions) {
   // peer stats
   const peers = Object.entries(nodeStats.peers || {})
   return peers.map(([peerId, peerData]) => {
@@ -404,11 +404,11 @@ function renderSelectedNodePeerStats(nodeStats, state, actions) {
         peerIdToShortId(peerId),
         h('button', {
           disabled: !inGraph,
-          onclick: () => actions.selectNode(peerId),
+          onclick: () => actions.selectNode(peerId)
         }, 'select')
       ]),
       renderNodePeerTransportStats(transports),
-      renderNodePeerProtocolStats(protocols),
+      renderNodePeerProtocolStats(protocols)
     ])
   })
 }
@@ -418,12 +418,12 @@ function renderNodePeerTransportStats (transports) {
     h('h5', 'transports'),
     h('div', [
       renderNodeStatsPieChart('in 1min', transports, (stats) => get1Min(stats, 'dataReceived')),
-      renderNodeStatsPieChart('in all', transports, (stats) => stats.snapshot.dataReceived),
+      renderNodeStatsPieChart('in all', transports, (stats) => stats.snapshot.dataReceived)
     ]),
     h('div', [
       renderNodeStatsPieChart('out 1min', transports, (stats) => get1Min(stats, 'dataSent')),
-      renderNodeStatsPieChart('out all', transports, (stats) => stats.snapshot.dataSent),
-    ]),
+      renderNodeStatsPieChart('out all', transports, (stats) => stats.snapshot.dataSent)
+    ])
   ])
 }
 
@@ -432,16 +432,16 @@ function renderNodePeerProtocolStats (protocols) {
     h('h5', 'protocols'),
     h('div', [
       renderNodeStatsPieChart('in 1min', protocols, (stats) => get1Min(stats, 'dataReceived')),
-      renderNodeStatsPieChart('in all', protocols, (stats) => stats.snapshot.dataReceived),
+      renderNodeStatsPieChart('in all', protocols, (stats) => stats.snapshot.dataReceived)
     ]),
     h('div', [
       renderNodeStatsPieChart('out 1min', protocols, (stats) => get1Min(stats, 'dataSent')),
-      renderNodeStatsPieChart('out all', protocols, (stats) => stats.snapshot.dataSent),
-    ]),
+      renderNodeStatsPieChart('out all', protocols, (stats) => stats.snapshot.dataSent)
+    ])
   ])
 }
 
-function get1Min(stats, direction) {
+function get1Min (stats, direction) {
   return stats.movingAverages[direction]['60000']
 }
 
@@ -475,11 +475,11 @@ function get1Min(stats, direction) {
 //   )
 // }
 
-function renderNodeStatsPieChart(label, specificStats, mapFn) {
+function renderNodeStatsPieChart (label, specificStats, mapFn) {
   const data = specificStats.map(([name, stats]) => {
     return {
       label: name,
-      value: mapFn(stats),
+      value: mapFn(stats)
     }
   })
 
@@ -495,7 +495,7 @@ function renderNodeStatsPieChart(label, specificStats, mapFn) {
   )
 }
 
-function renderNodeStatsTable(primaryLabel, tableStats, nodeStats) {
+function renderNodeStatsTable (primaryLabel, tableStats, nodeStats) {
   const totalRx = Number.parseInt(nodeStats.global.snapshot.dataReceived, 10)
   const totalTx = Number.parseInt(nodeStats.global.snapshot.dataSent, 10)
 
@@ -507,7 +507,7 @@ function renderNodeStatsTable(primaryLabel, tableStats, nodeStats) {
 
   return renderTable({ columnLabels, rows })
 
-  function rowFromStats([transportName, stats]) {
+  function rowFromStats ([transportName, stats]) {
     const amountRx = Number.parseInt(stats.snapshot.dataReceived, 10)
     const amountTx = Number.parseInt(stats.snapshot.dataSent, 10)
     const percentRx = totalRx ? Math.floor(100 * amountRx / totalRx) : 100
@@ -518,12 +518,12 @@ function renderNodeStatsTable(primaryLabel, tableStats, nodeStats) {
       `${formatBytes(amountRx)} ${percentRx}%`,
       `${formatBytes(amountTx)} ${percentTx}%`,
       formatBytes(stats.movingAverages.dataReceived['60000']),
-      formatBytes(stats.movingAverages.dataSent['60000']),
+      formatBytes(stats.movingAverages.dataSent['60000'])
     ]
   }
 }
 
-function renderTable({ columnLabels, rows }) {
+function renderTable ({ columnLabels, rows }) {
   return (
 
     h('table', [
@@ -532,13 +532,13 @@ function renderTable({ columnLabels, rows }) {
       ]),
       h('tbody', rows.map((rowContent) => {
         return h('tr', rowContent.map(content => h('td', content)))
-      })),
+      }))
     ])
 
   )
 }
 
-function mergeGraph(oldGraph, newGraph) {
+function mergeGraph (oldGraph, newGraph) {
   const graph = {}
   // create index for faster lookups during merge
   const graphIndex = createGraphIndex(oldGraph)
@@ -548,7 +548,7 @@ function mergeGraph(oldGraph, newGraph) {
       // creating all nodes at the same spot creates a big bang
       // that accidently sorts the structures out nicely
       x: graphWidth / 2,
-      y: graphHeight / 2,
+      y: graphHeight / 2
     }, graphIndex.nodes[node.id], node)
   })
   graph.links = newGraph.links.map((link) => {
@@ -557,7 +557,7 @@ function mergeGraph(oldGraph, newGraph) {
   return graph
 }
 
-function createGraphIndex(graph) {
+function createGraphIndex (graph) {
   const graphIndex = { nodes: {}, links: {} }
   graph.nodes.forEach(node => {
     graphIndex.nodes[node.id] = node
@@ -568,7 +568,7 @@ function createGraphIndex(graph) {
   return graphIndex
 }
 
-function appStyle() {
+function appStyle () {
   return h('style', [
     `
     body, html {
@@ -678,7 +678,7 @@ StatsObj shape
 }
 */
 
-function buildGraph(networkState, networkFilter) {
+function buildGraph (networkState, networkFilter) {
   const graph = { nodes: [], links: [] }
 
   // first add kitsunet nodes
@@ -719,7 +719,7 @@ function buildGraph(networkState, networkFilter) {
   return graph
 }
 
-function formatBytes(bytes) {
+function formatBytes (bytes) {
   let result = bytes || 0
   let unit = 'b'
   if (result > 1000000) {
@@ -733,6 +733,6 @@ function formatBytes(bytes) {
   return `${result}${unit}`
 }
 
-function peerIdToShortId(peerId) {
-  return peerId && `${peerId.slice(0,4)}...${peerId.slice(-4)}`
+function peerIdToShortId (peerId) {
+  return peerId && `${peerId.slice(0, 4)}...${peerId.slice(-4)}`
 }
