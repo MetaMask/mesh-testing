@@ -39,7 +39,7 @@ async function setupAdmin () {
 
   // setup admin rpc
   const adminRpc = rpc.createRpc(new BaseRpc(), serverConnection)
-  const serverRpc = rpc.createRpc(new ServerAdmin(), serverConnection, true)
+  const serverRpc = rpc.createRpc(ServerAdmin, serverConnection)
 
   endOfStream(serverConnection, (err) => console.log('server rpcConnection disconnect', err))
   global.serverAsync = serverRpc

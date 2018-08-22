@@ -233,7 +233,7 @@ async function setupTelemetry (devMode, peerId, retries) {
     console.log('rpcConnection ended', err)
   })
 
-  const serverRpc = rpc.createRpc(new ServerKitsunet(), serverConnection, true)
+  const serverRpc = rpc.createRpc(ServerKitsunet, serverConnection)
   global.server = serverRpc
   global.serverAsync = serverRpc
   global.kitsinetRpc = kitsunetRpc

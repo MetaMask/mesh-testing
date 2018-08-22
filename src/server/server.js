@@ -149,7 +149,7 @@ async function handleClient (stream, req) {
   })
 
   const serverRpc = rpc.createRpc(new ServerKitsunet(global, client), stream)
-  const kitsunetRpc = rpc.createRpc(new Kitsunet(), stream)
+  const kitsunetRpc = rpc.createRpc(Kitsunet, stream)
 
   client.rpc = kitsunetRpc
   client.rpcAsync = kitsunetRpc
@@ -164,7 +164,7 @@ async function handleAdmin (stream, request) {
   // wrap promise-y api with cbify for multiplexRpc support
 
   global.adminServer = rpc.createRpc(new ServerAdmin(global, stream), stream)
-  global.adminRpc = rpc.createRpc(new BaseRpc(), stream, true)
+  global.adminRpc = rpc.createRpc(BaseRpc, stream, true)
   console.log('admin connected')
 }
 

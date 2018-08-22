@@ -41427,7 +41427,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1534959252 || 'development')
+const buildVersion = String(1534960506 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -41467,7 +41467,7 @@ async function setupAdmin () {
 
   // setup admin rpc
   const adminRpc = rpc.createRpc(new BaseRpc(), serverConnection)
-  const serverRpc = rpc.createRpc(new ServerAdmin(), serverConnection, true)
+  const serverRpc = rpc.createRpc(ServerAdmin, serverConnection)
 
   endOfStream(serverConnection, (err) => console.log('server rpcConnection disconnect', err))
   global.serverAsync = serverRpc
@@ -42191,6 +42191,11 @@ const instanceToObj = (object, ctx) => {
 
 exports.createRpc = function createRpc (instance, conn, initiator) {
   initiator = initiator || false
+  if (typeof instance === 'function') {
+    const Clazz = instance
+    instance = new Clazz()
+    initiator = true
+  }
   const rpcMethods = cbifyObj(instanceToObj(instance, instance))
   const rpc = initiator
     ? rpcStream()
