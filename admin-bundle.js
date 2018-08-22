@@ -41427,7 +41427,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1534930660 || 'development')
+const buildVersion = String(1534959252 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -41444,7 +41444,8 @@ const startAdminApp = require('./app')
 const { fromDiffs } = require('../util/jsonPatchStream')
 const { createJsonParseStream } = require('../util/jsonSerializeStream')
 
-const Rpc = require('../rpc/base')
+const rpc = require('../rpc/rpc')
+const BaseRpc = require('../rpc/base')
 const ServerAdmin = require('../rpc/server-admin')
 
 setupAdmin().catch(console.error)
@@ -41465,8 +41466,8 @@ async function setupAdmin () {
   startAdminApp({ store })
 
   // setup admin rpc
-  const adminRpc = new Rpc(serverConnection)
-  const serverRpc = new ServerAdmin(serverConnection, true)
+  const adminRpc = rpc.createRpc(new BaseRpc(), serverConnection)
+  const serverRpc = rpc.createRpc(new ServerAdmin(), serverConnection, true)
 
   endOfStream(serverConnection, (err) => console.log('server rpcConnection disconnect', err))
   global.serverAsync = serverRpc
@@ -41490,7 +41491,7 @@ async function setupAdmin () {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"../network/telemetry":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js","../rpc/base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","../rpc/server-admin":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js","../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","./app":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/app.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","obs-store":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","qs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/qs/lib/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
+},{"../network/telemetry":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js","../rpc/base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","../rpc/rpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js","../rpc/server-admin":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js","../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","./app":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/app.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","obs-store":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","qs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/qs/lib/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
 const d3 = require('d3')
 
 const graphWidth = 960
@@ -42158,15 +42159,28 @@ function connectToTelemetryServerViaWs (opts = {}) {
 },{"http-poll-stream/src/client":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/http-poll-stream/src/client.js","websocket-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/websocket-stream/stream.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js":[function(require,module,exports){
 'use strict'
 
+class BaseRPC {
+  async ping () {
+    return 'pong'
+  }
+}
+
+module.exports = BaseRPC
+
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js":[function(require,module,exports){
+'use strict'
+
 const pump = require('pump')
 const { cbifyObj } = require('../util/cbify')
 var multiplex = require('multiplex')
 const rpcStream = require('rpc-stream')
 
-const classToObj = (object, ctx) => {
+const BaseRPC = require('./base')
+
+const instanceToObj = (object, ctx) => {
   let methods = {}
   while (Object.getPrototypeOf(object) instanceof BaseRPC ||
-  Object.getPrototypeOf(object) === BaseRPC.prototype) {
+    Object.getPrototypeOf(object) === BaseRPC.prototype) {
     object = Object.getPrototypeOf(object)
     methods = Object.assign({}, methods, Object.keys(Object.getOwnPropertyDescriptors(object))
       .filter(k => k !== 'constructor' && k[0] !== '_')
@@ -42175,37 +42189,24 @@ const classToObj = (object, ctx) => {
   return methods
 }
 
-class BaseRPC {
-  constructor (conn, initiator) {
-    this._conn = conn
-    this._initiator = initiator || false
-    const rpcMethods = cbifyObj(classToObj(this, this))
-    const rpc = initiator
-      ? rpcStream()
-      : rpcStream(rpcMethods)
-    if (initiator) this._remote = rpc.wrap(rpcMethods)
-    const mx = multiplex({ chunked: true })
-    const stream = pump(
-      rpc,
-      initiator ? mx.createSharedStream('0') : mx.createSharedStream('1'),
-      rpc
-    )
-    pump(stream, conn, stream)
-  }
-
-  async _execRpc (name, handler, ...args) {
-    if (this._initiator) return this._remote[name].apply(this, args)
-    return handler.call(this)
-  }
-
-  async ping () {
-    return this._execRpc('ping', async () => 'pong')
-  }
+exports.createRpc = function createRpc (instance, conn, initiator) {
+  initiator = initiator || false
+  const rpcMethods = cbifyObj(instanceToObj(instance, instance))
+  const rpc = initiator
+    ? rpcStream()
+    : rpcStream(rpcMethods)
+  const methods = initiator ? rpc.wrap(rpcMethods) : instance
+  const mx = multiplex({ chunked: true })
+  const stream = pump(
+    rpc,
+    initiator ? mx.createSharedStream('0') : mx.createSharedStream('1'),
+    rpc
+  )
+  pump(stream, conn, stream)
+  return methods
 }
 
-module.exports = BaseRPC
-
-},{"../util/cbify":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/cbify.js","multiplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/index.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","rpc-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/rpc-stream/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js":[function(require,module,exports){
+},{"../util/cbify":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/cbify.js","./base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","multiplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/index.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","rpc-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/rpc-stream/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js":[function(require,module,exports){
 (function (global){
 'use strict'
 
@@ -42222,77 +42223,63 @@ const { createJsonSerializeStream } = require('../util/jsonSerializeStream')
 const remoteCallTimeout = 45 * sec
 
 class ServerAdminRPC extends Base {
-  constructor (conn, initiator, server) {
-    super(conn, initiator)
+  constructor (server, conn) {
+    super()
     this.server = server
+    this._conn = conn
   }
 
   // server data
   async getPeerCount () {
-    return this._execRpc('getPeerCount', async () => {
-      return global.clients.length
-    })
+    return global.clients.length
   }
 
   async getNetworkState () {
-    return this._execRpc('getNetworkState', async () => {
-      return global.networkStore.getState()
-    })
+    return global.networkStore.getState()
   }
 
   // send to client
   async sendToClient (clientId, method, args) {
-    return this._execRpc('sendToClient', async () => {
-      console.log(`forwarding "${method}" with (${args}) to client ${clientId}`)
-      const client = this.server.clients.find(c => c.peerId === clientId)
-      if (!client) {
-        console.log(`no client found ${clientId}`)
-        return
-      }
-      return this.server.sendCallWithTimeout(client.rpcAsync, method, args, remoteCallTimeout)
-    })
+    console.log(`forwarding "${method}" with (${args}) to client ${clientId}`)
+    const client = this.server.clients.find(c => c.peerId === clientId)
+    if (!client) {
+      console.log(`no client found ${clientId}`)
+      return
+    }
+    return this.server.sendCallWithTimeout(client.rpcAsync, method, args, remoteCallTimeout)
   }
+
   // broadcast
   async send (method, args) {
-    return this._execRpc('send', async () => {
-      console.log(`broadcasting "${method}" with (${args}) to ${global.clients.length} client(s)`)
-      return this.server.broadcastCall(method, args, remoteCallTimeout)
-    })
+    console.log(`broadcasting "${method}" with (${args}) to ${global.clients.length} client(s)`)
+    return this.server.broadcastCall(method, args, remoteCallTimeout)
   }
 
   async refresh () {
-    return this._execRpc('refresh', async () => {
-      return this.server.broadcastCall('refresh', [], remoteCallTimeout)
-    })
+    return this.server.broadcastCall('refresh', [], remoteCallTimeout)
   }
 
   async refreshShortDelay () {
-    return this._execRpc('refreshShortDelay', async () => {
-      return this.server.broadcastCall('refreshShortDelay', [], remoteCallTimeout)
-    })
+    return this.server.broadcastCall('refreshShortDelay', [], remoteCallTimeout)
   }
 
   refreshLongDelay () {
-    return this._execRpc('refreshLongDelay', async () => {
-      return this.server.broadcastCall('refreshLongDelay', [], remoteCallTimeout)
-    })
+    return this.server.broadcastCall('refreshLongDelay', [], remoteCallTimeout)
   }
 
   async createNetworkUpdateStream () {
-    return this._execRpc('createNetworkUpdateStream', async () => {
-      const serializeStream = createJsonSerializeStream()
-      pump(
-        asStream(global.networkStore),
-        // dont emit new values more than 2/sec
-        throttleStream(500),
-        toDiffs(),
-        serializeStream,
-        this._conn,
-        (err) => {
-          if (err) console.log('admin diff stream broke', err)
-        }
-      )
-    })
+    const serializeStream = createJsonSerializeStream()
+    pump(
+      asStream(this.server.networkStore),
+      // dont emit new values more than 2/sec
+      throttleStream(500),
+      toDiffs(),
+      serializeStream,
+      this._conn,
+      (err) => {
+        if (err) console.log('admin diff stream broke', err)
+      }
+    )
   }
 }
 
