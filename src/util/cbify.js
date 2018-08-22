@@ -1,10 +1,9 @@
 const promiseToCallback = require('promise-to-callback')
 const noop = function () {}
 
-
 module.exports = { cbify, cbifyObj }
 
-function cbifyObj(obj) {
+function cbifyObj (obj) {
   const newObj = {}
   Object.keys(obj).forEach(key => {
     const value = obj[key]

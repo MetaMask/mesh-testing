@@ -1,3 +1,5 @@
+'use strict'
+
 // setup error reporting before anything else
 const buildVersion = String(process.env.BUILD_VERSION || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
@@ -27,6 +29,10 @@ const Stat = require('libp2p-switch/src/stats/stat')
 const blockHeaderFromRpc = require('ethereumjs-block/header-from-rpc')
 const createEthProvider = require('../eth-provider')
 const hexUtils = require('../eth-provider/hex-utils')
+
+const rpc = require('../rpc/rpc')
+const Kitsunet = require('../rpc/kitsunet')
+const ServerKitsunet = require('../rpc/server-kitsunet')
 
 const clientStateSubmitInterval = 15 * sec
 const peerPingInterval = 1 * min
@@ -221,62 +227,18 @@ async function setupClient () {
 async function setupTelemetry (devMode, peerId, retries) {
   // const serverConnection = connectToTelemetryServerViaWs()
   const serverConnection = connectToTelemetryServerViaPost({ devMode })
+  const kitsunetRpc = rpc.createRpc(new Kitsunet(global), serverConnection)
 
-  const clientRpcImplementationForServer = cbifyObj({
-    ping: async () => 'pong',
-    refresh: async () => restart(),
-    refreshShortDelay: async () => {
-      restartWithDelay(randomFromRange(5 * sec, 10 * sec))
-    },
-    refreshLongDelay: async () => {
-      restartWithDelay(randomFromRange(2 * min, 10 * min))
-    },
-    pubsubPublish: async (message) => {
-      global.pubsubPublish(message)
-    },
-    multicastPublish: async (message, hops) => {
-      global.multicastPublish(message, hops)
-    },
-    ebtAppend: async (message) => {
-      global.ebtAppend(message)
-    },
-    enableBlockTracker: (enabled) => {
-      global.enableBlockTracker(enabled)
-    }
-  })
-  const serverRpcInterfaceForClient = [
-    'ping',
-    'setPeerId',
-    'submitNetworkState',
-    'disconnect'
-  ]
-
-  const rpcConnection = multiplexRpc(clientRpcImplementationForServer)
-  endOfStream(rpcConnection, async (err) => {
+  endOfStream(serverConnection, async (err) => {
     console.log('rpcConnection ended', err)
-    if (retries) {
-      await setupTelemetry(devMode, peerId, --retries)
-    }
   })
-  pump(
-    serverConnection,
-    rpcConnection,
-    serverConnection,
-    (err) => {
-      console.log('server rpcConnection disconnect', err)
-      // throw error on fresh stack so it is not accidently caught anywhere
-      setTimeout(() => {
-        throw err
-      })
-    }
-  )
 
-  const server = rpcConnection.wrap(serverRpcInterfaceForClient)
-  const serverAsync = pify(server)
-  global.server = server
-  global.serverAsync = serverAsync
+  const serverRpc = rpc.createRpc(ServerKitsunet, serverConnection)
+  global.server = serverRpc
+  global.serverAsync = serverRpc
+  global.kitsinetRpc = kitsunetRpc
   console.log('MetaMask Mesh Testing - connected to telemetry!')
-  await serverAsync.setPeerId(peerId)
+  await serverRpc.setPeerId(peerId)
 }
 
 async function submitClientStateOnInterval ({ serverAsync, node }) {
