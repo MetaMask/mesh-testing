@@ -16,7 +16,8 @@ const startAdminApp = require('./app')
 const { fromDiffs } = require('../util/jsonPatchStream')
 const { createJsonParseStream } = require('../util/jsonSerializeStream')
 
-const Rpc = require('../rpc/base')
+const rpc = require('../rpc/rpc')
+const BaseRpc = require('../rpc/base')
 const ServerAdmin = require('../rpc/server-admin')
 
 setupAdmin().catch(console.error)
@@ -37,8 +38,8 @@ async function setupAdmin () {
   startAdminApp({ store })
 
   // setup admin rpc
-  const adminRpc = new Rpc(serverConnection)
-  const serverRpc = new ServerAdmin(serverConnection, true)
+  const adminRpc = rpc.createRpc(new BaseRpc(), serverConnection)
+  const serverRpc = rpc.createRpc(new ServerAdmin(), serverConnection, true)
 
   endOfStream(serverConnection, (err) => console.log('server rpcConnection disconnect', err))
   global.serverAsync = serverRpc

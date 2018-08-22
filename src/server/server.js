@@ -9,6 +9,7 @@ const timeout = require('../util/timeout')
 const { createHttpClientHandler } = require('http-poll-stream')
 const { pingAllClientsOnInterval } = require('../network/clientTimeout')
 
+const rpc = require('../rpc/rpc')
 const Kitsunet = require('../rpc/kitsunet')
 const ServerKitsunet = require('../rpc/server-kitsunet')
 const ServerAdmin = require('../rpc/server-admin')
@@ -147,8 +148,8 @@ async function handleClient (stream, req) {
     console.log('client rpcConnection disconnect', err.message)
   })
 
-  const serverRpc = new ServerKitsunet(stream, false, global, client)
-  const kitsunetRpc = new Kitsunet(stream, true)
+  const serverRpc = rpc.createRpc(new ServerKitsunet(global, client), stream)
+  const kitsunetRpc = rpc.createRpc(new Kitsunet(), stream)
 
   client.rpc = kitsunetRpc
   client.rpcAsync = kitsunetRpc
@@ -162,8 +163,8 @@ async function handleClient (stream, req) {
 async function handleAdmin (stream, request) {
   // wrap promise-y api with cbify for multiplexRpc support
 
-  global.adminServer = new ServerAdmin(stream, false, global)
-  global.adminRpc = new BaseRpc(stream, true)
+  global.adminServer = rpc.createRpc(new ServerAdmin(global, stream), stream)
+  global.adminRpc = rpc.createRpc(new BaseRpc(), stream, true)
   console.log('admin connected')
 }
 

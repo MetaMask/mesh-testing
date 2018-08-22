@@ -30,6 +30,7 @@ const blockHeaderFromRpc = require('ethereumjs-block/header-from-rpc')
 const createEthProvider = require('../eth-provider')
 const hexUtils = require('../eth-provider/hex-utils')
 
+const rpc = require('../rpc/rpc')
 const Kitsunet = require('../rpc/kitsunet')
 const ServerKitsunet = require('../rpc/server-kitsunet')
 
@@ -226,19 +227,18 @@ async function setupClient () {
 async function setupTelemetry (devMode, peerId, retries) {
   // const serverConnection = connectToTelemetryServerViaWs()
   const serverConnection = connectToTelemetryServerViaPost({ devMode })
-  const kitsunetRpc = new Kitsunet(serverConnection, false, global)
+  const kitsunetRpc = rpc.createRpc(new Kitsunet(global), serverConnection)
 
   endOfStream(serverConnection, async (err) => {
     console.log('rpcConnection ended', err)
   })
 
-  const server = new ServerKitsunet(serverConnection, true)
-  const serverAsync = pify(server)
-  global.server = server
-  global.serverAsync = serverAsync
+  const serverRpc = rpc.createRpc(new ServerKitsunet(), serverConnection, true)
+  global.server = serverRpc
+  global.serverAsync = serverRpc
   global.kitsinetRpc = kitsunetRpc
   console.log('MetaMask Mesh Testing - connected to telemetry!')
-  await serverAsync.setPeerId(peerId)
+  await serverRpc.setPeerId(peerId)
 }
 
 async function submitClientStateOnInterval ({ serverAsync, node }) {
