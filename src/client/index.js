@@ -19,6 +19,10 @@ const ServerKitsunet = require('../rpc/server-kitsunet')
 
 const createClient = require('./client')
 const createKitsunet = require('./kitsunet')
+const createPubsub = require('./pubsub')
+const createMulticast = require('./multicast')
+const createBlockTracker = require('./block-tracker')
+const createEbt = require('./ebt')
 
 const peers = []
 global.peers = peers
@@ -41,8 +45,9 @@ global.clientState = clientState
 
 setupClient().catch(console.error)
 
-let client = null
-let kitsunet = null
+function randomFromRange (min, max) {
+  return min + Math.random() * (max - min)
+}
 
 async function setupClient () {
   // connect to telemetry server
@@ -53,28 +58,8 @@ async function setupClient () {
   // configure libp2p client
   const peerId = node.idStr
 
-  const { kitsunetRpc, serverRpc } = await setupTelemetry(devMode, peerId, 5)
-  client = createClient(serverRpc, clientState, node)
-
-  // start libp2p node
-  await pify(client.startLibp2pNode)()
-  console.log(`MetaMask Mesh Testing - libp2p node started with id ${peerId}`)
-
-  kitsunet = createKitsunet(client, node, clientState)
-
-  // submit network state to backend on interval
-  // this also keeps the connection alive
-  client.submitClientStateOnInterval({ serverRpc })
-
-  // schedule refresh every hour so everyone stays hot and fresh
-  client.restartWithDelay(randomFromRange(1 * hour, 1.5 * hour))
-}
-
-async function setupTelemetry (devMode, peerId, retries) {
   // const serverConnection = connectToTelemetryServerViaWs()
   const serverConnection = connectToTelemetryServerViaPost({ devMode })
-  const kitsunetRpc = rpc.createRpc(new Kitsunet(global), serverConnection)
-
   endOfStream(serverConnection, async (err) => {
     console.log('rpcConnection ended', err)
   })
@@ -82,9 +67,25 @@ async function setupTelemetry (devMode, peerId, retries) {
   const serverRpc = rpc.createRpc(ServerKitsunet, serverConnection)
   console.log('MetaMask Mesh Testing - connected to telemetry!')
   await serverRpc.setPeerId(peerId)
-  return {kitsunetRpc, serverRpc}
-}
 
-function randomFromRange (min, max) {
-  return min + Math.random() * (max - min)
+  const client = createClient(serverRpc, clientState, node)
+
+  // start libp2p node
+  await pify(client.startLibp2pNode)()
+  console.log(`MetaMask Mesh Testing - libp2p node started with id ${peerId}`)
+
+  const kitsunet = createKitsunet(client, node, clientState)
+  const pubsub = createPubsub(client, node, clientState)
+  const multicast = createMulticast(client, node, clientState)
+  const blockTracker = createBlockTracker(node, clientState)
+  const ebt = createEbt(client, node, clientState)
+
+  rpc.createRpc(new Kitsunet(client, multicast, pubsub, ebt, blockTracker), serverConnection)
+
+  // submit network state to backend on interval
+  // this also keeps the connection alive
+  client.submitClientStateOnInterval({ serverRpc })
+
+  // schedule refresh every hour so everyone stays hot and fresh
+  client.restartWithDelay(randomFromRange(1 * hour, 1.5 * hour))
 }

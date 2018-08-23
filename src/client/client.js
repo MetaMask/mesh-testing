@@ -22,7 +22,6 @@ const statDirectionToEvent = {
   in: 'dataReceived',
   out: 'dataSent'
 }
-global.getStats = libp2pStatsToJson
 
 function libp2pStatsToJson () {
   const allStats = { global: { transports: {}, protocols: {}, mystery: null }, peers: {} }
@@ -145,16 +144,16 @@ module.exports = function (serverRpc, clientState, node) {
     clientState.stats = libp2pStatsToJson()
   }
 
-  async function submitClientStateOnInterval ({ serverRpc }) {
+  async function submitClientStateOnInterval () {
     while (true) {
-      await submitNetworkState({ serverRpc, node })
+      await submitNetworkState()
       await timeout(clientStateSubmitInterval)
     }
   }
 
-  async function submitNetworkState ({ serverRpc }) {
+  async function submitNetworkState () {
     updateClientStateWithLibp2pStats()
-    await serverRpc.submitNetworkState(clientState)
+    if (serverRpc) await serverRpc.submitNetworkState(clientState)
   }
 
   function restartWithDelay (timeoutDuration) {
@@ -164,7 +163,7 @@ module.exports = function (serverRpc, clientState, node) {
 
   function restart () {
     console.log('restarting...')
-    global.server.disconnect()
+    serverRpc.disconnect()
     // leave 3 sec for network activity
     setTimeout(() => window.location.reload(), 3 * sec)
   }
@@ -219,7 +218,7 @@ module.exports = function (serverRpc, clientState, node) {
 
   function hangupPeer (peerInfo) {
     // const peerId = peerInfo.id.toB58String()
-    global.node.hangUp(peerInfo, () => {
+    node.hangUp(peerInfo, () => {
       // console.log('MetaMask Mesh Testing - did hangup', peerId)
     })
   }

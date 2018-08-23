@@ -9,37 +9,41 @@ function randomFromRange (min, max) {
 }
 
 class KitsunetRPC extends Base {
-  constructor (kitsunet) {
+  constructor (client, multicast, pubsub, ebt, blockTracker) {
     super()
-    this.kitsunet = kitsunet
+    this.client = client
+    this.multicast = multicast
+    this.pubsub = pubsub
+    this.ebt = ebt
+    this.blockTracker = blockTracker
   }
 
   async refresh () {
-    return this.kitsunet.restart()
+    return this.client.restart()
   }
 
   async refreshShortDelay () {
-    return this.kitsunet.restartWithDelay(randomFromRange(5 * sec, 10 * sec))
+    return this.client.restartWithDelay(randomFromRange(5 * sec, 10 * sec))
   }
 
   async refreshLongDelay () {
-    return this.kitsunet.restartWithDelay(randomFromRange(2 * min, 10 * min))
+    return this.client.restartWithDelay(randomFromRange(2 * min, 10 * min))
   }
 
   async pubsubPublish (message) {
-    return this.kitsunet.publish(message)
+    return this.pubsub.publish(message)
   }
 
   async multicastPublish (message, hops) {
-    return this.kitsunet.multicastPublish(message, hops)
+    return this.multicast.publish(message, hops)
   }
 
   async ebtAppend (message) {
-    return this.kitsunet.ebtAppend(message)
+    return this.ebt.append(message)
   }
 
   async enableBlockTracker (enabled) {
-    return this.kitsunet.enableBlockTracker(enabled)
+    return this.blockTracker.enable(enabled)
   }
 }
 
