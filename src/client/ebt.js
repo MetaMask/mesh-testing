@@ -1,8 +1,35 @@
 'use strict'
 
 const EBT = require('epidemic-broadcast-trees')
+const pify = require('pify')
 
-module.exports = function createEbt (id) {
+module.exports = function (id) {
+  async function attemptDialEbt (peerInfo) {
+    const peerId = peerInfo.id.toB58String()
+    // attempt connection
+    try {
+      // console.log('MetaMask Mesh Testing - kitsunet dial', peerId)
+      const conn = await pify(global.node.dialProtocol).call(global.node, peerInfo, '/kitsunet/test/ebt/0.0.1')
+      console.log('MetaMask Mesh Testing - kitsunet-ebt dial success', peerId)
+      global.ebt.request(peerId, true)
+      const stream = toPull(global.ebt.createStream(peerId))
+      pull(
+        stream,
+        pull.map(m => {
+          return Buffer.from(JSON.stringify(m))
+        }),
+        conn,
+        pull.map(m => {
+          return JSON.parse(m.toString())
+        }),
+        stream
+      )
+    } catch (err) {
+      console.log('MetaMask Mesh Testing - kitsunet-ebt dial failed:', peerId, err.message)
+      // hangupPeer(peerInfo)
+    }
+  }
+
   const store = {}
   const clocks = {}
 
@@ -34,7 +61,10 @@ module.exports = function createEbt (id) {
     },
     append: append
   })
-  p.store = store
-  p.append = append
-  return p
+
+  return {
+    append,
+    store,
+    attemptDialEbt
+  }
 }
