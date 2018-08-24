@@ -90,7 +90,7 @@ module.exports = function (client, node, clientState) {
     kitsunetPeers.push(peer)
     updateClientStateForNewKitsunetPeer(peerId, { status: 'connecting' })
 
-    const kitsunetRpcImplementationForPeer = createRpc(new BaseRpc(), stream)
+    createRpc(new BaseRpc(), stream)
     endOfStream(stream, (err) => {
       console.log(`peer rpcConnection disconnect ${peerId}`, err.message)
       disconnectKitsunetPeer(peer.id, err)

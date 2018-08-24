@@ -12,6 +12,15 @@ const {
 } = require('../util/jsonSerializeStream')
 
 module.exports = function (client, node, clientState) {
+  function createStream (streamId) {
+    const stream = pullStreamToStream(ebt.createStream(streamId))
+    return pump(
+      stream,
+      createJsonSerializeStream(),
+      stream
+    )
+  }
+
   node.on('peer:connect', (peerInfo) => {
     attemptDialEbt(peerInfo)
   })
@@ -23,17 +32,10 @@ module.exports = function (client, node, clientState) {
         console.error(err)
         return
       }
-      ebt.request(peerInfo.id.toB58String(), true)
-      const stream = pullStreamToStream(ebt.createStream(peerInfo.id.toB58String()))
-      const ebtStream = pump(
-        stream,
-        createJsonSerializeStream(),
-        stream,
-        createJsonParseStream(),
-        stream
-      )
-      const streamConn = pullStreamToStream(conn)
-      pump(ebtStream, streamConn, ebtStream)
+      const peerId = peerInfo.id.toB58String()
+      ebt.request(peerId, true)
+      const stream = createStream(peerId)
+      pump(stream, pullStreamToStream(conn), stream)
     })
   })
 
@@ -45,16 +47,8 @@ module.exports = function (client, node, clientState) {
       const conn = await pify(node.dialProtocol).call(node, peerInfo, '/kitsunet/test/ebt/0.0.1')
       console.log('MetaMask Mesh Testing - kitsunet-ebt dial success', peerId)
       ebt.request(peerId, true)
-      const stream = pullStreamToStream(ebt.createStream(peerId))
-      const ebtStream = pump(
-        stream,
-        createJsonSerializeStream(),
-        stream,
-        createJsonParseStream(),
-        stream
-      )
-      const streamConn = pullStreamToStream(conn)
-      pump(ebtStream, streamConn, ebtStream)
+      const stream = createStream(peerId)
+      pump(stream, pullStreamToStream(conn), stream)
     } catch (err) {
       console.log('MetaMask Mesh Testing - kitsunet-ebt dia l failed:', peerId, err.message)
     }
@@ -69,10 +63,6 @@ module.exports = function (client, node, clientState) {
       ebt.onAppend(msg)
       cb(null, msg)
     }
-  }
-
-  function createStream (streamId) {
-    ebt.createStream(streamId)
   }
 
   function ebtAppend (msg) {
@@ -91,6 +81,7 @@ module.exports = function (client, node, clientState) {
 
   const ebt = EBT({
     id: node.idStr,
+    logging: true,
     getClock: function (id, cb) {
       // load the peer clock for id.
       cb(null, clocks[id] || {})

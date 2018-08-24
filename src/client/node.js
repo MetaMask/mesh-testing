@@ -78,8 +78,8 @@ class Node extends Libp2p {
       this.peerInfo.multiaddrs.forEach((ma) => {
         console.log('Swarm listening on', ma.toString())
       })
+      callback()
     })
-    callback()
   }
 }
 
