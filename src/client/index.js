@@ -5,6 +5,8 @@ const buildVersion = String(process.env.BUILD_VERSION || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 global.Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
+require('events').EventEmitter.defaultMaxListeners = 15
+
 const qs = require('qs')
 const pify = require('pify')
 const endOfStream = require('end-of-stream')
@@ -14,8 +16,8 @@ const { connectToTelemetryServerViaPost } = require('../network/telemetry')
 const createLibp2pNode = require('./createNode')
 
 const rpc = require('../rpc/rpc')
-const Kitsunet = require('../rpc/kitsunet')
-const ServerKitsunet = require('../rpc/server-kitsunet')
+const kitsunetRpcHandler = require('../rpc/kitsunet')
+const serverKitsunetRpcHandler = require('../rpc/server-kitsunet')
 
 const createClient = require('./client')
 const createKitsunet = require('./kitsunet')
@@ -64,7 +66,7 @@ async function setupClient () {
     console.log('rpcConnection ended', err)
   })
 
-  const serverRpc = rpc.createRpc(ServerKitsunet, serverConnection)
+  const serverRpc = rpc.createRpcClient(serverKitsunetRpcHandler(), serverConnection)
   console.log('MetaMask Mesh Testing - connected to telemetry!')
   await serverRpc.setPeerId(peerId)
 
@@ -74,13 +76,13 @@ async function setupClient () {
   await pify(client.startLibp2pNode)()
   console.log(`MetaMask Mesh Testing - libp2p node started with id ${peerId}`)
 
-  const kitsunet = createKitsunet(client, node, clientState)
+  createKitsunet(client, node, clientState)
   const pubsub = createPubsub(client, node, clientState)
   const multicast = createMulticast(client, node, clientState)
   const blockTracker = createBlockTracker(node, clientState)
   const ebt = createEbt(client, node, clientState)
 
-  rpc.createRpc(new Kitsunet(client, multicast, pubsub, ebt, blockTracker), serverConnection)
+  rpc.createRpcServer(kitsunetRpcHandler(client, multicast, pubsub, ebt, blockTracker), serverConnection)
 
   // submit network state to backend on interval
   // this also keeps the connection alive

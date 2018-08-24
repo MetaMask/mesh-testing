@@ -1,9 +1,9 @@
 'use strict'
 
-class BaseRPC {
-  async ping () {
-    return 'pong'
+module.exports = function () {
+  return {
+    ping: async () => {
+      return 'pong'
+    }
   }
 }
-
-module.exports = BaseRPC

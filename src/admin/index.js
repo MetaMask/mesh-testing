@@ -3,28 +3,27 @@ const buildVersion = String(process.env.BUILD_VERSION || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
+require('events').EventEmitter.defaultMaxListeners = 15
+
 const pump = require('pump')
 const qs = require('qs')
 const ObservableStore = require('obs-store')
 const asStream = require('obs-store/lib/asStream')
 const endOfStream = require('end-of-stream')
-const {
-  connectToTelemetryServerViaWs,
-  connectToTelemetryServerViaPost
-} = require('../network/telemetry')
+const {connectToTelemetryServerViaWs} = require('../network/telemetry')
 const startAdminApp = require('./app')
 const { fromDiffs } = require('../util/jsonPatchStream')
 const { createJsonParseStream } = require('../util/jsonSerializeStream')
 
 const rpc = require('../rpc/rpc')
-const BaseRpc = require('../rpc/base')
-const ServerAdmin = require('../rpc/server-admin')
+const baseRpcHandler = require('../rpc/base')
+const serverAdminRpcHandler = require('../rpc/server-admin')
 
 setupAdmin().catch(console.error)
 
 async function setupAdmin () {
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
-  const devMode = (!opts.prod && location.hostname === 'localhost')
+  const devMode = (!opts.prod && global.location.hostname === 'localhost')
   const adminCode = opts.admin
 
   // connect to telemetry
@@ -38,8 +37,8 @@ async function setupAdmin () {
   startAdminApp({ store })
 
   // setup admin rpc
-  const adminRpc = rpc.createRpc(new BaseRpc(), serverConnection)
-  const serverRpc = rpc.createRpc(ServerAdmin, serverConnection)
+  const adminRpc = rpc.createRpcServer(baseRpcHandler(), serverConnection)
+  const serverRpc = rpc.createRpcClient(serverAdminRpcHandler(), serverConnection)
 
   endOfStream(serverConnection, (err) => console.log('server rpcConnection disconnect', err))
   global.serverAsync = serverRpc

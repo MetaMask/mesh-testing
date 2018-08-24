@@ -1,3 +1,7 @@
+'use strict'
+
+require('events').EventEmitter.defaultMaxListeners = 20
+
 const express = require('express')
 const cors = require('cors')
 const expressWebSocket = require('express-ws')
@@ -10,10 +14,10 @@ const { createHttpClientHandler } = require('http-poll-stream')
 const { pingAllClientsOnInterval } = require('../network/clientTimeout')
 
 const rpc = require('../rpc/rpc')
-const Kitsunet = require('../rpc/kitsunet')
-const ServerKitsunet = require('../rpc/server-kitsunet')
-const ServerAdmin = require('../rpc/server-admin')
-const BaseRpc = require('../rpc/base')
+const kitsunetRpcHandler = require('../rpc/kitsunet')
+const serverKitsunetRpcHandler = require('../rpc/server-kitsunet')
+const serverAdminRpcHandler = require('../rpc/server-admin')
+const baseRpcHandler = require('../rpc/base')
 
 const app = express()
 // enable CORS responses
@@ -148,8 +152,8 @@ async function handleClient (stream, req) {
     console.log('client rpcConnection disconnect', err.message)
   })
 
-  const serverRpc = rpc.createRpc(new ServerKitsunet(global, client), stream)
-  const kitsunetRpc = rpc.createRpc(Kitsunet, stream)
+  const serverRpc = rpc.createRpcServer(serverKitsunetRpcHandler(global, client), stream)
+  const kitsunetRpc = rpc.createRpcClient(kitsunetRpcHandler(), stream)
 
   client.rpc = kitsunetRpc
   client.rpcAsync = kitsunetRpc
@@ -163,8 +167,8 @@ async function handleClient (stream, req) {
 async function handleAdmin (stream, request) {
   // wrap promise-y api with cbify for multiplexRpc support
 
-  global.adminServer = rpc.createRpc(new ServerAdmin(global, stream), stream)
-  global.adminRpc = rpc.createRpc(BaseRpc, stream, true)
+  global.adminServer = rpc.createRpcServer(serverAdminRpcHandler(global, clients, networkStore, stream), stream)
+  global.adminRpc = rpc.createRpcClient(baseRpcHandler(), stream)
   console.log('admin connected')
 }
 

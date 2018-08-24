@@ -1,36 +1,30 @@
 'use strict'
 
-const Base = require('./base')
+const base = require('./base')
 
-class ServerKitsunetRPC extends Base {
-  constructor (server, client) {
-    super()
-    this.server = server
-    this.client = client
-  }
+module.exports = function (server, client) {
+  return Object.assign({}, {
+    setPeerId: async (peerId) => {
+      client.peerId = peerId
+      // update network state
+      const networkState = server.networkStore.getState()
+      networkState.clients[peerId] = {}
+      server.networkStore.putState(networkState)
+    },
 
-  async setPeerId (peerId) {
-    this.client.peerId = peerId
-    // update network state
-    const networkState = this.server.networkStore.getState()
-    networkState.clients[peerId] = {}
-    this.server.networkStore.putState(networkState)
-  }
+    submitNetworkState: async (clientState) => {
+      const peerId = client.peerId
+      if (!peerId) return
+      if (!server.clients.includes(client)) return
+      // update network state
+      const networkState = server.networkStore.getState()
+      networkState.clients[peerId] = clientState
+      server.networkStore.putState(networkState)
+    },
 
-  async submitNetworkState (clientState) {
-    const peerId = this.client.peerId
-    if (!peerId) return
-    if (!this.server.clients.includes(this.client)) return
-    // update network state
-    const networkState = this.server.networkStore.getState()
-    networkState.clients[peerId] = clientState
-    this.server.networkStore.putState(networkState)
-  }
-
-  async disconnect () {
-    console.log(`client "${this.peerId}" sent disconnect request`)
-    this.server.disconnectClient(this.client)
-  }
+    disconnect: async (peerId) => {
+      console.log(`client "${peerId}" sent disconnect request`)
+      server.disconnectClient(client)
+    }
+  }, base())
 }
-
-module.exports = ServerKitsunetRPC
