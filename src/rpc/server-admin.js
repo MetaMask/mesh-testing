@@ -45,7 +45,7 @@ module.exports = function (server, clients, networkStore, conn) {
     refreshLongDelay: async () => {
       return server.broadcastCall('refreshLongDelay', [], remoteCallTimeout)
     },
-    createNetworkUpdateStream: async () => {
+    createNetworkUpdateStream: () => {
       const serializeStream = createJsonSerializeStream()
       pump(
         asStream(server.networkStore),
@@ -53,11 +53,11 @@ module.exports = function (server, clients, networkStore, conn) {
         throttleStream(500),
         toDiffs(),
         serializeStream,
-        conn,
         (err) => {
           if (err) console.log('admin diff stream broke', err)
         }
       )
+      return serializeStream
     }
   }, base())
 }

@@ -167,11 +167,12 @@ async function handleClient (stream, req) {
 async function handleAdmin (stream, request) {
   // wrap promise-y api with cbify for multiplexRpc support
 
-  global.adminServer = rpc.createRpcServer(serverAdminRpcHandler(global,
-    global.clients,
-    global.networkStore,
-    stream),
-  stream)
+  global.adminServer = rpc.createRpcServer(
+    serverAdminRpcHandler(global,
+      global.clients,
+      global.networkStore,
+      stream),
+    stream)
   global.adminRpc = global.adminServer.wrap(baseRpcHandler())
   console.log('admin connected')
 }

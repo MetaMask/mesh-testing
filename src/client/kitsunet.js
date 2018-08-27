@@ -90,13 +90,13 @@ module.exports = function (client, node, clientState) {
     kitsunetPeers.push(peer)
     updateClientStateForNewKitsunetPeer(peerId, { status: 'connecting' })
 
-    rpc.createRpcServer(baseRpc(), stream)
+    const kitsunetNodeRpc = rpc.createRpcServer(baseRpc(), stream)
     endOfStream(stream, (err) => {
       console.log(`peer rpcConnection disconnect ${peerId}`, err.message)
       disconnectKitsunetPeer(peer.id, err)
     })
 
-    peer.rpcAsync = rpc.createRpcClient(baseRpc(), stream)
+    peer.rpcAsync = rpc.createRpcClient(baseRpc(), kitsunetNodeRpc)
 
     console.log(`MetaMask Mesh Testing - kitsunet CONNECT ${peerId}`)
     updateClientStateForKitsunetPeer(peerId, { status: 'connected' })

@@ -46,9 +46,9 @@ async function setupAdmin () {
   console.log('MetaMask Mesh Testing - connected!')
 
   console.log(serverConnection)
-  await serverRpc.createNetworkUpdateStream()
+  const updateStream = await serverRpc.createNetworkUpdateStream()
   pump(
-    serverConnection,
+    updateStream,
     createJsonParseStream(),
     fromDiffs(),
     asStream(store),
