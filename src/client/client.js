@@ -15,7 +15,9 @@ const autoConnectAttemptInterval = 10 * sec
 
 const maxPeers = 8
 
-module.exports = function (serverRpc, clientState, node, stats) {
+module.exports = function (clientState, node, stats) {
+  let telemetryRpc = null
+
   async function submitClientStateOnInterval () {
     while (true) {
       await submitNetworkState()
@@ -25,7 +27,7 @@ module.exports = function (serverRpc, clientState, node, stats) {
 
   async function submitNetworkState () {
     stats.updateClientStateWithLibp2pStats()
-    if (serverRpc) await serverRpc.submitNetworkState(clientState)
+    if (telemetryRpc) await telemetryRpc.submitNetworkState(clientState)
   }
 
   function restartWithDelay (timeoutDuration) {
@@ -35,7 +37,7 @@ module.exports = function (serverRpc, clientState, node, stats) {
 
   function restart () {
     console.log('restarting...')
-    serverRpc.disconnect()
+    telemetryRpc.disconnect()
     // leave 3 sec for network activity
     setTimeout(() => window.location.reload(), 3 * sec)
   }
@@ -98,11 +100,12 @@ module.exports = function (serverRpc, clientState, node, stats) {
     startLibp2pNode,
     submitClientStateOnInterval,
     submitNetworkState,
-    restartWithDelay,
     autoConnectWhenLonely,
     autoConnectAttemptInterval,
     restart,
+    restartWithDelay,
     hangupPeer,
-    checkAndHandgup
+    checkAndHandgup,
+    setTelemetryRpc: (telemetry) => { telemetryRpc = telemetry }
   }
 }

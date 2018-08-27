@@ -9,8 +9,8 @@ const timeout = require('../util/timeout')
 
 const { pingClientWithTimeout } = require('../network/clientTimeout')
 
-const { createRpc } = require('../rpc/rpc')
-const BaseRpc = require('../rpc/base')
+const rpc = require('../rpc/rpc')
+const baseRpc = require('../rpc/base')
 
 const removeFromArray = require('../util/remoteFromArray')
 
@@ -90,13 +90,13 @@ module.exports = function (client, node, clientState) {
     kitsunetPeers.push(peer)
     updateClientStateForNewKitsunetPeer(peerId, { status: 'connecting' })
 
-    createRpc(new BaseRpc(), stream)
+    rpc.createRpcServer(baseRpc(), stream)
     endOfStream(stream, (err) => {
       console.log(`peer rpcConnection disconnect ${peerId}`, err.message)
       disconnectKitsunetPeer(peer.id, err)
     })
 
-    peer.rpcAsync = createRpc(BaseRpc, stream)
+    peer.rpcAsync = rpc.createRpcClient(baseRpc(), stream)
 
     console.log(`MetaMask Mesh Testing - kitsunet CONNECT ${peerId}`)
     updateClientStateForKitsunetPeer(peerId, { status: 'connected' })

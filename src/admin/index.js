@@ -3,7 +3,7 @@ const buildVersion = String(process.env.BUILD_VERSION || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
-require('events').EventEmitter.defaultMaxListeners = 15
+require('events').EventEmitter.defaultMaxListeners = 20
 
 const pump = require('pump')
 const qs = require('qs')
@@ -38,7 +38,7 @@ async function setupAdmin () {
 
   // setup admin rpc
   const adminRpc = rpc.createRpcServer(baseRpcHandler(), serverConnection)
-  const serverRpc = rpc.createRpcClient(serverAdminRpcHandler(), serverConnection)
+  const serverRpc = rpc.createRpcClient(serverAdminRpcHandler(), adminRpc)
 
   endOfStream(serverConnection, (err) => console.log('server rpcConnection disconnect', err))
   global.serverAsync = serverRpc

@@ -51,11 +51,12 @@ module.exports = function (api) {
     )
 
     mx.wrap = function (methods) {
-        var names = methods.map(function (m) {
+       const m = typeof methods.map === 'undefined' ? Object.keys(methods) : methods
+        var names = m.map(function (m) {
             return m.split(':')[0];
         });
         var wrapped = prpc.wrap(names);
-        methods.forEach(function (m) {
+        m.forEach(function (m) {
             var parts = m.split(':');
             var name = parts[0];
             if (parts[1] === 's') {

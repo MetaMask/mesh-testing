@@ -2,29 +2,21 @@
 
 const pump = require('pump')
 const { cbifyObj } = require('../util/cbify')
-var multiplex = require('multiplex')
-const rpcStream = require('rpc-stream')
+const pify = require('pify')
+const multiplexRpc = require('../network/multiplexRpc')
 
 exports.createRpcServer = function (methods, conn) {
-  const rpc = rpcStream(cbifyObj(methods))
-  const mx = multiplex({ chunked: true })
-  const stream = pump(
+  const rpc = multiplexRpc(cbifyObj(methods))
+  pump(
+    conn,
     rpc,
-    mx.createSharedStream('0'),
-    rpc
-  )
-  pump(stream, conn, stream)
-  return methods
+    conn,
+    (err) => {
+      console.log(`stream closed`, err)
+    })
+  return rpc
 }
 
-exports.createRpcClient = function (methods, conn) {
-  const rpc = rpcStream()
-  const mx = multiplex({ chunked: true })
-  const stream = pump(
-    rpc,
-    mx.createSharedStream('1'),
-    rpc
-  )
-  pump(stream, conn, stream)
-  return rpc.wrap(cbifyObj(methods))
+exports.createRpcClient = function (methods, rpc) {
+  return pify(rpc.wrap(Object.keys(methods)))
 }

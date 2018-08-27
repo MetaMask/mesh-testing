@@ -18,11 +18,9 @@ module.exports = function (server, clients, networkStore, conn) {
     getPeerCount: async () => {
       return clients.length
     },
-
     getNetworkState: async () => {
       return networkStore.getState()
     },
-
     // send to client
     sendToClient: async (clientId, method, args) => {
       console.log(`forwarding "${method}" with (${args}) to client ${clientId}`)
@@ -33,25 +31,20 @@ module.exports = function (server, clients, networkStore, conn) {
       }
       return server.sendCallWithTimeout(client.rpcAsync, method, args, remoteCallTimeout)
     },
-
     // broadcast
     send: async (method, args) => {
       console.log(`broadcasting "${method}" with (${args}) to ${global.clients.length} client(s)`)
       return server.broadcastCall(method, args, remoteCallTimeout)
     },
-
     refresh: async () => {
       return server.broadcastCall('refresh', [], remoteCallTimeout)
     },
-
     refreshShortDelay: async () => {
       return server.broadcastCall('refreshShortDelay', [], remoteCallTimeout)
     },
-
     refreshLongDelay: async () => {
       return server.broadcastCall('refreshLongDelay', [], remoteCallTimeout)
     },
-
     createNetworkUpdateStream: async () => {
       const serializeStream = createJsonSerializeStream()
       pump(
