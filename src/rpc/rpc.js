@@ -19,5 +19,7 @@ exports.createRpcServer = function (methods, conn) {
 
 exports.createRpcClient = function (methods, rpc) {
   const m = Object.keys(methods)
-  return pify(rpc.wrap(m.map((name) => name.match(/stream$/i) ? `${name}:s` : name)))
+  return pify(rpc.wrap(m.map((name) => name.match(/stream$/i)
+    ? `${name}:s`
+    : name)))
 }

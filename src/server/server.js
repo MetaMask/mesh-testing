@@ -18,6 +18,7 @@ const kitsunetRpcHandler = require('../rpc/kitsunet')
 const serverKitsunetRpcHandler = require('../rpc/server-kitsunet')
 const serverAdminRpcHandler = require('../rpc/server-admin')
 const baseRpcHandler = require('../rpc/base')
+const { sec } = require('../util/time')
 
 const app = express()
 // enable CORS responses
@@ -27,10 +28,7 @@ expressWebSocket(app, null, {
   perMessageDeflate: false
 })
 
-const sec = 1000
-const min = 60 * sec
-
-const heartBeatInterval = 1 * min
+const heartBeatInterval = 20 * sec
 const remoteCallTimeout = 45 * sec
 
 // network state

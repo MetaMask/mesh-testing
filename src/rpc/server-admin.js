@@ -45,7 +45,7 @@ module.exports = function (server, clients, networkStore, conn) {
     refreshLongDelay: async () => {
       return server.broadcastCall('refreshLongDelay', [], remoteCallTimeout)
     },
-    createNetworkUpdateStream: () => {
+    createNetworkUpdateStream: async () => {
       const serializeStream = createJsonSerializeStream()
       pump(
         asStream(server.networkStore),
