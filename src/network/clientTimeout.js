@@ -36,8 +36,7 @@ async function pingClientWithTimeout ({ client, disconnectClient, pingTimeout })
     // await ping response
     (async () => {
       const start = Date.now()
-      const pong = await client.rpcAsync.ping()
-      console.log(`heard response '${pong}' from peer: ${client.peerId}`)
+      await client.rpcAsync.ping()
       heardPing = true
       const end = Date.now()
       const rtt = end - start

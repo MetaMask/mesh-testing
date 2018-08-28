@@ -41427,32 +41427,31 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1535088461 || 'development')
+const buildVersion = String(1535416993 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
+
+require('events').EventEmitter.defaultMaxListeners = 20
 
 const pump = require('pump')
 const qs = require('qs')
 const ObservableStore = require('obs-store')
 const asStream = require('obs-store/lib/asStream')
 const endOfStream = require('end-of-stream')
-const {
-  connectToTelemetryServerViaWs,
-  connectToTelemetryServerViaPost
-} = require('../network/telemetry')
+const {connectToTelemetryServerViaWs} = require('../network/telemetry')
 const startAdminApp = require('./app')
 const { fromDiffs } = require('../util/jsonPatchStream')
 const { createJsonParseStream } = require('../util/jsonSerializeStream')
 
 const rpc = require('../rpc/rpc')
-const BaseRpc = require('../rpc/base')
-const ServerAdmin = require('../rpc/server-admin')
+const baseRpcHandler = require('../rpc/base')
+const serverAdminRpcHandler = require('../rpc/server-admin')
 
 setupAdmin().catch(console.error)
 
 async function setupAdmin () {
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
-  const devMode = (!opts.prod && location.hostname === 'localhost')
+  const devMode = (!opts.prod && global.location.hostname === 'localhost')
   const adminCode = opts.admin
 
   // connect to telemetry
@@ -41466,8 +41465,8 @@ async function setupAdmin () {
   startAdminApp({ store })
 
   // setup admin rpc
-  const adminRpc = rpc.createRpc(new BaseRpc(), serverConnection)
-  const serverRpc = rpc.createRpc(ServerAdmin, serverConnection)
+  const adminRpc = rpc.createRpcServer(baseRpcHandler(), serverConnection)
+  const serverRpc = rpc.createRpcClient(serverAdminRpcHandler(), adminRpc)
 
   endOfStream(serverConnection, (err) => console.log('server rpcConnection disconnect', err))
   global.serverAsync = serverRpc
@@ -41475,9 +41474,9 @@ async function setupAdmin () {
   console.log('MetaMask Mesh Testing - connected!')
 
   console.log(serverConnection)
-  await serverRpc.createNetworkUpdateStream()
+  const updateStream = await serverRpc.createNetworkUpdateStream()
   pump(
-    serverConnection,
+    updateStream,
     createJsonParseStream(),
     fromDiffs(),
     asStream(store),
@@ -41491,7 +41490,7 @@ async function setupAdmin () {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"../network/telemetry":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js","../rpc/base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","../rpc/rpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js","../rpc/server-admin":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js","../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","./app":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/app.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","obs-store":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","qs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/qs/lib/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
+},{"../network/telemetry":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js","../rpc/base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","../rpc/rpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js","../rpc/server-admin":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js","../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","./app":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/app.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","obs-store":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","qs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/qs/lib/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
 const d3 = require('d3')
 
 const graphWidth = 960
@@ -42129,7 +42128,92 @@ function renderPieChart({
   }
 }
 
-},{"d3":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/d3/build/d3.node.js","virtual-dom/virtual-hyperscript/svg":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/virtual-hyperscript/svg.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js":[function(require,module,exports){
+},{"d3":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/d3/build/d3.node.js","virtual-dom/virtual-hyperscript/svg":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/virtual-hyperscript/svg.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/multiplexRpc.js":[function(require,module,exports){
+var RPC = require('rpc-stream')
+var multiplex = require('multiplex')
+const pump = require('pump')
+
+module.exports = function (api) {
+  var index = 2
+  var irpc = RPC({ // internal rpc
+    open: function (id, name, args) {
+      if (typeof api[name] !== 'function') return
+      args = [].splice.call(args)
+      args.push((err, stream) => {
+        if (err) {
+          throw err
+        }
+        if (!stream || typeof stream.pipe !== 'function') return
+        pump(
+          stream,
+          mx.createSharedStream(id),
+          stream,
+          (err) => {
+            console.log(`multiplexRpc internal child "${id}" stream ended`, err.message)
+          }
+        )
+      })
+      api[name].apply(null, args)
+    }
+  })
+  var iclient = irpc.wrap([ 'open' ])
+  var prpc = RPC(api, {
+    flattenError: (err) => {
+      if (!(err instanceof Error)) return err
+      console.error('sending error over rpc', err)
+      return {
+        message: err.message,
+        stack: err.stack
+      }
+    }
+  }) // public interface
+
+  var mx = multiplex({ chunked: true })
+  pump(
+    irpc,
+    mx.createSharedStream('0'),
+    irpc,
+    (err) => {
+      console.log('multiplexRpc internal stream ended', err.message)
+    }
+  )
+  pump(
+    prpc,
+    mx.createSharedStream('1'),
+    prpc,
+    (err) => {
+      console.log('multiplexRpc public stream ended', err.message)
+    }
+  )
+
+  mx.wrap = function (methods) {
+    const m = typeof methods.map === 'undefined' ? Object.keys(methods) : methods
+    var names = m.map(function (m) {
+      return m.split(':')[0]
+    })
+    var wrapped = prpc.wrap(names)
+    m.forEach(function (m) {
+      var parts = m.split(':')
+      var name = parts[0]
+      if (parts[1] === 's') {
+        wrapped[name] = wrapStream(name)
+      }
+    })
+    return wrapped
+  }
+  return mx
+
+  function wrapStream (name) {
+    return function () {
+      var args = [].slice.call(arguments)
+      var id = String(index++)
+      iclient.open(id, name, args)
+      return mx.createSharedStream(id)
+    }
+  }
+}
+
+},{"multiplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/index.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","rpc-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/rpc-stream/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js":[function(require,module,exports){
 const websocket = require('websocket-stream')
 const createHttpClientStream = require('http-poll-stream/src/client')
 
@@ -42159,63 +42243,46 @@ function connectToTelemetryServerViaWs (opts = {}) {
 },{"http-poll-stream/src/client":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/http-poll-stream/src/client.js","websocket-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/websocket-stream/stream.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js":[function(require,module,exports){
 'use strict'
 
-class BaseRPC {
-  async ping () {
-    return 'pong'
+module.exports = function () {
+  return {
+    ping: async () => {
+      return 'pong'
+    }
   }
 }
-
-module.exports = BaseRPC
 
 },{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js":[function(require,module,exports){
 'use strict'
 
 const pump = require('pump')
 const { cbifyObj } = require('../util/cbify')
-var multiplex = require('multiplex')
-const rpcStream = require('rpc-stream')
+const pify = require('pify')
+const multiplexRpc = require('../network/multiplexRpc')
 
-const BaseRPC = require('./base')
-
-const instanceToObj = (object, ctx) => {
-  let methods = {}
-  while (Object.getPrototypeOf(object) instanceof BaseRPC ||
-    Object.getPrototypeOf(object) === BaseRPC.prototype) {
-    object = Object.getPrototypeOf(object)
-    methods = Object.assign({}, methods, Object.keys(Object.getOwnPropertyDescriptors(object))
-      .filter(k => k !== 'constructor' && k[0] !== '_')
-      .reduce((obj, k) => { obj[k] = object[k].bind(ctx); return obj }, {}))
-  }
-  return methods
-}
-
-exports.createRpc = function createRpc (instance, conn, initiator) {
-  initiator = initiator || false
-  if (typeof instance === 'function') {
-    const Clazz = instance
-    instance = new Clazz()
-    initiator = true
-  }
-  const rpcMethods = cbifyObj(instanceToObj(instance, instance))
-  const rpc = initiator
-    ? rpcStream()
-    : rpcStream(rpcMethods)
-  const methods = initiator ? rpc.wrap(rpcMethods) : instance
-  const mx = multiplex({ chunked: true })
-  const stream = pump(
+exports.createRpcServer = function (methods, conn) {
+  const rpc = multiplexRpc(cbifyObj(methods))
+  pump(
+    conn,
     rpc,
-    initiator ? mx.createSharedStream('0') : mx.createSharedStream('1'),
-    rpc
-  )
-  pump(stream, conn, stream)
-  return methods
+    conn,
+    (err) => {
+      console.log(`stream closed`, err)
+    })
+  return rpc
 }
 
-},{"../util/cbify":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/cbify.js","./base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","multiplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/index.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","rpc-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/rpc-stream/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js":[function(require,module,exports){
+exports.createRpcClient = function (methods, rpc) {
+  const m = Object.keys(methods)
+  return pify(rpc.wrap(m.map((name) => name.match(/stream$/i)
+    ? `${name}:s`
+    : name)))
+}
+
+},{"../network/multiplexRpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/multiplexRpc.js","../util/cbify":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/cbify.js","pify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pify/index.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js":[function(require,module,exports){
 (function (global){
 'use strict'
 
-const Base = require('./base')
+const base = require('./base')
 const { sec } = require('../util/time')
 
 const pump = require('pump')
@@ -42227,68 +42294,55 @@ const { createJsonSerializeStream } = require('../util/jsonSerializeStream')
 
 const remoteCallTimeout = 45 * sec
 
-class ServerAdminRPC extends Base {
-  constructor (server, conn) {
-    super()
-    this.server = server
-    this._conn = conn
-  }
-
-  // server data
-  async getPeerCount () {
-    return global.clients.length
-  }
-
-  async getNetworkState () {
-    return global.networkStore.getState()
-  }
-
-  // send to client
-  async sendToClient (clientId, method, args) {
-    console.log(`forwarding "${method}" with (${args}) to client ${clientId}`)
-    const client = this.server.clients.find(c => c.peerId === clientId)
-    if (!client) {
-      console.log(`no client found ${clientId}`)
-      return
-    }
-    return this.server.sendCallWithTimeout(client.rpcAsync, method, args, remoteCallTimeout)
-  }
-
-  // broadcast
-  async send (method, args) {
-    console.log(`broadcasting "${method}" with (${args}) to ${global.clients.length} client(s)`)
-    return this.server.broadcastCall(method, args, remoteCallTimeout)
-  }
-
-  async refresh () {
-    return this.server.broadcastCall('refresh', [], remoteCallTimeout)
-  }
-
-  async refreshShortDelay () {
-    return this.server.broadcastCall('refreshShortDelay', [], remoteCallTimeout)
-  }
-
-  refreshLongDelay () {
-    return this.server.broadcastCall('refreshLongDelay', [], remoteCallTimeout)
-  }
-
-  async createNetworkUpdateStream () {
-    const serializeStream = createJsonSerializeStream()
-    pump(
-      asStream(this.server.networkStore),
-      // dont emit new values more than 2/sec
-      throttleStream(500),
-      toDiffs(),
-      serializeStream,
-      this._conn,
-      (err) => {
-        if (err) console.log('admin diff stream broke', err)
+module.exports = function (server, clients, networkStore, conn) {
+  return Object.assign({}, {
+    // server data
+    getPeerCount: async () => {
+      return clients.length
+    },
+    getNetworkState: async () => {
+      return networkStore.getState()
+    },
+    // send to client
+    sendToClient: async (clientId, method, args) => {
+      console.log(`forwarding "${method}" with (${args}) to client ${clientId}`)
+      const client = server.clients.find(c => c.peerId === clientId)
+      if (!client) {
+        console.log(`no client found ${clientId}`)
+        return
       }
-    )
-  }
+      return server.sendCallWithTimeout(client.rpcAsync, method, args, remoteCallTimeout)
+    },
+    // broadcast
+    send: async (method, args) => {
+      console.log(`broadcasting "${method}" with (${args}) to ${global.clients.length} client(s)`)
+      return server.broadcastCall(method, args, remoteCallTimeout)
+    },
+    refresh: async () => {
+      return server.broadcastCall('refresh', [], remoteCallTimeout)
+    },
+    refreshShortDelay: async () => {
+      return server.broadcastCall('refreshShortDelay', [], remoteCallTimeout)
+    },
+    refreshLongDelay: async () => {
+      return server.broadcastCall('refreshLongDelay', [], remoteCallTimeout)
+    },
+    createNetworkUpdateStream: async () => {
+      const serializeStream = createJsonSerializeStream()
+      pump(
+        asStream(server.networkStore),
+        // dont emit new values more than 2/sec
+        throttleStream(500),
+        toDiffs(),
+        serializeStream,
+        (err) => {
+          if (err) console.log('admin diff stream broke', err)
+        }
+      )
+      return serializeStream
+    }
+  }, base())
 }
-
-module.exports = ServerAdminRPC
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
@@ -42336,27 +42390,35 @@ const through = require('through2').obj
 
 module.exports = { toDiffs, fromDiffs }
 
-function toDiffs() {
+function toDiffs () {
   let lastObj = {}
   return through(function (newObj, _, cb) {
-    const patch = compare(lastObj, newObj)
-    // only push non-noop
-    if (patch.length) this.push(patch)
-    // deep clone to ensure diff is good
-    // warning: increases memory footprint
-    lastObj = deepClone(newObj)
+    try {
+      const patch = compare(lastObj, newObj)
+      // only push non-noop
+      if (patch.length) this.push(patch)
+      // deep clone to ensure diff is good
+      // warning: increases memory footprint
+      lastObj = deepClone(newObj)
+    } catch (err) {
+      console.log(`an error occurred patching json diff`, err)
+    }
     cb()
   })
 }
 
-function fromDiffs() {
+function fromDiffs () {
   let lastObj = {}
   return through(function (patch, _, cb) {
-    const newObj = applyPatch(lastObj, patch).newDocument
-    this.push(newObj)
-    // deep clone to ensure diff is good
-    // warning: increases memory footprint
-    lastObj = deepClone(newObj)
+    try {
+      const newObj = applyPatch(lastObj, patch).newDocument
+      this.push(newObj)
+      // deep clone to ensure diff is good
+      // warning: increases memory footprint
+      lastObj = deepClone(newObj)
+    } catch (err) {
+      console.log(`an error occurred patching json diff`, err)
+    }
     cb()
   })
 }

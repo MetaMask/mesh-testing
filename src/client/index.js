@@ -13,7 +13,7 @@ const endOfStream = require('end-of-stream')
 
 const { hour } = require('../util/time')
 const { connectToTelemetryServerViaPost } = require('../network/telemetry')
-const createLibp2pNode = require('./createNode')
+const createLibp2pNode = require('./libp2p/createNode')
 
 const rpc = require('../rpc/rpc')
 const kitsunetRpcMethods = require('../rpc/kitsunet')
