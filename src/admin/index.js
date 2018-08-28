@@ -3,26 +3,27 @@ const buildVersion = String(process.env.BUILD_VERSION || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
+require('events').EventEmitter.defaultMaxListeners = 20
+
 const pump = require('pump')
 const qs = require('qs')
-const pify = require('pify')
 const ObservableStore = require('obs-store')
 const asStream = require('obs-store/lib/asStream')
-const {
-  connectToTelemetryServerViaWs,
-  connectToTelemetryServerViaPost
-} = require('../network/telemetry')
+const endOfStream = require('end-of-stream')
+const {connectToTelemetryServerViaWs} = require('../network/telemetry')
 const startAdminApp = require('./app')
-const multiplexRpc = require('../network/multiplexRpc')
-const { cbifyObj } = require('../util/cbify')
 const { fromDiffs } = require('../util/jsonPatchStream')
 const { createJsonParseStream } = require('../util/jsonSerializeStream')
+
+const rpc = require('../rpc/rpc')
+const baseRpcHandler = require('../rpc/base')
+const serverAdminRpcHandler = require('../rpc/server-admin')
 
 setupAdmin().catch(console.error)
 
 async function setupAdmin () {
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
-  const devMode = (!opts.prod && location.hostname === 'localhost')
+  const devMode = (!opts.prod && global.location.hostname === 'localhost')
   const adminCode = opts.admin
 
   // connect to telemetry
@@ -36,38 +37,16 @@ async function setupAdmin () {
   startAdminApp({ store })
 
   // setup admin rpc
-  const adminRpcImplementationForServer = cbifyObj({
-    ping: async () => 'pong',
-  })
-  const serverRpcInterfaceForAdmin = [
-    'ping',
-    'getPeerCount',
-    'getNetworkState',
-    'sendToClient',
-    'send',
-    'refresh',
-    'refreshShortDelay',
-    'refreshLongDelay',
-    'createNetworkUpdateStream:s',
-  ]
+  const adminRpc = rpc.createRpcServer(baseRpcHandler(), serverConnection)
+  const serverRpc = rpc.createRpcClient(serverAdminRpcHandler(), adminRpc)
 
-  const rpcConnection = multiplexRpc(adminRpcImplementationForServer)
-  pump(
-    serverConnection,
-    rpcConnection,
-    serverConnection,
-    (err) => {
-      console.log('server rpcConnection disconnect', err)
-    }
-  )
-  const server = rpcConnection.wrap(serverRpcInterfaceForAdmin)
-  const serverAsync = pify(server)
-  global.server = server
-  global.serverAsync = serverAsync
+  endOfStream(serverConnection, (err) => console.log('server rpcConnection disconnect', err))
+  global.serverAsync = serverRpc
+  global.adminRpc = adminRpc
   console.log('MetaMask Mesh Testing - connected!')
 
-  const updateStream = server.createNetworkUpdateStream()
-  console.log(updateStream)
+  console.log(serverConnection)
+  const updateStream = await serverRpc.createNetworkUpdateStream()
   pump(
     updateStream,
     createJsonParseStream(),

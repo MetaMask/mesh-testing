@@ -27764,6 +27764,450 @@ module.exports = debounce;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/lodash.throttle/index.js":[function(require,module,exports){
+(function (global){
+/**
+ * lodash (Custom Build) <https://lodash.com/>
+ * Build: `lodash modularize exports="npm" -o ./`
+ * Copyright jQuery Foundation and other contributors <https://jquery.org/>
+ * Released under MIT license <https://lodash.com/license>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ */
+
+/** Used as the `TypeError` message for "Functions" methods. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/** Used as references for various `Number` constants. */
+var NAN = 0 / 0;
+
+/** `Object#toString` result references. */
+var symbolTag = '[object Symbol]';
+
+/** Used to match leading and trailing whitespace. */
+var reTrim = /^\s+|\s+$/g;
+
+/** Used to detect bad signed hexadecimal string values. */
+var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+
+/** Used to detect binary string values. */
+var reIsBinary = /^0b[01]+$/i;
+
+/** Used to detect octal string values. */
+var reIsOctal = /^0o[0-7]+$/i;
+
+/** Built-in method references without a dependency on `root`. */
+var freeParseInt = parseInt;
+
+/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || Function('return this')();
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max,
+    nativeMin = Math.min;
+
+/**
+ * Gets the timestamp of the number of milliseconds that have elapsed since
+ * the Unix epoch (1 January 1970 00:00:00 UTC).
+ *
+ * @static
+ * @memberOf _
+ * @since 2.4.0
+ * @category Date
+ * @returns {number} Returns the timestamp.
+ * @example
+ *
+ * _.defer(function(stamp) {
+ *   console.log(_.now() - stamp);
+ * }, _.now());
+ * // => Logs the number of milliseconds it took for the deferred invocation.
+ */
+var now = function() {
+  return root.Date.now();
+};
+
+/**
+ * Creates a debounced function that delays invoking `func` until after `wait`
+ * milliseconds have elapsed since the last time the debounced function was
+ * invoked. The debounced function comes with a `cancel` method to cancel
+ * delayed `func` invocations and a `flush` method to immediately invoke them.
+ * Provide `options` to indicate whether `func` should be invoked on the
+ * leading and/or trailing edge of the `wait` timeout. The `func` is invoked
+ * with the last arguments provided to the debounced function. Subsequent
+ * calls to the debounced function return the result of the last `func`
+ * invocation.
+ *
+ * **Note:** If `leading` and `trailing` options are `true`, `func` is
+ * invoked on the trailing edge of the timeout only if the debounced function
+ * is invoked more than once during the `wait` timeout.
+ *
+ * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
+ * until to the next tick, similar to `setTimeout` with a timeout of `0`.
+ *
+ * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
+ * for details over the differences between `_.debounce` and `_.throttle`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Function
+ * @param {Function} func The function to debounce.
+ * @param {number} [wait=0] The number of milliseconds to delay.
+ * @param {Object} [options={}] The options object.
+ * @param {boolean} [options.leading=false]
+ *  Specify invoking on the leading edge of the timeout.
+ * @param {number} [options.maxWait]
+ *  The maximum time `func` is allowed to be delayed before it's invoked.
+ * @param {boolean} [options.trailing=true]
+ *  Specify invoking on the trailing edge of the timeout.
+ * @returns {Function} Returns the new debounced function.
+ * @example
+ *
+ * // Avoid costly calculations while the window size is in flux.
+ * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
+ *
+ * // Invoke `sendMail` when clicked, debouncing subsequent calls.
+ * jQuery(element).on('click', _.debounce(sendMail, 300, {
+ *   'leading': true,
+ *   'trailing': false
+ * }));
+ *
+ * // Ensure `batchLog` is invoked once after 1 second of debounced calls.
+ * var debounced = _.debounce(batchLog, 250, { 'maxWait': 1000 });
+ * var source = new EventSource('/stream');
+ * jQuery(source).on('message', debounced);
+ *
+ * // Cancel the trailing debounced invocation.
+ * jQuery(window).on('popstate', debounced.cancel);
+ */
+function debounce(func, wait, options) {
+  var lastArgs,
+      lastThis,
+      maxWait,
+      result,
+      timerId,
+      lastCallTime,
+      lastInvokeTime = 0,
+      leading = false,
+      maxing = false,
+      trailing = true;
+
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  wait = toNumber(wait) || 0;
+  if (isObject(options)) {
+    leading = !!options.leading;
+    maxing = 'maxWait' in options;
+    maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
+    trailing = 'trailing' in options ? !!options.trailing : trailing;
+  }
+
+  function invokeFunc(time) {
+    var args = lastArgs,
+        thisArg = lastThis;
+
+    lastArgs = lastThis = undefined;
+    lastInvokeTime = time;
+    result = func.apply(thisArg, args);
+    return result;
+  }
+
+  function leadingEdge(time) {
+    // Reset any `maxWait` timer.
+    lastInvokeTime = time;
+    // Start the timer for the trailing edge.
+    timerId = setTimeout(timerExpired, wait);
+    // Invoke the leading edge.
+    return leading ? invokeFunc(time) : result;
+  }
+
+  function remainingWait(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime,
+        result = wait - timeSinceLastCall;
+
+    return maxing ? nativeMin(result, maxWait - timeSinceLastInvoke) : result;
+  }
+
+  function shouldInvoke(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime;
+
+    // Either this is the first call, activity has stopped and we're at the
+    // trailing edge, the system time has gone backwards and we're treating
+    // it as the trailing edge, or we've hit the `maxWait` limit.
+    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
+      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
+  }
+
+  function timerExpired() {
+    var time = now();
+    if (shouldInvoke(time)) {
+      return trailingEdge(time);
+    }
+    // Restart the timer.
+    timerId = setTimeout(timerExpired, remainingWait(time));
+  }
+
+  function trailingEdge(time) {
+    timerId = undefined;
+
+    // Only invoke if we have `lastArgs` which means `func` has been
+    // debounced at least once.
+    if (trailing && lastArgs) {
+      return invokeFunc(time);
+    }
+    lastArgs = lastThis = undefined;
+    return result;
+  }
+
+  function cancel() {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+    }
+    lastInvokeTime = 0;
+    lastArgs = lastCallTime = lastThis = timerId = undefined;
+  }
+
+  function flush() {
+    return timerId === undefined ? result : trailingEdge(now());
+  }
+
+  function debounced() {
+    var time = now(),
+        isInvoking = shouldInvoke(time);
+
+    lastArgs = arguments;
+    lastThis = this;
+    lastCallTime = time;
+
+    if (isInvoking) {
+      if (timerId === undefined) {
+        return leadingEdge(lastCallTime);
+      }
+      if (maxing) {
+        // Handle invocations in a tight loop.
+        timerId = setTimeout(timerExpired, wait);
+        return invokeFunc(lastCallTime);
+      }
+    }
+    if (timerId === undefined) {
+      timerId = setTimeout(timerExpired, wait);
+    }
+    return result;
+  }
+  debounced.cancel = cancel;
+  debounced.flush = flush;
+  return debounced;
+}
+
+/**
+ * Creates a throttled function that only invokes `func` at most once per
+ * every `wait` milliseconds. The throttled function comes with a `cancel`
+ * method to cancel delayed `func` invocations and a `flush` method to
+ * immediately invoke them. Provide `options` to indicate whether `func`
+ * should be invoked on the leading and/or trailing edge of the `wait`
+ * timeout. The `func` is invoked with the last arguments provided to the
+ * throttled function. Subsequent calls to the throttled function return the
+ * result of the last `func` invocation.
+ *
+ * **Note:** If `leading` and `trailing` options are `true`, `func` is
+ * invoked on the trailing edge of the timeout only if the throttled function
+ * is invoked more than once during the `wait` timeout.
+ *
+ * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
+ * until to the next tick, similar to `setTimeout` with a timeout of `0`.
+ *
+ * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
+ * for details over the differences between `_.throttle` and `_.debounce`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Function
+ * @param {Function} func The function to throttle.
+ * @param {number} [wait=0] The number of milliseconds to throttle invocations to.
+ * @param {Object} [options={}] The options object.
+ * @param {boolean} [options.leading=true]
+ *  Specify invoking on the leading edge of the timeout.
+ * @param {boolean} [options.trailing=true]
+ *  Specify invoking on the trailing edge of the timeout.
+ * @returns {Function} Returns the new throttled function.
+ * @example
+ *
+ * // Avoid excessively updating the position while scrolling.
+ * jQuery(window).on('scroll', _.throttle(updatePosition, 100));
+ *
+ * // Invoke `renewToken` when the click event is fired, but not more than once every 5 minutes.
+ * var throttled = _.throttle(renewToken, 300000, { 'trailing': false });
+ * jQuery(element).on('click', throttled);
+ *
+ * // Cancel the trailing throttled invocation.
+ * jQuery(window).on('popstate', throttled.cancel);
+ */
+function throttle(func, wait, options) {
+  var leading = true,
+      trailing = true;
+
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  if (isObject(options)) {
+    leading = 'leading' in options ? !!options.leading : leading;
+    trailing = 'trailing' in options ? !!options.trailing : trailing;
+  }
+  return debounce(func, wait, {
+    'leading': leading,
+    'maxWait': wait,
+    'trailing': trailing
+  });
+}
+
+/**
+ * Checks if `value` is the
+ * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+ * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(_.noop);
+ * // => true
+ *
+ * _.isObject(null);
+ * // => false
+ */
+function isObject(value) {
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/**
+ * Checks if `value` is classified as a `Symbol` primitive or object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+ * @example
+ *
+ * _.isSymbol(Symbol.iterator);
+ * // => true
+ *
+ * _.isSymbol('abc');
+ * // => false
+ */
+function isSymbol(value) {
+  return typeof value == 'symbol' ||
+    (isObjectLike(value) && objectToString.call(value) == symbolTag);
+}
+
+/**
+ * Converts `value` to a number.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to process.
+ * @returns {number} Returns the number.
+ * @example
+ *
+ * _.toNumber(3.2);
+ * // => 3.2
+ *
+ * _.toNumber(Number.MIN_VALUE);
+ * // => 5e-324
+ *
+ * _.toNumber(Infinity);
+ * // => Infinity
+ *
+ * _.toNumber('3.2');
+ * // => 3.2
+ */
+function toNumber(value) {
+  if (typeof value == 'number') {
+    return value;
+  }
+  if (isSymbol(value)) {
+    return NAN;
+  }
+  if (isObject(value)) {
+    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
+    value = isObject(other) ? (other + '') : other;
+  }
+  if (typeof value != 'string') {
+    return value === 0 ? value : +value;
+  }
+  value = value.replace(reTrim, '');
+  var isBinary = reIsBinary.test(value);
+  return (isBinary || reIsOctal.test(value))
+    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
+    : (reIsBadHex.test(value) ? NAN : +value);
+}
+
+module.exports = throttle;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+
 },{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/index.js":[function(require,module,exports){
 (function (Buffer){
 var stream = require('readable-stream')
@@ -35716,7 +36160,26 @@ function Delayed(resolve, fn, self, args) {
   this.self = self || null
   this.args = args || null
 }
-},{"promise":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/promise/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/through/index.js":[function(require,module,exports){
+},{"promise":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/promise/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throttle-obj-stream/index.js":[function(require,module,exports){
+const through = require('through2').obj
+const throttle = require('lodash.throttle')
+
+module.exports = createThrottleObjStream
+
+function createThrottleObjStream(wait = 0, opts = {}) {
+  const throttledSubmitChunk = throttle(submitChunk, wait, opts)
+
+  return through(function (chunk, _, cb) {
+    throttledSubmitChunk.call(this, chunk)
+    cb()
+  })
+
+  function submitChunk(chunk) {
+    this.push(chunk)
+  }
+}
+
+},{"lodash.throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/lodash.throttle/index.js","through2":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/through2/through2.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/through/index.js":[function(require,module,exports){
 (function (process){
 var Stream = require('stream')
 
@@ -40216,7 +40679,7 @@ const graphHeight = 600
 
 module.exports = startApp
 
-function startApp(opts = {}) {
+function startApp (opts = {}) {
   const { store } = opts
 
   // view state
@@ -40233,12 +40696,12 @@ function startApp(opts = {}) {
   ]
 
   let viewMode = viewModes[0]
-  let selectedNode = undefined
-  let pubsubTarget = undefined
-  let ebtTarget = undefined
+  let selectedNode
+  let pubsubTarget
+  let ebtTarget
   let currentGraph = {
     nodes: [],
-    links: [],
+    links: []
   }
 
   // for debugging
@@ -40316,7 +40779,7 @@ function startApp(opts = {}) {
     // merge state
     const clientData = networkState.clients
     let networkFilter
-    switch(viewMode) {
+    switch (viewMode) {
       case 'kitsunet':
         networkFilter = 'kitsunet'
         break
@@ -40336,7 +40799,7 @@ function startApp(opts = {}) {
   }
 
   // mix in local graph over store state
-  function getState() {
+  function getState () {
     const networkState = store.getState()
 
     let latestBlock = 0
@@ -40356,8 +40819,8 @@ function startApp(opts = {}) {
         ebtTarget,
         networkState,
         graph: currentGraph,
-        latestBlock,
-      },
+        latestBlock
+      }
     )
   }
 
@@ -40370,13 +40833,13 @@ function startApp(opts = {}) {
     console.log(`END sending to "${nodeId}" "${method}" ${args} - ${result} ${duration}ms`)
   }
 
-  function rerender() {
+  function rerender () {
     const state = getState()
     updateDom(render(state, actions))
   }
 }
 
-function render(state, actions) {
+function render (state, actions) {
   const { selectedNode } = state
   return (
 
@@ -40388,15 +40851,15 @@ function render(state, actions) {
         h('div.main', [
           renderViewModeButons(state, actions),
           renderNodeSelect(state, actions),
-          renderGraph(state, actions),
+          renderGraph(state, actions)
         ]),
 
         h('div.sidebar', [
 
           renderGlobalPanel(state, actions),
-          selectedNode && renderSelectedNodePanel(state, actions),
+          selectedNode && renderSelectedNodePanel(state, actions)
 
-        ]),
+        ])
       ])
 
     ])
@@ -40404,22 +40867,22 @@ function render(state, actions) {
   )
 }
 
-function renderViewModeButons(state, actions) {
+function renderViewModeButons (state, actions) {
   return h('div', state.viewModes.map((mode) => h('button', {
-    onclick: () => actions.selectViewMode(mode),
+    onclick: () => actions.selectViewMode(mode)
   }, mode)))
 }
 
-function renderNodeSelect(state, actions) {
+function renderNodeSelect (state, actions) {
   return h('input', {
     placeholder: 'nodeId to select',
-    oninput: (event) => actions.selectNode(event.target.value),
+    oninput: (event) => actions.selectNode(event.target.value)
   })
 }
 
-function renderGraph(state, actions) {
+function renderGraph (state, actions) {
   const { viewMode } = state
-  switch(viewMode) {
+  switch (viewMode) {
     case 'normal': return renderGraphNormal(state, actions)
     case 'kitsunet': return renderGraphNormal(state, actions)
     case 'pie(tx)': return renderGraphPieTransportTx(state, actions)
@@ -40432,7 +40895,7 @@ function renderGraph(state, actions) {
   }
 }
 
-function renderGlobalPanel(state, actions) {
+function renderGlobalPanel (state, actions) {
   const { graph } = state
   return (
 
@@ -40442,7 +40905,7 @@ function renderGlobalPanel(state, actions) {
 
       h('div', [
         h('.app-info-count', `nodes: ${graph.nodes.length}`),
-        h('.app-info-count', `links: ${graph.links.length}`),
+        h('.app-info-count', `links: ${graph.links.length}`)
       ]),
 
       h('button', {
@@ -40450,14 +40913,14 @@ function renderGlobalPanel(state, actions) {
       }, 'restart all (5-10s delay)'),
       h('button', {
         onclick: () => actions.restartAllLongDelay()
-      }, 'restart all (2-10m delay)'),
+      }, 'restart all (2-10m delay)')
 
     ])
 
   )
 }
 
-function renderSelectedNodePanel(state, actions) {
+function renderSelectedNodePanel (state, actions) {
   const { selectedNode, networkState } = state
   const selectedNodeData = networkState.clients[selectedNode] || { ebtState: {} }
   const selectedNodePeers = selectedNodeData.peers
@@ -40471,48 +40934,48 @@ function renderSelectedNodePanel(state, actions) {
         'h2',
         `Latest block: ${
           selectedNodeData.block && typeof selectedNodeData.block.number !== 'undefined'
-          ? Number(selectedNodeData.block.number)
-          : 'N/A'
+            ? Number(selectedNodeData.block.number)
+            : 'N/A'
         }`
       ),
 
       h('h2', 'selected node'),
 
       h('.app-selected-node', [
-        `id: ${shortId}`,
+        `id: ${shortId}`
       ]),
 
       h('button', {
-        onclick: () => actions.pingNode(selectedNode),
+        onclick: () => actions.pingNode(selectedNode)
       }, 'ping'),
       h('button', {
-        onclick: () => actions.sendPubsub(selectedNode),
+        onclick: () => actions.sendPubsub(selectedNode)
       }, 'pubsub'),
       h('button', {
-        onclick: () => actions.sendMulticast(selectedNode, 1),
+        onclick: () => actions.sendMulticast(selectedNode, 1)
       }, 'multicast 1'),
       h('button', {
-        onclick: () => actions.sendMulticast(selectedNode, 3),
+        onclick: () => actions.sendMulticast(selectedNode, 3)
       }, 'multicast 3'),
       h('button', {
-        onclick: () => actions.sendMulticast(selectedNode, 6),
+        onclick: () => actions.sendMulticast(selectedNode, 6)
       }, 'multicast 6'),
       h('button', {
-        onclick: () => actions.appendEbtMessage(selectedNode, selectedNodeData.ebtState.sequence),
+        onclick: () => actions.appendEbtMessage(selectedNode, selectedNodeData.ebtState.sequence)
       }, 'ebt'),
       h('button', {
-        onclick: () => actions.restartNode(selectedNode),
+        onclick: () => actions.restartNode(selectedNode)
       }, 'restart'),
       h('button', {
         onclick: () => {
           selectedNodeData.blockTrackerEnabled = !selectedNodeData.blockTrackerEnabled
           actions.enableBlockTracker(selectedNode, selectedNodeData.blockTrackerEnabled)
-        },
+        }
       }, `${selectedNodeData.blockTrackerEnabled ? 'disable' : 'enable'} block tracker`),
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 
-      selectedNodeStats && renderSelectedNodeStats(selectedNodeStats, state, actions),
+      selectedNodeStats && renderSelectedNodeStats(selectedNodeStats, state, actions)
 
     ])
 
@@ -40560,19 +41023,19 @@ function renderSelectedNodePanel(state, actions) {
 //   }
 // }
 
-function renderSelectedNodeStats(nodeStats, state, actions) {
+function renderSelectedNodeStats (nodeStats, state, actions) {
   return h('div', [
     renderSelectedNodeGlobalStats(nodeStats, state, actions),
     h('div', [
       h('h4', 'peers'),
-      renderSelectedNodePeerStats(nodeStats, state, actions),
+      renderSelectedNodePeerStats(nodeStats, state, actions)
     ])
     // renderSelectedNodeTransportStats(nodeStats),
     // renderSelectedNodeProtocolStats(nodeStats),
   ])
 }
 
-function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
+function renderSelectedNodeGlobalStats (nodeStats, state, actions) {
   // global stats
   if (nodeStats.global) {
     const transports = Object.entries(nodeStats.global.transports)
@@ -40580,7 +41043,7 @@ function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
     return (
       h('div', [
         renderNodePeerTransportStats(transports),
-        renderNodePeerProtocolStats(protocols),
+        renderNodePeerProtocolStats(protocols)
       ])
     )
   } else {
@@ -40590,7 +41053,7 @@ function renderSelectedNodeGlobalStats(nodeStats, state, actions) {
   }
 }
 
-function renderSelectedNodePeerStats(nodeStats, state, actions) {
+function renderSelectedNodePeerStats (nodeStats, state, actions) {
   // peer stats
   const peers = Object.entries(nodeStats.peers || {})
   return peers.map(([peerId, peerData]) => {
@@ -40602,11 +41065,11 @@ function renderSelectedNodePeerStats(nodeStats, state, actions) {
         peerIdToShortId(peerId),
         h('button', {
           disabled: !inGraph,
-          onclick: () => actions.selectNode(peerId),
+          onclick: () => actions.selectNode(peerId)
         }, 'select')
       ]),
       renderNodePeerTransportStats(transports),
-      renderNodePeerProtocolStats(protocols),
+      renderNodePeerProtocolStats(protocols)
     ])
   })
 }
@@ -40616,12 +41079,12 @@ function renderNodePeerTransportStats (transports) {
     h('h5', 'transports'),
     h('div', [
       renderNodeStatsPieChart('in 1min', transports, (stats) => get1Min(stats, 'dataReceived')),
-      renderNodeStatsPieChart('in all', transports, (stats) => stats.snapshot.dataReceived),
+      renderNodeStatsPieChart('in all', transports, (stats) => stats.snapshot.dataReceived)
     ]),
     h('div', [
       renderNodeStatsPieChart('out 1min', transports, (stats) => get1Min(stats, 'dataSent')),
-      renderNodeStatsPieChart('out all', transports, (stats) => stats.snapshot.dataSent),
-    ]),
+      renderNodeStatsPieChart('out all', transports, (stats) => stats.snapshot.dataSent)
+    ])
   ])
 }
 
@@ -40630,16 +41093,16 @@ function renderNodePeerProtocolStats (protocols) {
     h('h5', 'protocols'),
     h('div', [
       renderNodeStatsPieChart('in 1min', protocols, (stats) => get1Min(stats, 'dataReceived')),
-      renderNodeStatsPieChart('in all', protocols, (stats) => stats.snapshot.dataReceived),
+      renderNodeStatsPieChart('in all', protocols, (stats) => stats.snapshot.dataReceived)
     ]),
     h('div', [
       renderNodeStatsPieChart('out 1min', protocols, (stats) => get1Min(stats, 'dataSent')),
-      renderNodeStatsPieChart('out all', protocols, (stats) => stats.snapshot.dataSent),
-    ]),
+      renderNodeStatsPieChart('out all', protocols, (stats) => stats.snapshot.dataSent)
+    ])
   ])
 }
 
-function get1Min(stats, direction) {
+function get1Min (stats, direction) {
   return stats.movingAverages[direction]['60000']
 }
 
@@ -40673,11 +41136,11 @@ function get1Min(stats, direction) {
 //   )
 // }
 
-function renderNodeStatsPieChart(label, specificStats, mapFn) {
+function renderNodeStatsPieChart (label, specificStats, mapFn) {
   const data = specificStats.map(([name, stats]) => {
     return {
       label: name,
-      value: mapFn(stats),
+      value: mapFn(stats)
     }
   })
 
@@ -40693,7 +41156,7 @@ function renderNodeStatsPieChart(label, specificStats, mapFn) {
   )
 }
 
-function renderNodeStatsTable(primaryLabel, tableStats, nodeStats) {
+function renderNodeStatsTable (primaryLabel, tableStats, nodeStats) {
   const totalRx = Number.parseInt(nodeStats.global.snapshot.dataReceived, 10)
   const totalTx = Number.parseInt(nodeStats.global.snapshot.dataSent, 10)
 
@@ -40705,7 +41168,7 @@ function renderNodeStatsTable(primaryLabel, tableStats, nodeStats) {
 
   return renderTable({ columnLabels, rows })
 
-  function rowFromStats([transportName, stats]) {
+  function rowFromStats ([transportName, stats]) {
     const amountRx = Number.parseInt(stats.snapshot.dataReceived, 10)
     const amountTx = Number.parseInt(stats.snapshot.dataSent, 10)
     const percentRx = totalRx ? Math.floor(100 * amountRx / totalRx) : 100
@@ -40716,12 +41179,12 @@ function renderNodeStatsTable(primaryLabel, tableStats, nodeStats) {
       `${formatBytes(amountRx)} ${percentRx}%`,
       `${formatBytes(amountTx)} ${percentTx}%`,
       formatBytes(stats.movingAverages.dataReceived['60000']),
-      formatBytes(stats.movingAverages.dataSent['60000']),
+      formatBytes(stats.movingAverages.dataSent['60000'])
     ]
   }
 }
 
-function renderTable({ columnLabels, rows }) {
+function renderTable ({ columnLabels, rows }) {
   return (
 
     h('table', [
@@ -40730,13 +41193,13 @@ function renderTable({ columnLabels, rows }) {
       ]),
       h('tbody', rows.map((rowContent) => {
         return h('tr', rowContent.map(content => h('td', content)))
-      })),
+      }))
     ])
 
   )
 }
 
-function mergeGraph(oldGraph, newGraph) {
+function mergeGraph (oldGraph, newGraph) {
   const graph = {}
   // create index for faster lookups during merge
   const graphIndex = createGraphIndex(oldGraph)
@@ -40746,7 +41209,7 @@ function mergeGraph(oldGraph, newGraph) {
       // creating all nodes at the same spot creates a big bang
       // that accidently sorts the structures out nicely
       x: graphWidth / 2,
-      y: graphHeight / 2,
+      y: graphHeight / 2
     }, graphIndex.nodes[node.id], node)
   })
   graph.links = newGraph.links.map((link) => {
@@ -40755,7 +41218,7 @@ function mergeGraph(oldGraph, newGraph) {
   return graph
 }
 
-function createGraphIndex(graph) {
+function createGraphIndex (graph) {
   const graphIndex = { nodes: {}, links: {} }
   graph.nodes.forEach(node => {
     graphIndex.nodes[node.id] = node
@@ -40766,7 +41229,7 @@ function createGraphIndex(graph) {
   return graphIndex
 }
 
-function appStyle() {
+function appStyle () {
   return h('style', [
     `
     body, html {
@@ -40876,7 +41339,7 @@ StatsObj shape
 }
 */
 
-function buildGraph(networkState, networkFilter) {
+function buildGraph (networkState, networkFilter) {
   const graph = { nodes: [], links: [] }
 
   // first add kitsunet nodes
@@ -40917,7 +41380,7 @@ function buildGraph(networkState, networkFilter) {
   return graph
 }
 
-function formatBytes(bytes) {
+function formatBytes (bytes) {
   let result = bytes || 0
   let unit = 'b'
   if (result > 1000000) {
@@ -40931,8 +41394,8 @@ function formatBytes(bytes) {
   return `${result}${unit}`
 }
 
-function peerIdToShortId(peerId) {
-  return peerId && `${peerId.slice(0,4)}...${peerId.slice(-4)}`
+function peerIdToShortId (peerId) {
+  return peerId && `${peerId.slice(0, 4)}...${peerId.slice(-4)}`
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
@@ -40964,30 +41427,31 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1534805132 || 'development')
+const buildVersion = String(1535416993 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
+require('events').EventEmitter.defaultMaxListeners = 20
+
 const pump = require('pump')
 const qs = require('qs')
-const pify = require('pify')
 const ObservableStore = require('obs-store')
 const asStream = require('obs-store/lib/asStream')
-const {
-  connectToTelemetryServerViaWs,
-  connectToTelemetryServerViaPost
-} = require('../network/telemetry')
+const endOfStream = require('end-of-stream')
+const {connectToTelemetryServerViaWs} = require('../network/telemetry')
 const startAdminApp = require('./app')
-const multiplexRpc = require('../network/multiplexRpc')
-const { cbifyObj } = require('../util/cbify')
 const { fromDiffs } = require('../util/jsonPatchStream')
 const { createJsonParseStream } = require('../util/jsonSerializeStream')
+
+const rpc = require('../rpc/rpc')
+const baseRpcHandler = require('../rpc/base')
+const serverAdminRpcHandler = require('../rpc/server-admin')
 
 setupAdmin().catch(console.error)
 
 async function setupAdmin () {
   const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
-  const devMode = (!opts.prod && location.hostname === 'localhost')
+  const devMode = (!opts.prod && global.location.hostname === 'localhost')
   const adminCode = opts.admin
 
   // connect to telemetry
@@ -41001,38 +41465,16 @@ async function setupAdmin () {
   startAdminApp({ store })
 
   // setup admin rpc
-  const adminRpcImplementationForServer = cbifyObj({
-    ping: async () => 'pong',
-  })
-  const serverRpcInterfaceForAdmin = [
-    'ping',
-    'getPeerCount',
-    'getNetworkState',
-    'sendToClient',
-    'send',
-    'refresh',
-    'refreshShortDelay',
-    'refreshLongDelay',
-    'createNetworkUpdateStream:s',
-  ]
+  const adminRpc = rpc.createRpcServer(baseRpcHandler(), serverConnection)
+  const serverRpc = rpc.createRpcClient(serverAdminRpcHandler(), adminRpc)
 
-  const rpcConnection = multiplexRpc(adminRpcImplementationForServer)
-  pump(
-    serverConnection,
-    rpcConnection,
-    serverConnection,
-    (err) => {
-      console.log('server rpcConnection disconnect', err)
-    }
-  )
-  const server = rpcConnection.wrap(serverRpcInterfaceForAdmin)
-  const serverAsync = pify(server)
-  global.server = server
-  global.serverAsync = serverAsync
+  endOfStream(serverConnection, (err) => console.log('server rpcConnection disconnect', err))
+  global.serverAsync = serverRpc
+  global.adminRpc = adminRpc
   console.log('MetaMask Mesh Testing - connected!')
 
-  const updateStream = server.createNetworkUpdateStream()
-  console.log(updateStream)
+  console.log(serverConnection)
+  const updateStream = await serverRpc.createNetworkUpdateStream()
   pump(
     updateStream,
     createJsonParseStream(),
@@ -41048,7 +41490,7 @@ async function setupAdmin () {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"../network/multiplexRpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/multiplexRpc.js","../network/telemetry":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js","../util/cbify":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/cbify.js","../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","./app":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/app.js","obs-store":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pify/index.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","qs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/qs/lib/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
+},{"../network/telemetry":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js","../rpc/base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","../rpc/rpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js","../rpc/server-admin":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js","../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","./app":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/app.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","obs-store":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","qs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/qs/lib/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
 const d3 = require('d3')
 
 const graphWidth = 960
@@ -41687,83 +42129,89 @@ function renderPieChart({
 }
 
 },{"d3":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/d3/build/d3.node.js","virtual-dom/virtual-hyperscript/svg":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/virtual-hyperscript/svg.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/multiplexRpc.js":[function(require,module,exports){
-var RPC = require('rpc-stream');
-var multiplex = require('multiplex');
+var RPC = require('rpc-stream')
+var multiplex = require('multiplex')
 const pump = require('pump')
 
 module.exports = function (api) {
-    var index = 2;
-    var streams = {};
-    var irpc = RPC({ // internal rpc
-        open: function (id, name, args) {
-            if (typeof api[name] !== 'function') return;
-            var stream = api[name].apply(null, args);
-            if (!stream || typeof stream.pipe !== 'function') return;
-            pump(
-              stream,
-              mx.createSharedStream(id),
-              stream,
-              (err) => {
-                console.log(`multiplexRpc internal child "${id}" stream ended`, err.message)
-              }
-            )
+  var index = 2
+  var irpc = RPC({ // internal rpc
+    open: function (id, name, args) {
+      if (typeof api[name] !== 'function') return
+      args = [].splice.call(args)
+      args.push((err, stream) => {
+        if (err) {
+          throw err
         }
-    });
-    var iclient = irpc.wrap([ 'open' ]);
-    var prpc = RPC(api, {
-      flattenError: (err) => {
-        if (!(err instanceof Error)) return err
-        console.error('sending error over rpc', err)
-        return {
-          message: err.message,
-          stack: err.stack,
-        }
-      },
-    }); // public interface
-
-    var mx = multiplex({ chunked: true });
-    pump(
-      irpc,
-      mx.createSharedStream('0'),
-      irpc,
-      (err) => {
-        console.log('multiplexRpc internal stream ended', err.message)
-      }
-    )
-    pump(
-      prpc,
-      mx.createSharedStream('1'),
-      prpc,
-      (err) => {
-        console.log('multiplexRpc public stream ended', err.message)
-      }
-    )
-
-    mx.wrap = function (methods) {
-        var names = methods.map(function (m) {
-            return m.split(':')[0];
-        });
-        var wrapped = prpc.wrap(names);
-        methods.forEach(function (m) {
-            var parts = m.split(':');
-            var name = parts[0];
-            if (parts[1] === 's') {
-                wrapped[name] = wrapStream(name);
-            }
-        });
-        return wrapped;
-    };
-    return mx;
-
-    function wrapStream (name) {
-        return function () {
-            var args = [].slice.call(arguments);
-            var id = String(index++);
-            iclient.open(id, name, args);
-            return mx.createSharedStream(id);
-        };
+        if (!stream || typeof stream.pipe !== 'function') return
+        pump(
+          stream,
+          mx.createSharedStream(id),
+          stream,
+          (err) => {
+            console.log(`multiplexRpc internal child "${id}" stream ended`, err.message)
+          }
+        )
+      })
+      api[name].apply(null, args)
     }
-};
+  })
+  var iclient = irpc.wrap([ 'open' ])
+  var prpc = RPC(api, {
+    flattenError: (err) => {
+      if (!(err instanceof Error)) return err
+      console.error('sending error over rpc', err)
+      return {
+        message: err.message,
+        stack: err.stack
+      }
+    }
+  }) // public interface
+
+  var mx = multiplex({ chunked: true })
+  pump(
+    irpc,
+    mx.createSharedStream('0'),
+    irpc,
+    (err) => {
+      console.log('multiplexRpc internal stream ended', err.message)
+    }
+  )
+  pump(
+    prpc,
+    mx.createSharedStream('1'),
+    prpc,
+    (err) => {
+      console.log('multiplexRpc public stream ended', err.message)
+    }
+  )
+
+  mx.wrap = function (methods) {
+    const m = typeof methods.map === 'undefined' ? Object.keys(methods) : methods
+    var names = m.map(function (m) {
+      return m.split(':')[0]
+    })
+    var wrapped = prpc.wrap(names)
+    m.forEach(function (m) {
+      var parts = m.split(':')
+      var name = parts[0]
+      if (parts[1] === 's') {
+        wrapped[name] = wrapStream(name)
+      }
+    })
+    return wrapped
+  }
+  return mx
+
+  function wrapStream (name) {
+    return function () {
+      var args = [].slice.call(arguments)
+      var id = String(index++)
+      iclient.open(id, name, args)
+      return mx.createSharedStream(id)
+    }
+  }
+}
 
 },{"multiplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/index.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","rpc-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/rpc-stream/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js":[function(require,module,exports){
 const websocket = require('websocket-stream')
@@ -41792,14 +42240,119 @@ function connectToTelemetryServerViaWs (opts = {}) {
   return ws
 }
 
-},{"http-poll-stream/src/client":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/http-poll-stream/src/client.js","websocket-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/websocket-stream/stream.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/cbify.js":[function(require,module,exports){
+},{"http-poll-stream/src/client":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/http-poll-stream/src/client.js","websocket-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/websocket-stream/stream.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js":[function(require,module,exports){
+'use strict'
+
+module.exports = function () {
+  return {
+    ping: async () => {
+      return 'pong'
+    }
+  }
+}
+
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js":[function(require,module,exports){
+'use strict'
+
+const pump = require('pump')
+const { cbifyObj } = require('../util/cbify')
+const pify = require('pify')
+const multiplexRpc = require('../network/multiplexRpc')
+
+exports.createRpcServer = function (methods, conn) {
+  const rpc = multiplexRpc(cbifyObj(methods))
+  pump(
+    conn,
+    rpc,
+    conn,
+    (err) => {
+      console.log(`stream closed`, err)
+    })
+  return rpc
+}
+
+exports.createRpcClient = function (methods, rpc) {
+  const m = Object.keys(methods)
+  return pify(rpc.wrap(m.map((name) => name.match(/stream$/i)
+    ? `${name}:s`
+    : name)))
+}
+
+},{"../network/multiplexRpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/multiplexRpc.js","../util/cbify":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/cbify.js","pify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pify/index.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js":[function(require,module,exports){
+(function (global){
+'use strict'
+
+const base = require('./base')
+const { sec } = require('../util/time')
+
+const pump = require('pump')
+const asStream = require('obs-store/lib/asStream')
+const throttleStream = require('throttle-obj-stream')
+
+const { toDiffs } = require('../util/jsonPatchStream')
+const { createJsonSerializeStream } = require('../util/jsonSerializeStream')
+
+const remoteCallTimeout = 45 * sec
+
+module.exports = function (server, clients, networkStore, conn) {
+  return Object.assign({}, {
+    // server data
+    getPeerCount: async () => {
+      return clients.length
+    },
+    getNetworkState: async () => {
+      return networkStore.getState()
+    },
+    // send to client
+    sendToClient: async (clientId, method, args) => {
+      console.log(`forwarding "${method}" with (${args}) to client ${clientId}`)
+      const client = server.clients.find(c => c.peerId === clientId)
+      if (!client) {
+        console.log(`no client found ${clientId}`)
+        return
+      }
+      return server.sendCallWithTimeout(client.rpcAsync, method, args, remoteCallTimeout)
+    },
+    // broadcast
+    send: async (method, args) => {
+      console.log(`broadcasting "${method}" with (${args}) to ${global.clients.length} client(s)`)
+      return server.broadcastCall(method, args, remoteCallTimeout)
+    },
+    refresh: async () => {
+      return server.broadcastCall('refresh', [], remoteCallTimeout)
+    },
+    refreshShortDelay: async () => {
+      return server.broadcastCall('refreshShortDelay', [], remoteCallTimeout)
+    },
+    refreshLongDelay: async () => {
+      return server.broadcastCall('refreshLongDelay', [], remoteCallTimeout)
+    },
+    createNetworkUpdateStream: async () => {
+      const serializeStream = createJsonSerializeStream()
+      pump(
+        asStream(server.networkStore),
+        // dont emit new values more than 2/sec
+        throttleStream(500),
+        toDiffs(),
+        serializeStream,
+        (err) => {
+          if (err) console.log('admin diff stream broke', err)
+        }
+      )
+      return serializeStream
+    }
+  }, base())
+}
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+
+},{"../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","../util/time":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/time.js","./base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","throttle-obj-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throttle-obj-stream/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/cbify.js":[function(require,module,exports){
 const promiseToCallback = require('promise-to-callback')
 const noop = function () {}
 
-
 module.exports = { cbify, cbifyObj }
 
-function cbifyObj(obj) {
+function cbifyObj (obj) {
   const newObj = {}
   Object.keys(obj).forEach(key => {
     const value = obj[key]
@@ -41837,27 +42390,35 @@ const through = require('through2').obj
 
 module.exports = { toDiffs, fromDiffs }
 
-function toDiffs() {
+function toDiffs () {
   let lastObj = {}
   return through(function (newObj, _, cb) {
-    const patch = compare(lastObj, newObj)
-    // only push non-noop
-    if (patch.length) this.push(patch)
-    // deep clone to ensure diff is good
-    // warning: increases memory footprint
-    lastObj = deepClone(newObj)
+    try {
+      const patch = compare(lastObj, newObj)
+      // only push non-noop
+      if (patch.length) this.push(patch)
+      // deep clone to ensure diff is good
+      // warning: increases memory footprint
+      lastObj = deepClone(newObj)
+    } catch (err) {
+      console.log(`an error occurred patching json diff`, err)
+    }
     cb()
   })
 }
 
-function fromDiffs() {
+function fromDiffs () {
   let lastObj = {}
   return through(function (patch, _, cb) {
-    const newObj = applyPatch(lastObj, patch).newDocument
-    this.push(newObj)
-    // deep clone to ensure diff is good
-    // warning: increases memory footprint
-    lastObj = deepClone(newObj)
+    try {
+      const newObj = applyPatch(lastObj, patch).newDocument
+      this.push(newObj)
+      // deep clone to ensure diff is good
+      // warning: increases memory footprint
+      lastObj = deepClone(newObj)
+    } catch (err) {
+      console.log(`an error occurred patching json diff`, err)
+    }
     cb()
   })
 }
@@ -41868,7 +42429,7 @@ const through = require('through2').obj
 
 module.exports = { createJsonSerializeStream, createJsonParseStream }
 
-function createJsonSerializeStream() {
+function createJsonSerializeStream () {
   return through(function (newObj, _, cb) {
     try {
       this.push(Buffer.from(JSON.stringify(newObj)))
@@ -41879,7 +42440,7 @@ function createJsonSerializeStream() {
   })
 }
 
-function createJsonParseStream() {
+function createJsonParseStream () {
   return through(function (buffer, _, cb) {
     try {
       this.push(JSON.parse(buffer))
@@ -41892,5 +42453,16 @@ function createJsonParseStream() {
 
 }).call(this,require("buffer").Buffer)
 
-},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","through2":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/through2/through2.js"}]},{},["/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js"])
+},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","through2":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/through2/through2.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/time.js":[function(require,module,exports){
+const sec = 1000
+const min = 60 * sec
+const hour = 60 * min
+
+module.exports = {
+  sec,
+  min,
+  hour,
+}
+
+},{}]},{},["/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js"])
 //# sourceMappingURL=admin-bundle.js.map

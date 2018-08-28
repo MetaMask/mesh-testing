@@ -3,27 +3,35 @@ const through = require('through2').obj
 
 module.exports = { toDiffs, fromDiffs }
 
-function toDiffs() {
+function toDiffs () {
   let lastObj = {}
   return through(function (newObj, _, cb) {
-    const patch = compare(lastObj, newObj)
-    // only push non-noop
-    if (patch.length) this.push(patch)
-    // deep clone to ensure diff is good
-    // warning: increases memory footprint
-    lastObj = deepClone(newObj)
+    try {
+      const patch = compare(lastObj, newObj)
+      // only push non-noop
+      if (patch.length) this.push(patch)
+      // deep clone to ensure diff is good
+      // warning: increases memory footprint
+      lastObj = deepClone(newObj)
+    } catch (err) {
+      console.log(`an error occurred patching json diff`, err)
+    }
     cb()
   })
 }
 
-function fromDiffs() {
+function fromDiffs () {
   let lastObj = {}
   return through(function (patch, _, cb) {
-    const newObj = applyPatch(lastObj, patch).newDocument
-    this.push(newObj)
-    // deep clone to ensure diff is good
-    // warning: increases memory footprint
-    lastObj = deepClone(newObj)
+    try {
+      const newObj = applyPatch(lastObj, patch).newDocument
+      this.push(newObj)
+      // deep clone to ensure diff is good
+      // warning: increases memory footprint
+      lastObj = deepClone(newObj)
+    } catch (err) {
+      console.log(`an error occurred patching json diff`, err)
+    }
     cb()
   })
 }
