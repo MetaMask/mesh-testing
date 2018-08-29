@@ -11,13 +11,13 @@ const qs = require('qs')
 const pify = require('pify')
 const endOfStream = require('end-of-stream')
 
-const { hour } = require('../util/time')
+const { hour, sec } = require('../util/time')
 const { connectToTelemetryServerViaPost } = require('../network/telemetry')
 const createLibp2pNode = require('./libp2p/createNode')
 
 const rpc = require('../rpc/rpc')
-const kitsunetRpcMethods = require('../rpc/kitsunet')
-const telemetryRpcMethods = require('../rpc/server-kitsunet')
+const kitsunetRpcMethods = require('../rpc/clientKitsunet')
+const telemetryRpcMethods = require('../rpc/serverKitsunet')
 
 const createClient = require('./client')
 const createKitsunet = require('./kitsunet')
@@ -61,13 +61,6 @@ async function setupClient () {
   // configure libp2p client
   const peerId = node.idStr
 
-  // const serverConnection = connectToTelemetryServerViaWs()
-  const serverConnection = connectToTelemetryServerViaPost({ devMode })
-  endOfStream(serverConnection, async (err) => {
-    console.log('rpcConnection ended', err)
-  })
-
-  console.log('MetaMask Mesh Testing - connected to telemetry!')
   const stats = createStats(node, clientState)
   const client = createClient(clientState, node, stats)
 
@@ -75,26 +68,45 @@ async function setupClient () {
   await pify(client.startLibp2pNode)()
   console.log(`MetaMask Mesh Testing - libp2p node started with id ${peerId}`)
 
-  createKitsunet(client, node, clientState)
-  const pubsub = createPubsub(client, node, clientState)
-  const multicast = createMulticast(client, node, clientState)
-  const blockTracker = createBlockTracker(node, clientState)
-  const ebt = createEbt(client, node, clientState)
+  async function bootup () {
+    const serverConn = connectToTelemetryServerViaPost({ devMode })
+    console.log('MetaMask Mesh Testing - connected to telemetry!')
 
-  const kitsunetRpc = rpc.createRpcServer(kitsunetRpcMethods(client,
-    multicast,
-    pubsub,
-    ebt,
-    blockTracker),
-  serverConnection)
-  const telemetryRpc = rpc.createRpcClient(telemetryRpcMethods(), kitsunetRpc)
-  client.setTelemetryRpc(telemetryRpc)
-  await telemetryRpc.setPeerId(peerId)
+    endOfStream(serverConn, async (err) => {
+      console.log('rpcConnection ended', err)
+      const interval = setInterval(async () => {
+        await bootup(serverConn)
+        clearInterval(interval)
+      }, 5 * sec)
+    })
 
-  // submit network state to backend on interval
-  // this also keeps the connection alive
-  client.submitClientStateOnInterval({ telemetryRpc })
+    const telemetryRpc = await setup(serverConn)
+    client.setTelemetryRpc(telemetryRpc)
 
-  // schedule refresh every hour so everyone stays hot and fresh
-  client.restartWithDelay(randomFromRange(1 * hour, 1.5 * hour))
+    // submit network state to backend on interval
+    // this also keeps the connection alive
+    client.submitClientStateOnInterval()
+
+    // schedule refresh every hour so everyone stays hot and fresh
+    client.restartWithDelay(randomFromRange(1 * hour, 1.5 * hour))
+  }
+
+  function setup (serverConn) {
+    createKitsunet(client, node, clientState)
+    const pubsub = createPubsub(client, node, clientState)
+    const multicast = createMulticast(client, node, clientState)
+    const blockTracker = createBlockTracker(node, clientState)
+    const ebt = createEbt(client, node, clientState)
+
+    const kitsunetRpc = rpc.createRpcServer(kitsunetRpcMethods(client,
+      multicast,
+      pubsub,
+      ebt,
+      blockTracker),
+    serverConn)
+    const telemetryRpc = rpc.createRpcClient(telemetryRpcMethods(), kitsunetRpc)
+    return telemetryRpc
+  }
+
+  bootup()
 }

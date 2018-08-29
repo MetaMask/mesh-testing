@@ -3,10 +3,10 @@ const createHttpClientStream = require('http-poll-stream/src/client')
 
 module.exports = {
   connectToTelemetryServerViaPost,
-  connectToTelemetryServerViaWs,
+  connectToTelemetryServerViaWs
 }
 
-function connectToTelemetryServerViaPost(opts = {}) {
+function connectToTelemetryServerViaPost (opts = {}) {
   const { devMode, adminCode } = opts
   const connectionId = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
   const host = devMode ? 'http://localhost:9000' : 'https://telemetry.lab.metamask.io'
