@@ -17,7 +17,7 @@ const { createJsonParseStream } = require('../util/jsonSerializeStream')
 
 const rpc = require('../rpc/rpc')
 const baseRpcHandler = require('../rpc/base')
-const serverAdminRpcHandler = require('../rpc/server-admin')
+const serverAdminRpcHandler = require('../rpc/serverAdmin')
 
 setupAdmin().catch(console.error)
 

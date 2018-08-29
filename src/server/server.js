@@ -14,9 +14,9 @@ const { createHttpClientHandler } = require('http-poll-stream')
 const { pingAllClientsOnInterval } = require('../network/clientTimeout')
 
 const rpc = require('../rpc/rpc')
-const kitsunetRpcHandler = require('../rpc/kitsunet')
-const serverKitsunetRpcHandler = require('../rpc/server-kitsunet')
-const serverAdminRpcHandler = require('../rpc/server-admin')
+const kitsunetRpcHandler = require('../rpc/clientKitsunet')
+const serverKitsunetRpcHandler = require('../rpc/serverKitsunet')
+const serverAdminRpcHandler = require('../rpc/serverAdmin')
 const baseRpcHandler = require('../rpc/base')
 const { sec } = require('../util/time')
 
@@ -87,6 +87,25 @@ app.listen(9000, () => {
   console.log('ws listening on 9000')
 })
 
+function disconnectClient(client) {
+  const clientId = client.peerId
+  const index = clients.indexOf(client)
+  console.log(`disconnecting client "${clientId}"`)
+  if (index === -1) return console.log(`client already removed "${clientId}"`)
+  // remove peer
+  clients.splice(index, 1)
+  // destroy stream
+  client.stream.destroy()
+  // update network state
+  const networkState = networkStore.getState()
+  delete networkState.clients[clientId]
+  networkStore.putState(networkState)
+  // report current connected count
+  console.log(`${clients.length} peers connected`)
+}
+
+global.disconnectClient = disconnectClient
+
 //
 // handle client life cycle
 //
@@ -113,23 +132,6 @@ setInterval(() => {
   networkStore.putState(networkState)
 }, 10 * sec)
 
-function disconnectClient (client) {
-  const clientId = client.peerId
-  const index = clients.indexOf(client)
-  console.log(`disconnecting client "${clientId}"`)
-  if (index === -1) return console.log(`client already removed "${clientId}"`)
-  // remove peer
-  clients.splice(index, 1)
-  // destroy stream
-  client.stream.destroy()
-  // update network state
-  const networkState = networkStore.getState()
-  delete networkState.clients[clientId]
-  networkStore.putState(networkState)
-  // report current connected count
-  console.log(`${clients.length} peers connected`)
-}
-
 async function handleClient (stream, req) {
   // handle disconnect
   // stream.on('error', (error) => {
@@ -147,7 +149,7 @@ async function handleClient (stream, req) {
   }
 
   endOfStream(stream, (err) => {
-    console.log('client rpcConnection disconnect', err.message)
+    console.log('client rpcConnection disconnect', err)
     disconnectClient(client)
   })
 

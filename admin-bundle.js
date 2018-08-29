@@ -25185,7 +25185,7 @@ function createHttpClientStream(opts) {
     // manually pipe in data so we dont propagate the end event
     writeStream.on('data', (data) => outStream.write(data))
     // manually propagate the error event
-    writeStream.on('error', (err) => outStream.write(err))
+    writeStream.on('error', (err) => outStream.emit('error', err))
     await pumpAsync(
       childStream,
       writeStream
@@ -41427,7 +41427,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1535417354 || 'development')
+const buildVersion = String(1535529490 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -41445,7 +41445,7 @@ const { createJsonParseStream } = require('../util/jsonSerializeStream')
 
 const rpc = require('../rpc/rpc')
 const baseRpcHandler = require('../rpc/base')
-const serverAdminRpcHandler = require('../rpc/server-admin')
+const serverAdminRpcHandler = require('../rpc/serverAdmin')
 
 setupAdmin().catch(console.error)
 
@@ -41490,7 +41490,7 @@ async function setupAdmin () {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"../network/telemetry":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js","../rpc/base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","../rpc/rpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js","../rpc/server-admin":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js","../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","./app":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/app.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","obs-store":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","qs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/qs/lib/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
+},{"../network/telemetry":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js","../rpc/base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","../rpc/rpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js","../rpc/serverAdmin":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/serverAdmin.js","../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","./app":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/app.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","obs-store":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","qs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/qs/lib/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
 const d3 = require('d3')
 
 const graphWidth = 960
@@ -42219,10 +42219,10 @@ const createHttpClientStream = require('http-poll-stream/src/client')
 
 module.exports = {
   connectToTelemetryServerViaPost,
-  connectToTelemetryServerViaWs,
+  connectToTelemetryServerViaWs
 }
 
-function connectToTelemetryServerViaPost(opts = {}) {
+function connectToTelemetryServerViaPost (opts = {}) {
   const { devMode, adminCode } = opts
   const connectionId = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
   const host = devMode ? 'http://localhost:9000' : 'https://telemetry.lab.metamask.io'
@@ -42278,7 +42278,7 @@ exports.createRpcClient = function (methods, rpc) {
     : name)))
 }
 
-},{"../network/multiplexRpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/multiplexRpc.js","../util/cbify":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/cbify.js","pify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pify/index.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/server-admin.js":[function(require,module,exports){
+},{"../network/multiplexRpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/multiplexRpc.js","../util/cbify":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/cbify.js","pify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pify/index.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/serverAdmin.js":[function(require,module,exports){
 (function (global){
 'use strict'
 

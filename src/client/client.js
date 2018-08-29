@@ -20,14 +20,20 @@ module.exports = function (clientState, node, stats) {
 
   async function submitClientStateOnInterval () {
     while (true) {
-      await submitNetworkState()
+      try {
+        await submitNetworkState()
+      } catch (err) {
+        console.log(err)
+      }
       await timeout(clientStateSubmitInterval)
     }
   }
 
   async function submitNetworkState () {
     stats.updateClientStateWithLibp2pStats()
-    if (telemetryRpc) await telemetryRpc.submitNetworkState(clientState)
+    if (telemetryRpc) {
+      return telemetryRpc.submitNetworkState(clientState)
+    }
   }
 
   function restartWithDelay (timeoutDuration) {
