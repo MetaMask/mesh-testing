@@ -87,7 +87,7 @@ app.listen(9000, () => {
   console.log('ws listening on 9000')
 })
 
-function disconnectClient(client) {
+function disconnectClient (client) {
   const clientId = client.peerId
   const index = clients.indexOf(client)
   console.log(`disconnecting client "${clientId}"`)

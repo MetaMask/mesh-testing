@@ -82,6 +82,7 @@ async function setupClient () {
 
     const telemetryRpc = await setup(serverConn)
     client.setTelemetryRpc(telemetryRpc)
+    telemetryRpc.setPeerId(peerId)
 
     // submit network state to backend on interval
     // this also keeps the connection alive
