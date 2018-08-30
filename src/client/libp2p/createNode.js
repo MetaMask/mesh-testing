@@ -20,8 +20,8 @@ function createNode (callback) {
 
     // peerInfo.multiaddrs.add(`/ipfs/${peerIdStr}/p2p-webrtc-circuit`)
     // peerInfo.multiaddrs.add(`/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`)
-    // peerInfo.multiaddrs.add(`/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`)
-    peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${peerIdStr}`)
+    peerInfo.multiaddrs.add(`/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`)
+    // peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${peerIdStr}`)
     const node = new Node(peerInfo, {
       config: {
         EXPERIMENTAL: {
