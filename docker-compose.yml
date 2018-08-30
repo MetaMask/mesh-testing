@@ -3,6 +3,8 @@ telemetry:
   restart: always
   ports:
     - "9000"
+    - "9221:9221"
+  expose:
     - "9221"
   environment:
     VIRTUAL_PORT: "9000"

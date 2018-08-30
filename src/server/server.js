@@ -117,20 +117,24 @@ pingAllClientsOnInterval({
   pingTimeout: remoteCallTimeout
 })
 
+// TODO: I commented this out, because I suspect that it is
+// causing raise conditions, this should be taken care of
+// by our ping
+
 // clear disconnect nodes from network state
 // this should happen automatically as part of the disconnect process
 // but i can see that it somehow is not
-setInterval(() => {
-  const networkState = networkStore.getState()
-  Object.keys(networkState.clients).forEach((clientId) => {
-    const client = clients.find(c => c.peerId === clientId)
-    if (!client) {
-      console.log(`orphaned client found, cleaning up: ${clientId}`)
-      delete networkState.clients[clientId]
-    }
-  })
-  networkStore.putState(networkState)
-}, 10 * sec)
+// setInterval(() => {
+//   const networkState = networkStore.getState()
+//   Object.keys(networkState.clients).forEach((clientId) => {
+//     const client = clients.find(c => c.peerId === clientId)
+//     if (!client) {
+//       console.log(`orphaned client found, cleaning up: ${clientId}`)
+//       delete networkState.clients[clientId]
+//     }
+//   })
+//   networkStore.putState(networkState)
+// }, 10 * sec)
 
 async function handleClient (stream, req) {
   // handle disconnect
@@ -166,7 +170,6 @@ async function handleClient (stream, req) {
 
 async function handleAdmin (stream, request) {
   // wrap promise-y api with cbify for multiplexRpc support
-
   global.adminServer = rpc.createRpcServer(
     serverAdminRpcHandler(global,
       global.clients,

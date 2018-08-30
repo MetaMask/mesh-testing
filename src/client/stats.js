@@ -102,48 +102,48 @@ function createStat () {
   return stat
 }
 
+function recordStats (peerId, transport, protocol, direction, bufferLength) {
+  // sanity check
+  if (!peerId) return console.log('libp2pPeerStats message without peerId', peerId, transport, protocol, direction, bufferLength)
+  // setup peer stats
+  let peerStats = libp2pPeerStats[peerId]
+  if (!peerStats) return
+  // update timestamp
+  peerStats.timestamp = Date.now()
+  // record transport + protocol data (they come in seperately)
+  if (transport) {
+    const transportStats = peerStats.transports[transport] || (peerStats.transports[transport] = createStat())
+    transportStats.push(statDirectionToEvent[direction], bufferLength)
+  }
+  if (protocol) {
+    const protocolStats = peerStats.protocols[protocol] || (peerStats.protocols[protocol] = createStat())
+    protocolStats.push(statDirectionToEvent[direction], bufferLength)
+  }
+  // record mysterious messages that dont have a transport or protocol
+  if (!protocol && !transport) {
+    peerStats.mystery.push(statDirectionToEvent[direction], bufferLength)
+  }
+}
+
 module.exports = function (node, clientState) {
-  function updateClientStateForLibp2pPeerConnect (peerId) {
+  function updateOnConnect (peerId) {
     libp2pPeerStats[peerId] = { transports: {}, protocols: {}, mystery: createStat() }
   }
 
-  function updateClientStateForLibp2pPeerDisconnect (peerId) {
+  function updateOnDisconnect (peerId) {
     delete libp2pPeerStats[peerId]
   }
 
-  function recordLibp2pStatsMessage (peerId, transport, protocol, direction, bufferLength) {
-    // sanity check
-    if (!peerId) return console.log('libp2pPeerStats message without peerId', peerId, transport, protocol, direction, bufferLength)
-    // setup peer stats
-    let peerStats = libp2pPeerStats[peerId]
-    if (!peerStats) return
-    // update timestamp
-    peerStats.timestamp = Date.now()
-    // record transport + protocol data (they come in seperately)
-    if (transport) {
-      const transportStats = peerStats.transports[transport] || (peerStats.transports[transport] = createStat())
-      transportStats.push(statDirectionToEvent[direction], bufferLength)
-    }
-    if (protocol) {
-      const protocolStats = peerStats.protocols[protocol] || (peerStats.protocols[protocol] = createStat())
-      protocolStats.push(statDirectionToEvent[direction], bufferLength)
-    }
-    // record mysterious messages that dont have a transport or protocol
-    if (!protocol && !transport) {
-      peerStats.mystery.push(statDirectionToEvent[direction], bufferLength)
-    }
-  }
-
-  function updateClientStateWithLibp2pStats () {
+  function updateStats () {
     clientState.stats = libp2pStatsToJson()
   }
 
   // record custom stats
-  node._switch.observer.on('message', recordLibp2pStatsMessage)
+  node._switch.observer.on('message', recordStats)
 
   return {
-    updateClientStateWithLibp2pStats,
-    updateClientStateForLibp2pPeerDisconnect,
-    updateClientStateForLibp2pPeerConnect
+    updateStats,
+    updateOnDisconnect,
+    updateOnConnect
   }
 }

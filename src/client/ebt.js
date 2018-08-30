@@ -6,10 +6,7 @@ const pump = require('pump')
 
 const pullStreamToStream = require('pull-stream-to-stream')
 
-const {
-  createJsonSerializeStream,
-  createJsonParseStream
-} = require('../util/jsonSerializeStream')
+const { createJsonSerializeStream } = require('../util/jsonSerializeStream')
 
 module.exports = function (client, node, clientState) {
   function createStream (streamId) {
@@ -81,7 +78,7 @@ module.exports = function (client, node, clientState) {
 
   const ebt = EBT({
     id: node.idStr,
-    logging: true,
+    // logging: true,
     getClock: function (id, cb) {
       // load the peer clock for id.
       cb(null, clocks[id] || {})
