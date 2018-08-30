@@ -30,10 +30,8 @@ module.exports = function (clientState, node, stats) {
   }
 
   async function submitNetworkState () {
-    stats.updateClientStateWithLibp2pStats()
-    if (telemetryRpc) {
-      return telemetryRpc.submitNetworkState(clientState)
-    }
+    stats.updateStats()
+    if (telemetryRpc) return telemetryRpc.submitNetworkState(clientState)
   }
 
   function restartWithDelay (timeoutDuration) {
@@ -72,7 +70,7 @@ module.exports = function (clientState, node, stats) {
 
       node.on('peer:connect', (peerInfo) => {
         const peerId = peerInfo.id.toB58String()
-        stats.updateClientStateForLibp2pPeerConnect(peerId)
+        stats.updateOnConnect(peerId)
         peers.push(peerInfo)
       })
 
@@ -80,7 +78,7 @@ module.exports = function (clientState, node, stats) {
         const peerId = peerInfo.id.toB58String()
         removeFromArray(peerInfo, peers)
         // remove stats associated with peer
-        stats.updateClientStateForLibp2pPeerDisconnect(peerId)
+        stats.updateOnDisconnect(peerId)
       })
 
       autoConnectWhenLonely(node, { minPeers: 4 })

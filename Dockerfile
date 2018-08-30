@@ -13,7 +13,8 @@ RUN npm install
 COPY ./ /www/
 
 # start server
-CMD npm run server
+# CMD npm run server
+CMD npm run server-debug
 
 # expose server
-EXPOSE 9000
+EXPOSE 9000 9221
