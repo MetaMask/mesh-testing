@@ -1,4 +1,4 @@
-const pingWithTimeout = require('./pintWithTimeout')
+const pingWithTimeout = require('./pingWithTimeout')
 const timeout = require('../util/timeout')
 
 module.exports = { pingAllClientsOnInterval }

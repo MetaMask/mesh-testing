@@ -17,7 +17,7 @@ const { hour, sec } = require('../util/time')
 const { connectToTelemetryServerViaPost } = require('../network/telemetry')
 const createLibp2pNode = require('./libp2p/createNode')
 
-const pingWithTimeout = require('../network/pintWithTimeout')
+const pingWithTimeout = require('../network/pingWithTimeout')
 const timeout = require('../util/timeout')
 
 const rpc = require('../rpc/rpc')
