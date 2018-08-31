@@ -1,7 +1,7 @@
 const pingWithTimeout = require('./pingWithTimeout')
 const timeout = require('../util/timeout')
 
-module.exports = { pingAllClientsOnInterval }
+module.exports = { pingAllClientsOnInterval, pingClientWithTimeout }
 
 async function pingAllClientsOnInterval ({
   clients,
@@ -22,11 +22,15 @@ async function pingAllClientsOnInterval ({
   async function pingClientsWithTimeout () {
     // try all clients in sync
     await Promise.all(clients.map(async (client) => {
-      try {
-        return await pingWithTimeout(client.rpcAsync, pingTimeout)
-      } catch (err) {
-        await disconnectClient(client)
-      }
+      return pingClientWithTimeout({ client, disconnectClient, pingTimeout })
     }))
+  }
+}
+
+async function pingClientWithTimeout ({ client, disconnectClient, pingTimeout }) {
+  try {
+    return await pingWithTimeout(client.rpcAsync, pingTimeout)
+  } catch (err) {
+    await disconnectClient(client)
   }
 }
