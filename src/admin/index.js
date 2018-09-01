@@ -10,7 +10,10 @@ const qs = require('qs')
 const ObservableStore = require('obs-store')
 const asStream = require('obs-store/lib/asStream')
 const endOfStream = require('end-of-stream')
-const {connectToTelemetryServerViaWs} = require('../network/telemetry')
+const {
+  connectToTelemetryServerViaPost,
+  connectToTelemetryServerViaWs
+} = require('../network/telemetry')
 const startAdminApp = require('./app')
 const { fromDiffs } = require('../util/jsonPatchStream')
 const { createJsonParseStream } = require('../util/jsonSerializeStream')
@@ -28,7 +31,7 @@ async function setupAdmin () {
 
   // connect to telemetry
   console.log(`MetaMask Mesh Testing - connecting with adminCode: ${adminCode}`)
-  const serverConnection = connectToTelemetryServerViaWs({ devMode, adminCode })
+  const serverConnection = connectToTelemetryServerViaPost({ devMode, adminCode })
   global.serverConnection = serverConnection
 
   // setup admin ui app
