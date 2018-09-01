@@ -24770,10 +24770,10 @@ exports.JsonPatchError = helpers_2.PatchError;
 exports.deepClone = helpers_2._deepClone;
 exports.escapePathComponent = helpers_2.escapePathComponent;
 exports.unescapePathComponent = helpers_2.unescapePathComponent;
-var beforeDict = [];
+var beforeDict = new WeakMap();
 var Mirror = (function () {
     function Mirror(obj) {
-        this.observers = [];
+        this.observers = new Map();
         this.obj = obj;
     }
     return Mirror;
@@ -24786,26 +24786,13 @@ var ObserverInfo = (function () {
     return ObserverInfo;
 }());
 function getMirror(obj) {
-    for (var i = 0, length = beforeDict.length; i < length; i++) {
-        if (beforeDict[i].obj === obj) {
-            return beforeDict[i];
-        }
-    }
+    return beforeDict.get(obj);
 }
 function getObserverFromMirror(mirror, callback) {
-    for (var j = 0, length = mirror.observers.length; j < length; j++) {
-        if (mirror.observers[j].callback === callback) {
-            return mirror.observers[j].observer;
-        }
-    }
+    return mirror.observers.get(callback);
 }
 function removeObserverFromMirror(mirror, observer) {
-    for (var j = 0, length = mirror.observers.length; j < length; j++) {
-        if (mirror.observers[j].observer === observer) {
-            mirror.observers.splice(j, 1);
-            return;
-        }
-    }
+    mirror.observers.delete(observer.callback);
 }
 /**
  * Detach an observer from an object
@@ -24819,15 +24806,15 @@ exports.unobserve = unobserve;
  */
 function observe(obj, callback) {
     var patches = [];
-    var root = obj;
     var observer;
     var mirror = getMirror(obj);
     if (!mirror) {
         mirror = new Mirror(obj);
-        beforeDict.push(mirror);
+        beforeDict.set(obj, mirror);
     }
     else {
-        observer = getObserverFromMirror(mirror, callback);
+        var observerInfo = getObserverFromMirror(mirror, callback);
+        observer = observerInfo && observerInfo.observer;
     }
     if (observer) {
         return observer;
@@ -24882,7 +24869,7 @@ function observe(obj, callback) {
             }
         }
     };
-    mirror.observers.push(new ObserverInfo(callback, observer));
+    mirror.observers.set(callback, new ObserverInfo(callback, observer));
     return observer;
 }
 exports.observe = observe;
@@ -24890,13 +24877,7 @@ exports.observe = observe;
  * Generate an array of patches from an observer
  */
 function generate(observer) {
-    var mirror;
-    for (var i = 0, length = beforeDict.length; i < length; i++) {
-        if (beforeDict[i].obj === observer.object) {
-            mirror = beforeDict[i];
-            break;
-        }
-    }
+    var mirror = beforeDict.get(observer.object);
     _generate(mirror.value, observer.object, observer.patches, "");
     if (observer.patches.length) {
         core_1.applyPatch(mirror.value, observer.patches);
@@ -41427,7 +41408,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1535675107 || 'development')
+const buildVersion = String(1535829586 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
