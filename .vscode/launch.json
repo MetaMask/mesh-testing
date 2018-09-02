@@ -7,6 +7,12 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Launch Perf",
+      "program": "${workspaceFolder}/perf/index.js"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch Server",
       "program": "${workspaceFolder}/src/server/server.js"
     }
