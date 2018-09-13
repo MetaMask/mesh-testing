@@ -1,0 +1,13 @@
+patch-package
+--- a/node_modules/libp2p-mplex/src/muxer.js
++++ b/node_modules/libp2p-mplex/src/muxer.js
+@@ -70,6 +70,9 @@ class MultiplexMuxer extends EventEmitter {
+ 
+   end (callback) {
+     callback = callback || noop
++    if (this.multiplex.destroy) {
++      return callback()
++    }
+     this.multiplex.once('close', callback)
+     this.multiplex.destroy()
+   }

@@ -1,12 +1,16 @@
 'use strict'
 
 const WS = require('libp2p-websockets')
+const TCP = require('libp2p-tcp')
 const Multiplex = require('libp2p-mplex')
 const SECIO = require('libp2p-secio')
 const Bootstrap = require('libp2p-bootstrap')
 const Libp2p = require('libp2p')
 const defaultsDeep = require('@nodeutils/defaults-deep')
 const WStar = require('libp2p-webrtc-star')
+const MDNS = require('libp2p-mdns')
+
+const { Discovery } = require('libp2p-rendezvous')
 
 const bootstrapers = [
   // '/dns4/tigress.kitsunet.metamask.io/tcp/443/wss/ipfs/QmZMmjMMP9VUyBkA6zFdEGmuFRdwjsiHZ3KtxMp89i7Xwv',
@@ -21,12 +25,14 @@ const bootstrapers = [
 class Node extends Libp2p {
   constructor (peerInfo, _options) {
     const wstar = new WStar()
+    const rndvzDiscovery = new Discovery({interval: 60 * 1000})
     const defaults = {
       peerInfo,
       modules: {
         transport: [
           wstar,
-          WS
+          WS,
+          TCP
         ],
         streamMuxer: [
           Multiplex
@@ -35,14 +41,15 @@ class Node extends Libp2p {
           SECIO
         ],
         peerDiscovery: [
-          Bootstrap,
-          wstar.discovery
+          // Bootstrap,
+          wstar.discovery,
+          MDNS
         ]
       },
       config: {
         peerDiscovery: {
           bootstrap: {
-            interval: 10000,
+            interval: 2 * 1000,
             enabled: true,
             list: bootstrapers
           }
@@ -58,6 +65,9 @@ class Node extends Libp2p {
     }
 
     super(defaultsDeep(_options, defaults))
+    rndvzDiscovery.init(this)
+    this.rndvzDiscovery = rndvzDiscovery
+    this.rndvzDiscovery.on('peer', (peerInfo) => this.emit('peer:discovery', peerInfo))
   }
 
   start (callback) {
@@ -78,7 +88,18 @@ class Node extends Libp2p {
       this.peerInfo.multiaddrs.forEach((ma) => {
         console.log('Swarm listening on', ma.toString())
       })
-      callback()
+
+      this.rndvzDiscovery.start(callback)
+    })
+  }
+
+  stop (callback) {
+    super.stop((err) => {
+      if (err) {
+        return callback(err)
+      }
+
+      this.rndvzDiscovery.stop(callback)
     })
   }
 }

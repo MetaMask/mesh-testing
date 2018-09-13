@@ -16,15 +16,24 @@ const removeFromArray = require('../util/remoteFromArray')
 
 const kitsunetPeers = []
 
+const peers = []
+const maxPeers = 8
+
+const discoveredPeers = []
+const maxDiscovered = 25
+
 const peerPingInterval = 1 * min
 const peerPingTimeout = 20 * sec
 
-module.exports = function (client, node, clientState) {
+const autoConnectAttemptInterval = 10 * sec
+
+module.exports = function (client, node, clientState, options) {
+  options = options || {skipDial: false}
   async function attemptDial (peerInfo) {
     // allow "skipDial" option from url (for debugging)
-    if (global.location.search.includes('skipDial')) return
+    if (options['skipDial']) return
     const peerId = peerInfo.id.toB58String()
-    client.checkAndHandgup(peerInfo)
+    checkAndHandgup(peerInfo)
     // check if already connected
     const alreadyConnected = !!clientState.peers[peerId]
     if (alreadyConnected) {
@@ -128,18 +137,51 @@ module.exports = function (client, node, clientState) {
   })
 
   node.on('peer:connect', (peerInfo) => {
+    peers.push(peerInfo)
     // attempt to upgrage to kitsunet connection
     attemptDial(peerInfo)
   })
 
   node.on('peer:disconnect', (peerInfo) => {
     const peerId = peerInfo.id.toB58String()
+    removeFromArray(peerInfo, peers)
     disconnectKitsunetPeer(peerId)
   })
+
+  node.on('peer:discovery', (peerInfo) => {
+    const peerId = peerInfo.id.toB58String()
+    console.log('MetaMask Mesh Testing - kitsunet random dial:', peerId)
+    // console.log('MetaMask Mesh Testing - node/peer:discovery', peerInfo.id.toB58String())
+    // add to discovered peers list
+    if (discoveredPeers.length >= maxDiscovered) return
+    const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
+    if (alreadyExists) return
+    discoveredPeers.push(peerInfo)
+  })
+
+  function autoConnectWhenLonely ({ minPeers }) {
+    setInterval(() => {
+      if (peers.length >= minPeers) return
+      const peerInfo = discoveredPeers.shift()
+      if (!peerInfo) return
+      const peerId = peerInfo.id.toB58String()
+      console.log('MetaMask Mesh Testing - kitsunet random dial:', peerId)
+      attemptDial(peerInfo)
+    }, autoConnectAttemptInterval)
+  }
+
+  function checkAndHandgup (peerInfo) {
+    // too many peers
+    if (peers.length > maxPeers) {
+      client.hangupPeer(peerInfo)
+    }
+  }
 
   return {
     attemptDial,
     disconnectKitsunetPeer,
-    connectKitsunet
+    connectKitsunet,
+    autoConnectWhenLonely,
+    checkAndHandgup
   }
 }

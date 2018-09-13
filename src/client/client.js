@@ -1,14 +1,9 @@
 'use strict'
 
+const reborn = require('rebirth')
+const isNode = require('detect-node')
 const { sec } = require('../util/time')
 const timeout = require('../util/timeout')
-
-const removeFromArray = require('../util/remoteFromArray')
-
-const peers = []
-
-const discoveredPeers = []
-const maxDiscovered = 25
 
 const clientStateSubmitInterval = 15 * sec
 const autoConnectAttemptInterval = 10 * sec
@@ -41,49 +36,48 @@ module.exports = function (clientState, node, stats) {
 
   function restart () {
     console.log('restarting...')
-    telemetryRpc.disconnect()
-    // leave 3 sec for network activity
-    setTimeout(() => window.location.reload(), 3 * sec)
+    stopLibp2pNode((err) => {
+      if (err) console.log('Error stopping libp2p', err)
+      telemetryRpc.disconnect()
+      if (isNode) {
+        return setTimeout(() => reborn(), 3 * sec)
+      }
+      // leave 3 sec for network activity
+      setTimeout(() => self.location.reload(), 3 * sec)
+    })
   }
 
-  function autoConnectWhenLonely ({ minPeers }) {
-    setInterval(() => {
-      if (peers.length >= minPeers) return
-      const peerInfo = discoveredPeers.shift()
-      if (!peerInfo) return
-      const peerId = peerInfo.id.toB58String()
-      console.log('MetaMask Mesh Testing - kitsunet random dial:', peerId)
-    }, autoConnectAttemptInterval)
-  }
-
+  let rndvzLoop
   function startLibp2pNode (cb) {
     node.start(() => {
-      node.on('peer:discovery', (peerInfo) => {
-        const peerId = peerInfo.id.toB58String()
-        // console.log('MetaMask Mesh Testing - node/peer:discovery', peerInfo.id.toB58String())
-        // add to discovered peers list
-        if (discoveredPeers.length >= maxDiscovered) return
-        const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
-        if (alreadyExists) return
-        discoveredPeers.push(peerInfo)
-      })
-
       node.on('peer:connect', (peerInfo) => {
         const peerId = peerInfo.id.toB58String()
         stats.updateOnConnect(peerId)
-        peers.push(peerInfo)
       })
 
       node.on('peer:disconnect', (peerInfo) => {
         const peerId = peerInfo.id.toB58String()
-        removeFromArray(peerInfo, peers)
         // remove stats associated with peer
         stats.updateOnDisconnect(peerId)
       })
 
-      autoConnectWhenLonely(node, { minPeers: 4 })
+      const doRndvz = () => {
+        node.rndvzDiscovery.unregister('/kitsunet/rndvz/1.0.0')
+        node.rndvzDiscovery.register('/kitsunet/rndvz/1.0.0', 9)
+      }
+
+      doRndvz()
+      setInterval(doRndvz, 10 * 1000)
+
       cb()
     })
+  }
+
+  function stopLibp2pNode (callback) {
+    clearInterval(rndvzLoop)
+    node.rndvzDiscovery.unregister('/kitsunet/rndvz/1.0.0')
+    node.stop(callback)
+    callback()
   }
 
   function hangupPeer (peerInfo) {
@@ -93,23 +87,14 @@ module.exports = function (clientState, node, stats) {
     })
   }
 
-  function checkAndHandgup (peerInfo) {
-    // too many peers
-    if (peers.length > maxPeers) {
-      hangupPeer(peerInfo)
-    }
-  }
-
   return {
     startLibp2pNode,
+    stopLibp2pNode,
     submitClientStateOnInterval,
     submitNetworkState,
-    autoConnectWhenLonely,
-    autoConnectAttemptInterval,
     restart,
     restartWithDelay,
     hangupPeer,
-    checkAndHandgup,
     setTelemetryRpc: (telemetry) => { telemetryRpc = telemetry }
   }
 }

@@ -1,0 +1,57 @@
+patch-package
+--- a/node_modules/libp2p-switch/src/connection.js
++++ b/node_modules/libp2p-switch/src/connection.js
+@@ -69,8 +69,8 @@ class ConnectionManager {
+             ], (err, peerInfo) => {
+               if (err) {
+                 return muxedConn.end(() => {
+-                  if (peerInfo) {
+-                    setImmediate(() => this.switch.emit('peer-mux-closed', peerInfo))
++                  if (cryptoPI) {
++                    setImmediate(() => this.switch.emit('peer-mux-closed', cryptoPI))
+                   }
+                   callback(err, null)
+                 })
+@@ -105,6 +105,7 @@ class ConnectionManager {
+             peerInfo = this.switch._peerBook.put(peerInfo)
+ 
+             muxedConn.on('close', () => {
++              delete this.switch.conns[b58Str]
+               delete this.switch.muxedConns[b58Str]
+               peerInfo.disconnect()
+               peerInfo = this.switch._peerBook.put(peerInfo)
+--- a/node_modules/libp2p-switch/src/dial.js
++++ b/node_modules/libp2p-switch/src/dial.js
+@@ -1,5 +1,6 @@
+ 'use strict'
+ 
++const pull = require('pull-stream')
+ const multistream = require('multistream-select')
+ const Connection = require('interface-connection').Connection
+ const setImmediate = require('async/setImmediate')
+@@ -181,7 +182,7 @@ class Dialer {
+       return callback(null, null)
+     }
+     if (baseConnection) {
+-      this.switch.conns[b58Id] = undefined
++      // this.switch.conns[b58Id] = undefined
+       return callback(null, baseConnection)
+     }
+ 
+@@ -251,7 +252,7 @@ class Dialer {
+     connection.setPeerInfo(this.peerInfo)
+     this._attemptMuxerUpgrade(connection, b58Id, (err, muxer) => {
+       if (err && !this.protocol) {
+-        this.switch.conns[b58Id] = connection
++        // this.switch.conns[b58Id] = connection
+         return callback(null, null)
+       }
+ 
+@@ -383,6 +384,7 @@ class Dialer {
+         }
+ 
+         const conn = observeConnection(transport, null, _conn, this.switch.observer)
++        this.switch.conns[b58Id] = conn
+         callback(null, conn)
+       })
+     }
