@@ -5,7 +5,7 @@ patch-package
  
    end (callback) {
      callback = callback || noop
-+    if (this.multiplex.destroy) {
++    if (this.multiplex.destroyed) {
 +      return callback()
 +    }
      this.multiplex.once('close', callback)
