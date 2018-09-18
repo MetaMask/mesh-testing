@@ -4,6 +4,7 @@ const PeerInfo = require('peer-info')
 const PeerId = require('peer-id')
 const pify = require('pify')
 const Node = require('./node')
+const isNode = require('detect-node')
 
 async function createNode (id, addrs, callback) {
   if (typeof id === 'function') {
@@ -45,10 +46,11 @@ async function createNode (id, addrs, callback) {
       // peerInfo.multiaddrs.add(`/ipfs/${peerIdStr}/p2p-webrtc-circuit`)
       // peerInfo.multiaddrs.add(`/dns4/monkey.kitsunet.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`)
       // peerInfo.multiaddrs.add(`/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`)
-      // peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${peerIdStr}`)
+      peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${peerIdStr}`)
       // peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ipfs/${peerIdStr}`)
       // peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ws/ipfs/${peerIdStr}`)
-      peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ipfs/${peerIdStr}`)
+      // if (isNode) peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ipfs/${peerIdStr}`)
+      peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ws/p2p-webrtc-circuit/ipfs/${peerIdStr}`)
     }
 
     const node = new Node(peerInfo, {

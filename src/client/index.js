@@ -58,7 +58,7 @@ const clientState = {
   ebt: [],
   ebtState: {},
   block: {},
-  blockTrackerEnabled: false,
+  blockTrackerEnabled: false
 }
 
 global.clientState = clientState
@@ -85,7 +85,7 @@ async function setupClient () {
   const privKey = opts['privKey']
   const pubKey = opts['pubKey']
 
-  const node = await pify(createLibp2pNode)({id, privKey, pubKey}, addrs)
+  const node = await pify(createLibp2pNode)({ id, privKey, pubKey }, addrs)
   // configure libp2p client
   const peerId = node.idStr
 
@@ -159,7 +159,7 @@ function setupComponents (client, node, clientState) {
   const blockTracker = createBlockTracker(node, clientState)
   const ebt = createEbt(client, node, clientState)
 
-  kitsunet.autoConnectWhenLonely(node, { minPeers: 4 })
+  kitsunet.autoConnectWhenLonely(node, { minPeers: 20 })
 
   return { pubsub, multicast, blockTracker, ebt }
 }

@@ -6,9 +6,6 @@ const { sec } = require('../util/time')
 const timeout = require('../util/timeout')
 
 const clientStateSubmitInterval = 15 * sec
-const autoConnectAttemptInterval = 10 * sec
-
-const maxPeers = 16
 
 module.exports = function (clientState, node, stats) {
   let telemetryRpc = null

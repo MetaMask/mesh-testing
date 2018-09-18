@@ -1,0 +1,49 @@
+patch-package
+--- a/node_modules/libp2p-multicast-experiment/src/index.js
++++ b/node_modules/libp2p-multicast-experiment/src/index.js
+@@ -6,7 +6,6 @@ const assert = require('assert')
+ const RpcBaseProtocol = require('./rpcBase')
+ const utils = require('./utils')
+ const pb = require('./message')
+-const Buffer = require('safe-buffer').Buffer
+ 
+ const ensureArray = utils.ensureArray
+ const setImmediate = require('async/setImmediate')
+@@ -215,7 +214,7 @@ class Multicast extends RpcBaseProtocol {
+         from: from,
+         data: msg,
+         hops: hops,
+-        seqno: new Buffer(seqno),
++        seqno: Buffer.from(seqno),
+         topicIDs: topics
+       }
+     }
+--- a/node_modules/libp2p-multicast-experiment/src/peer.js
++++ b/node_modules/libp2p-multicast-experiment/src/peer.js
+@@ -4,6 +4,8 @@ const Pushable = require('pull-pushable')
+ const setImmediate = require('async/setImmediate')
+ const EventEmitter = require('events')
+ 
++const noop = () => {}
++
+ /**
+  * The known state of a connected peer.
+  */
+@@ -55,13 +57,15 @@ class Peer extends EventEmitter {
+    * @param {Buffer} msg
+    * @returns {undefined}
+    */
+-  write (msg) {
++  write (msg, cb) {
++    cb = cb || noop
+     if (!this.isWritable) {
+       const id = this.info.id.toB58String()
+-      throw new Error('No writable connection to ' + id)
++      return cb(new Error('No writable connection to ' + id))
+     }
+ 
+     this.stream.push(msg)
++    cb()
+   }
+ 
+   /**

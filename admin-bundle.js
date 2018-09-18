@@ -663,7 +663,7 @@ for (orig in aliases) {
 
 }).call(this,require('_process'))
 
-},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","q":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/q/q.js","throat":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/base64-js/index.js":[function(require,module,exports){
+},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js","q":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/q/q.js","throat":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/base64-js/index.js":[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -928,6 +928,531 @@ module.exports = (function split(undef) {
 
 },{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/lib/_empty.js":[function(require,module,exports){
 arguments[4]["/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js"][0].apply(exports,arguments)
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js":[function(require,module,exports){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+var objectCreate = Object.create || objectCreatePolyfill
+var objectKeys = Object.keys || objectKeysPolyfill
+var bind = Function.prototype.bind || functionBindPolyfill
+
+function EventEmitter() {
+  if (!this._events || !Object.prototype.hasOwnProperty.call(this, '_events')) {
+    this._events = objectCreate(null);
+    this._eventsCount = 0;
+  }
+
+  this._maxListeners = this._maxListeners || undefined;
+}
+module.exports = EventEmitter;
+
+// Backwards-compat with node 0.10.x
+EventEmitter.EventEmitter = EventEmitter;
+
+EventEmitter.prototype._events = undefined;
+EventEmitter.prototype._maxListeners = undefined;
+
+// By default EventEmitters will print a warning if more than 10 listeners are
+// added to it. This is a useful default which helps finding memory leaks.
+var defaultMaxListeners = 10;
+
+var hasDefineProperty;
+try {
+  var o = {};
+  if (Object.defineProperty) Object.defineProperty(o, 'x', { value: 0 });
+  hasDefineProperty = o.x === 0;
+} catch (err) { hasDefineProperty = false }
+if (hasDefineProperty) {
+  Object.defineProperty(EventEmitter, 'defaultMaxListeners', {
+    enumerable: true,
+    get: function() {
+      return defaultMaxListeners;
+    },
+    set: function(arg) {
+      // check whether the input is a positive number (whose value is zero or
+      // greater and not a NaN).
+      if (typeof arg !== 'number' || arg < 0 || arg !== arg)
+        throw new TypeError('"defaultMaxListeners" must be a positive number');
+      defaultMaxListeners = arg;
+    }
+  });
+} else {
+  EventEmitter.defaultMaxListeners = defaultMaxListeners;
+}
+
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+EventEmitter.prototype.setMaxListeners = function setMaxListeners(n) {
+  if (typeof n !== 'number' || n < 0 || isNaN(n))
+    throw new TypeError('"n" argument must be a positive number');
+  this._maxListeners = n;
+  return this;
+};
+
+function $getMaxListeners(that) {
+  if (that._maxListeners === undefined)
+    return EventEmitter.defaultMaxListeners;
+  return that._maxListeners;
+}
+
+EventEmitter.prototype.getMaxListeners = function getMaxListeners() {
+  return $getMaxListeners(this);
+};
+
+// These standalone emit* functions are used to optimize calling of event
+// handlers for fast cases because emit() itself often has a variable number of
+// arguments and can be deoptimized because of that. These functions always have
+// the same number of arguments and thus do not get deoptimized, so the code
+// inside them can execute faster.
+function emitNone(handler, isFn, self) {
+  if (isFn)
+    handler.call(self);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self);
+  }
+}
+function emitOne(handler, isFn, self, arg1) {
+  if (isFn)
+    handler.call(self, arg1);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self, arg1);
+  }
+}
+function emitTwo(handler, isFn, self, arg1, arg2) {
+  if (isFn)
+    handler.call(self, arg1, arg2);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self, arg1, arg2);
+  }
+}
+function emitThree(handler, isFn, self, arg1, arg2, arg3) {
+  if (isFn)
+    handler.call(self, arg1, arg2, arg3);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self, arg1, arg2, arg3);
+  }
+}
+
+function emitMany(handler, isFn, self, args) {
+  if (isFn)
+    handler.apply(self, args);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].apply(self, args);
+  }
+}
+
+EventEmitter.prototype.emit = function emit(type) {
+  var er, handler, len, args, i, events;
+  var doError = (type === 'error');
+
+  events = this._events;
+  if (events)
+    doError = (doError && events.error == null);
+  else if (!doError)
+    return false;
+
+  // If there is no 'error' event listener then throw.
+  if (doError) {
+    if (arguments.length > 1)
+      er = arguments[1];
+    if (er instanceof Error) {
+      throw er; // Unhandled 'error' event
+    } else {
+      // At least give some kind of context to the user
+      var err = new Error('Unhandled "error" event. (' + er + ')');
+      err.context = er;
+      throw err;
+    }
+    return false;
+  }
+
+  handler = events[type];
+
+  if (!handler)
+    return false;
+
+  var isFn = typeof handler === 'function';
+  len = arguments.length;
+  switch (len) {
+      // fast cases
+    case 1:
+      emitNone(handler, isFn, this);
+      break;
+    case 2:
+      emitOne(handler, isFn, this, arguments[1]);
+      break;
+    case 3:
+      emitTwo(handler, isFn, this, arguments[1], arguments[2]);
+      break;
+    case 4:
+      emitThree(handler, isFn, this, arguments[1], arguments[2], arguments[3]);
+      break;
+      // slower
+    default:
+      args = new Array(len - 1);
+      for (i = 1; i < len; i++)
+        args[i - 1] = arguments[i];
+      emitMany(handler, isFn, this, args);
+  }
+
+  return true;
+};
+
+function _addListener(target, type, listener, prepend) {
+  var m;
+  var events;
+  var existing;
+
+  if (typeof listener !== 'function')
+    throw new TypeError('"listener" argument must be a function');
+
+  events = target._events;
+  if (!events) {
+    events = target._events = objectCreate(null);
+    target._eventsCount = 0;
+  } else {
+    // To avoid recursion in the case that type === "newListener"! Before
+    // adding it to the listeners, first emit "newListener".
+    if (events.newListener) {
+      target.emit('newListener', type,
+          listener.listener ? listener.listener : listener);
+
+      // Re-assign `events` because a newListener handler could have caused the
+      // this._events to be assigned to a new object
+      events = target._events;
+    }
+    existing = events[type];
+  }
+
+  if (!existing) {
+    // Optimize the case of one listener. Don't need the extra array object.
+    existing = events[type] = listener;
+    ++target._eventsCount;
+  } else {
+    if (typeof existing === 'function') {
+      // Adding the second element, need to change to array.
+      existing = events[type] =
+          prepend ? [listener, existing] : [existing, listener];
+    } else {
+      // If we've already got an array, just append.
+      if (prepend) {
+        existing.unshift(listener);
+      } else {
+        existing.push(listener);
+      }
+    }
+
+    // Check for listener leak
+    if (!existing.warned) {
+      m = $getMaxListeners(target);
+      if (m && m > 0 && existing.length > m) {
+        existing.warned = true;
+        var w = new Error('Possible EventEmitter memory leak detected. ' +
+            existing.length + ' "' + String(type) + '" listeners ' +
+            'added. Use emitter.setMaxListeners() to ' +
+            'increase limit.');
+        w.name = 'MaxListenersExceededWarning';
+        w.emitter = target;
+        w.type = type;
+        w.count = existing.length;
+        if (typeof console === 'object' && console.warn) {
+          console.warn('%s: %s', w.name, w.message);
+        }
+      }
+    }
+  }
+
+  return target;
+}
+
+EventEmitter.prototype.addListener = function addListener(type, listener) {
+  return _addListener(this, type, listener, false);
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.prependListener =
+    function prependListener(type, listener) {
+      return _addListener(this, type, listener, true);
+    };
+
+function onceWrapper() {
+  if (!this.fired) {
+    this.target.removeListener(this.type, this.wrapFn);
+    this.fired = true;
+    switch (arguments.length) {
+      case 0:
+        return this.listener.call(this.target);
+      case 1:
+        return this.listener.call(this.target, arguments[0]);
+      case 2:
+        return this.listener.call(this.target, arguments[0], arguments[1]);
+      case 3:
+        return this.listener.call(this.target, arguments[0], arguments[1],
+            arguments[2]);
+      default:
+        var args = new Array(arguments.length);
+        for (var i = 0; i < args.length; ++i)
+          args[i] = arguments[i];
+        this.listener.apply(this.target, args);
+    }
+  }
+}
+
+function _onceWrap(target, type, listener) {
+  var state = { fired: false, wrapFn: undefined, target: target, type: type, listener: listener };
+  var wrapped = bind.call(onceWrapper, state);
+  wrapped.listener = listener;
+  state.wrapFn = wrapped;
+  return wrapped;
+}
+
+EventEmitter.prototype.once = function once(type, listener) {
+  if (typeof listener !== 'function')
+    throw new TypeError('"listener" argument must be a function');
+  this.on(type, _onceWrap(this, type, listener));
+  return this;
+};
+
+EventEmitter.prototype.prependOnceListener =
+    function prependOnceListener(type, listener) {
+      if (typeof listener !== 'function')
+        throw new TypeError('"listener" argument must be a function');
+      this.prependListener(type, _onceWrap(this, type, listener));
+      return this;
+    };
+
+// Emits a 'removeListener' event if and only if the listener was removed.
+EventEmitter.prototype.removeListener =
+    function removeListener(type, listener) {
+      var list, events, position, i, originalListener;
+
+      if (typeof listener !== 'function')
+        throw new TypeError('"listener" argument must be a function');
+
+      events = this._events;
+      if (!events)
+        return this;
+
+      list = events[type];
+      if (!list)
+        return this;
+
+      if (list === listener || list.listener === listener) {
+        if (--this._eventsCount === 0)
+          this._events = objectCreate(null);
+        else {
+          delete events[type];
+          if (events.removeListener)
+            this.emit('removeListener', type, list.listener || listener);
+        }
+      } else if (typeof list !== 'function') {
+        position = -1;
+
+        for (i = list.length - 1; i >= 0; i--) {
+          if (list[i] === listener || list[i].listener === listener) {
+            originalListener = list[i].listener;
+            position = i;
+            break;
+          }
+        }
+
+        if (position < 0)
+          return this;
+
+        if (position === 0)
+          list.shift();
+        else
+          spliceOne(list, position);
+
+        if (list.length === 1)
+          events[type] = list[0];
+
+        if (events.removeListener)
+          this.emit('removeListener', type, originalListener || listener);
+      }
+
+      return this;
+    };
+
+EventEmitter.prototype.removeAllListeners =
+    function removeAllListeners(type) {
+      var listeners, events, i;
+
+      events = this._events;
+      if (!events)
+        return this;
+
+      // not listening for removeListener, no need to emit
+      if (!events.removeListener) {
+        if (arguments.length === 0) {
+          this._events = objectCreate(null);
+          this._eventsCount = 0;
+        } else if (events[type]) {
+          if (--this._eventsCount === 0)
+            this._events = objectCreate(null);
+          else
+            delete events[type];
+        }
+        return this;
+      }
+
+      // emit removeListener for all listeners on all events
+      if (arguments.length === 0) {
+        var keys = objectKeys(events);
+        var key;
+        for (i = 0; i < keys.length; ++i) {
+          key = keys[i];
+          if (key === 'removeListener') continue;
+          this.removeAllListeners(key);
+        }
+        this.removeAllListeners('removeListener');
+        this._events = objectCreate(null);
+        this._eventsCount = 0;
+        return this;
+      }
+
+      listeners = events[type];
+
+      if (typeof listeners === 'function') {
+        this.removeListener(type, listeners);
+      } else if (listeners) {
+        // LIFO order
+        for (i = listeners.length - 1; i >= 0; i--) {
+          this.removeListener(type, listeners[i]);
+        }
+      }
+
+      return this;
+    };
+
+function _listeners(target, type, unwrap) {
+  var events = target._events;
+
+  if (!events)
+    return [];
+
+  var evlistener = events[type];
+  if (!evlistener)
+    return [];
+
+  if (typeof evlistener === 'function')
+    return unwrap ? [evlistener.listener || evlistener] : [evlistener];
+
+  return unwrap ? unwrapListeners(evlistener) : arrayClone(evlistener, evlistener.length);
+}
+
+EventEmitter.prototype.listeners = function listeners(type) {
+  return _listeners(this, type, true);
+};
+
+EventEmitter.prototype.rawListeners = function rawListeners(type) {
+  return _listeners(this, type, false);
+};
+
+EventEmitter.listenerCount = function(emitter, type) {
+  if (typeof emitter.listenerCount === 'function') {
+    return emitter.listenerCount(type);
+  } else {
+    return listenerCount.call(emitter, type);
+  }
+};
+
+EventEmitter.prototype.listenerCount = listenerCount;
+function listenerCount(type) {
+  var events = this._events;
+
+  if (events) {
+    var evlistener = events[type];
+
+    if (typeof evlistener === 'function') {
+      return 1;
+    } else if (evlistener) {
+      return evlistener.length;
+    }
+  }
+
+  return 0;
+}
+
+EventEmitter.prototype.eventNames = function eventNames() {
+  return this._eventsCount > 0 ? Reflect.ownKeys(this._events) : [];
+};
+
+// About 1.5x faster than the two-arg version of Array#splice().
+function spliceOne(list, index) {
+  for (var i = index, k = i + 1, n = list.length; k < n; i += 1, k += 1)
+    list[i] = list[k];
+  list.pop();
+}
+
+function arrayClone(arr, n) {
+  var copy = new Array(n);
+  for (var i = 0; i < n; ++i)
+    copy[i] = arr[i];
+  return copy;
+}
+
+function unwrapListeners(arr) {
+  var ret = new Array(arr.length);
+  for (var i = 0; i < ret.length; ++i) {
+    ret[i] = arr[i].listener || arr[i];
+  }
+  return ret;
+}
+
+function objectCreatePolyfill(proto) {
+  var F = function() {};
+  F.prototype = proto;
+  return new F;
+}
+function objectKeysPolyfill(obj) {
+  var keys = [];
+  for (var k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) {
+    keys.push(k);
+  }
+  return k;
+}
+function functionBindPolyfill(context) {
+  var fn = this;
+  return function () {
+    return fn.apply(context, arguments);
+  };
+}
+
 },{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js":[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
@@ -3069,9 +3594,9 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 
-}).call(this,{"isBuffer":require("../../is-buffer/index.js")})
+}).call(this,{"isBuffer":require("../../insert-module-globals/node_modules/is-buffer/index.js")})
 
-},{"../../is-buffer/index.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/is-buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/d3-array/build/d3-array.js":[function(require,module,exports){
+},{"../../insert-module-globals/node_modules/is-buffer/index.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/insert-module-globals/node_modules/is-buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/d3-array/build/d3-array.js":[function(require,module,exports){
 // https://d3js.org/d3-array/ Version 1.2.1. Copyright 2017 Mike Bostock.
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -21991,7 +22516,7 @@ function indexOf (xs, x) {
 
 }).call(this,require('_process'))
 
-},{"./_stream_duplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/lib/_stream_duplex.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","isarray":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/isarray/index.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js","string_decoder/":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/string_decoder/index.js","util":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
+},{"./_stream_duplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/lib/_stream_duplex.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","isarray":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/isarray/index.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js","string_decoder/":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/string_decoder/index.js","util":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -23273,532 +23798,7 @@ function EvStore(elem) {
     return hash;
 }
 
-},{"individual/one-version":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/individual/one-version.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js":[function(require,module,exports){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-var objectCreate = Object.create || objectCreatePolyfill
-var objectKeys = Object.keys || objectKeysPolyfill
-var bind = Function.prototype.bind || functionBindPolyfill
-
-function EventEmitter() {
-  if (!this._events || !Object.prototype.hasOwnProperty.call(this, '_events')) {
-    this._events = objectCreate(null);
-    this._eventsCount = 0;
-  }
-
-  this._maxListeners = this._maxListeners || undefined;
-}
-module.exports = EventEmitter;
-
-// Backwards-compat with node 0.10.x
-EventEmitter.EventEmitter = EventEmitter;
-
-EventEmitter.prototype._events = undefined;
-EventEmitter.prototype._maxListeners = undefined;
-
-// By default EventEmitters will print a warning if more than 10 listeners are
-// added to it. This is a useful default which helps finding memory leaks.
-var defaultMaxListeners = 10;
-
-var hasDefineProperty;
-try {
-  var o = {};
-  if (Object.defineProperty) Object.defineProperty(o, 'x', { value: 0 });
-  hasDefineProperty = o.x === 0;
-} catch (err) { hasDefineProperty = false }
-if (hasDefineProperty) {
-  Object.defineProperty(EventEmitter, 'defaultMaxListeners', {
-    enumerable: true,
-    get: function() {
-      return defaultMaxListeners;
-    },
-    set: function(arg) {
-      // check whether the input is a positive number (whose value is zero or
-      // greater and not a NaN).
-      if (typeof arg !== 'number' || arg < 0 || arg !== arg)
-        throw new TypeError('"defaultMaxListeners" must be a positive number');
-      defaultMaxListeners = arg;
-    }
-  });
-} else {
-  EventEmitter.defaultMaxListeners = defaultMaxListeners;
-}
-
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-EventEmitter.prototype.setMaxListeners = function setMaxListeners(n) {
-  if (typeof n !== 'number' || n < 0 || isNaN(n))
-    throw new TypeError('"n" argument must be a positive number');
-  this._maxListeners = n;
-  return this;
-};
-
-function $getMaxListeners(that) {
-  if (that._maxListeners === undefined)
-    return EventEmitter.defaultMaxListeners;
-  return that._maxListeners;
-}
-
-EventEmitter.prototype.getMaxListeners = function getMaxListeners() {
-  return $getMaxListeners(this);
-};
-
-// These standalone emit* functions are used to optimize calling of event
-// handlers for fast cases because emit() itself often has a variable number of
-// arguments and can be deoptimized because of that. These functions always have
-// the same number of arguments and thus do not get deoptimized, so the code
-// inside them can execute faster.
-function emitNone(handler, isFn, self) {
-  if (isFn)
-    handler.call(self);
-  else {
-    var len = handler.length;
-    var listeners = arrayClone(handler, len);
-    for (var i = 0; i < len; ++i)
-      listeners[i].call(self);
-  }
-}
-function emitOne(handler, isFn, self, arg1) {
-  if (isFn)
-    handler.call(self, arg1);
-  else {
-    var len = handler.length;
-    var listeners = arrayClone(handler, len);
-    for (var i = 0; i < len; ++i)
-      listeners[i].call(self, arg1);
-  }
-}
-function emitTwo(handler, isFn, self, arg1, arg2) {
-  if (isFn)
-    handler.call(self, arg1, arg2);
-  else {
-    var len = handler.length;
-    var listeners = arrayClone(handler, len);
-    for (var i = 0; i < len; ++i)
-      listeners[i].call(self, arg1, arg2);
-  }
-}
-function emitThree(handler, isFn, self, arg1, arg2, arg3) {
-  if (isFn)
-    handler.call(self, arg1, arg2, arg3);
-  else {
-    var len = handler.length;
-    var listeners = arrayClone(handler, len);
-    for (var i = 0; i < len; ++i)
-      listeners[i].call(self, arg1, arg2, arg3);
-  }
-}
-
-function emitMany(handler, isFn, self, args) {
-  if (isFn)
-    handler.apply(self, args);
-  else {
-    var len = handler.length;
-    var listeners = arrayClone(handler, len);
-    for (var i = 0; i < len; ++i)
-      listeners[i].apply(self, args);
-  }
-}
-
-EventEmitter.prototype.emit = function emit(type) {
-  var er, handler, len, args, i, events;
-  var doError = (type === 'error');
-
-  events = this._events;
-  if (events)
-    doError = (doError && events.error == null);
-  else if (!doError)
-    return false;
-
-  // If there is no 'error' event listener then throw.
-  if (doError) {
-    if (arguments.length > 1)
-      er = arguments[1];
-    if (er instanceof Error) {
-      throw er; // Unhandled 'error' event
-    } else {
-      // At least give some kind of context to the user
-      var err = new Error('Unhandled "error" event. (' + er + ')');
-      err.context = er;
-      throw err;
-    }
-    return false;
-  }
-
-  handler = events[type];
-
-  if (!handler)
-    return false;
-
-  var isFn = typeof handler === 'function';
-  len = arguments.length;
-  switch (len) {
-      // fast cases
-    case 1:
-      emitNone(handler, isFn, this);
-      break;
-    case 2:
-      emitOne(handler, isFn, this, arguments[1]);
-      break;
-    case 3:
-      emitTwo(handler, isFn, this, arguments[1], arguments[2]);
-      break;
-    case 4:
-      emitThree(handler, isFn, this, arguments[1], arguments[2], arguments[3]);
-      break;
-      // slower
-    default:
-      args = new Array(len - 1);
-      for (i = 1; i < len; i++)
-        args[i - 1] = arguments[i];
-      emitMany(handler, isFn, this, args);
-  }
-
-  return true;
-};
-
-function _addListener(target, type, listener, prepend) {
-  var m;
-  var events;
-  var existing;
-
-  if (typeof listener !== 'function')
-    throw new TypeError('"listener" argument must be a function');
-
-  events = target._events;
-  if (!events) {
-    events = target._events = objectCreate(null);
-    target._eventsCount = 0;
-  } else {
-    // To avoid recursion in the case that type === "newListener"! Before
-    // adding it to the listeners, first emit "newListener".
-    if (events.newListener) {
-      target.emit('newListener', type,
-          listener.listener ? listener.listener : listener);
-
-      // Re-assign `events` because a newListener handler could have caused the
-      // this._events to be assigned to a new object
-      events = target._events;
-    }
-    existing = events[type];
-  }
-
-  if (!existing) {
-    // Optimize the case of one listener. Don't need the extra array object.
-    existing = events[type] = listener;
-    ++target._eventsCount;
-  } else {
-    if (typeof existing === 'function') {
-      // Adding the second element, need to change to array.
-      existing = events[type] =
-          prepend ? [listener, existing] : [existing, listener];
-    } else {
-      // If we've already got an array, just append.
-      if (prepend) {
-        existing.unshift(listener);
-      } else {
-        existing.push(listener);
-      }
-    }
-
-    // Check for listener leak
-    if (!existing.warned) {
-      m = $getMaxListeners(target);
-      if (m && m > 0 && existing.length > m) {
-        existing.warned = true;
-        var w = new Error('Possible EventEmitter memory leak detected. ' +
-            existing.length + ' "' + String(type) + '" listeners ' +
-            'added. Use emitter.setMaxListeners() to ' +
-            'increase limit.');
-        w.name = 'MaxListenersExceededWarning';
-        w.emitter = target;
-        w.type = type;
-        w.count = existing.length;
-        if (typeof console === 'object' && console.warn) {
-          console.warn('%s: %s', w.name, w.message);
-        }
-      }
-    }
-  }
-
-  return target;
-}
-
-EventEmitter.prototype.addListener = function addListener(type, listener) {
-  return _addListener(this, type, listener, false);
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.prependListener =
-    function prependListener(type, listener) {
-      return _addListener(this, type, listener, true);
-    };
-
-function onceWrapper() {
-  if (!this.fired) {
-    this.target.removeListener(this.type, this.wrapFn);
-    this.fired = true;
-    switch (arguments.length) {
-      case 0:
-        return this.listener.call(this.target);
-      case 1:
-        return this.listener.call(this.target, arguments[0]);
-      case 2:
-        return this.listener.call(this.target, arguments[0], arguments[1]);
-      case 3:
-        return this.listener.call(this.target, arguments[0], arguments[1],
-            arguments[2]);
-      default:
-        var args = new Array(arguments.length);
-        for (var i = 0; i < args.length; ++i)
-          args[i] = arguments[i];
-        this.listener.apply(this.target, args);
-    }
-  }
-}
-
-function _onceWrap(target, type, listener) {
-  var state = { fired: false, wrapFn: undefined, target: target, type: type, listener: listener };
-  var wrapped = bind.call(onceWrapper, state);
-  wrapped.listener = listener;
-  state.wrapFn = wrapped;
-  return wrapped;
-}
-
-EventEmitter.prototype.once = function once(type, listener) {
-  if (typeof listener !== 'function')
-    throw new TypeError('"listener" argument must be a function');
-  this.on(type, _onceWrap(this, type, listener));
-  return this;
-};
-
-EventEmitter.prototype.prependOnceListener =
-    function prependOnceListener(type, listener) {
-      if (typeof listener !== 'function')
-        throw new TypeError('"listener" argument must be a function');
-      this.prependListener(type, _onceWrap(this, type, listener));
-      return this;
-    };
-
-// Emits a 'removeListener' event if and only if the listener was removed.
-EventEmitter.prototype.removeListener =
-    function removeListener(type, listener) {
-      var list, events, position, i, originalListener;
-
-      if (typeof listener !== 'function')
-        throw new TypeError('"listener" argument must be a function');
-
-      events = this._events;
-      if (!events)
-        return this;
-
-      list = events[type];
-      if (!list)
-        return this;
-
-      if (list === listener || list.listener === listener) {
-        if (--this._eventsCount === 0)
-          this._events = objectCreate(null);
-        else {
-          delete events[type];
-          if (events.removeListener)
-            this.emit('removeListener', type, list.listener || listener);
-        }
-      } else if (typeof list !== 'function') {
-        position = -1;
-
-        for (i = list.length - 1; i >= 0; i--) {
-          if (list[i] === listener || list[i].listener === listener) {
-            originalListener = list[i].listener;
-            position = i;
-            break;
-          }
-        }
-
-        if (position < 0)
-          return this;
-
-        if (position === 0)
-          list.shift();
-        else
-          spliceOne(list, position);
-
-        if (list.length === 1)
-          events[type] = list[0];
-
-        if (events.removeListener)
-          this.emit('removeListener', type, originalListener || listener);
-      }
-
-      return this;
-    };
-
-EventEmitter.prototype.removeAllListeners =
-    function removeAllListeners(type) {
-      var listeners, events, i;
-
-      events = this._events;
-      if (!events)
-        return this;
-
-      // not listening for removeListener, no need to emit
-      if (!events.removeListener) {
-        if (arguments.length === 0) {
-          this._events = objectCreate(null);
-          this._eventsCount = 0;
-        } else if (events[type]) {
-          if (--this._eventsCount === 0)
-            this._events = objectCreate(null);
-          else
-            delete events[type];
-        }
-        return this;
-      }
-
-      // emit removeListener for all listeners on all events
-      if (arguments.length === 0) {
-        var keys = objectKeys(events);
-        var key;
-        for (i = 0; i < keys.length; ++i) {
-          key = keys[i];
-          if (key === 'removeListener') continue;
-          this.removeAllListeners(key);
-        }
-        this.removeAllListeners('removeListener');
-        this._events = objectCreate(null);
-        this._eventsCount = 0;
-        return this;
-      }
-
-      listeners = events[type];
-
-      if (typeof listeners === 'function') {
-        this.removeListener(type, listeners);
-      } else if (listeners) {
-        // LIFO order
-        for (i = listeners.length - 1; i >= 0; i--) {
-          this.removeListener(type, listeners[i]);
-        }
-      }
-
-      return this;
-    };
-
-function _listeners(target, type, unwrap) {
-  var events = target._events;
-
-  if (!events)
-    return [];
-
-  var evlistener = events[type];
-  if (!evlistener)
-    return [];
-
-  if (typeof evlistener === 'function')
-    return unwrap ? [evlistener.listener || evlistener] : [evlistener];
-
-  return unwrap ? unwrapListeners(evlistener) : arrayClone(evlistener, evlistener.length);
-}
-
-EventEmitter.prototype.listeners = function listeners(type) {
-  return _listeners(this, type, true);
-};
-
-EventEmitter.prototype.rawListeners = function rawListeners(type) {
-  return _listeners(this, type, false);
-};
-
-EventEmitter.listenerCount = function(emitter, type) {
-  if (typeof emitter.listenerCount === 'function') {
-    return emitter.listenerCount(type);
-  } else {
-    return listenerCount.call(emitter, type);
-  }
-};
-
-EventEmitter.prototype.listenerCount = listenerCount;
-function listenerCount(type) {
-  var events = this._events;
-
-  if (events) {
-    var evlistener = events[type];
-
-    if (typeof evlistener === 'function') {
-      return 1;
-    } else if (evlistener) {
-      return evlistener.length;
-    }
-  }
-
-  return 0;
-}
-
-EventEmitter.prototype.eventNames = function eventNames() {
-  return this._eventsCount > 0 ? Reflect.ownKeys(this._events) : [];
-};
-
-// About 1.5x faster than the two-arg version of Array#splice().
-function spliceOne(list, index) {
-  for (var i = index, k = i + 1, n = list.length; k < n; i += 1, k += 1)
-    list[i] = list[k];
-  list.pop();
-}
-
-function arrayClone(arr, n) {
-  var copy = new Array(n);
-  for (var i = 0; i < n; ++i)
-    copy[i] = arr[i];
-  return copy;
-}
-
-function unwrapListeners(arr) {
-  var ret = new Array(arr.length);
-  for (var i = 0; i < ret.length; ++i) {
-    ret[i] = arr[i].listener || arr[i];
-  }
-  return ret;
-}
-
-function objectCreatePolyfill(proto) {
-  var F = function() {};
-  F.prototype = proto;
-  return new F;
-}
-function objectKeysPolyfill(obj) {
-  var keys = [];
-  for (var k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) {
-    keys.push(k);
-  }
-  return k;
-}
-function functionBindPolyfill(context) {
-  var fn = this;
-  return function () {
-    return fn.apply(context, arguments);
-  };
-}
-
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/fast-json-patch/lib/core.js":[function(require,module,exports){
+},{"individual/one-version":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/individual/one-version.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/fast-json-patch/lib/core.js":[function(require,module,exports){
 var equalsOptions = { strict: true };
 var _equals = require('deep-equal');
 var areEquals = function (a, b) {
@@ -25953,7 +25953,7 @@ function indexOf (xs, x) {
 
 }).call(this,require('_process'))
 
-},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","isarray":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/isarray/index.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js","string_decoder/":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/string_decoder/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
+},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","isarray":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/isarray/index.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js","string_decoder/":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/string_decoder/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -26821,7 +26821,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/is-buffer/index.js":[function(require,module,exports){
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/insert-module-globals/node_modules/is-buffer/index.js":[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -28113,7 +28113,7 @@ module.exports = Multiplex
 
 }).call(this,require("buffer").Buffer)
 
-},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","duplexify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexify/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","varint":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/index.js","xtend":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/xtend/immutable.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/decode.js":[function(require,module,exports){
+},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","duplexify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexify/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","varint":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/index.js","xtend":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/xtend/immutable.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/decode.js":[function(require,module,exports){
 module.exports = read
 
 var MSB = 0x80
@@ -28311,7 +28311,7 @@ var ObservableStore = function (_EventEmitter) {
 
 module.exports = ObservableStore;
 
-},{"events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","xtend":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/xtend/immutable.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js":[function(require,module,exports){
+},{"events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js","xtend":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/xtend/immutable.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js":[function(require,module,exports){
 'use strict';
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -33330,7 +33330,7 @@ function indexOf(xs, x) {
 }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./_stream_duplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/_stream_duplex.js","./internal/streams/BufferList":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/internal/streams/BufferList.js","./internal/streams/destroy":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/internal/streams/destroy.js","./internal/streams/stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/internal/streams/stream-browser.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","isarray":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/isarray/index.js","process-nextick-args":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/process-nextick-args/index.js","safe-buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/safe-buffer/index.js","string_decoder/":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/string_decoder/lib/string_decoder.js","util":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
+},{"./_stream_duplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/_stream_duplex.js","./internal/streams/BufferList":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/internal/streams/BufferList.js","./internal/streams/destroy":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/internal/streams/destroy.js","./internal/streams/stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/internal/streams/stream-browser.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","isarray":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/isarray/index.js","process-nextick-args":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/process-nextick-args/index.js","safe-buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/safe-buffer/index.js","string_decoder/":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/string_decoder/lib/string_decoder.js","util":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -34394,7 +34394,7 @@ module.exports = {
 },{"process-nextick-args":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/process-nextick-args/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/lib/internal/streams/stream-browser.js":[function(require,module,exports){
 module.exports = require('events').EventEmitter;
 
-},{"events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/passthrough.js":[function(require,module,exports){
+},{"events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/passthrough.js":[function(require,module,exports){
 module.exports = require('./readable').PassThrough
 
 },{"./readable":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js":[function(require,module,exports){
@@ -34746,7 +34746,7 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream/duplex.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/duplex-browser.js","readable-stream/passthrough.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/passthrough.js","readable-stream/readable.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","readable-stream/transform.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/transform.js","readable-stream/writable.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/writable-browser.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/index.js":[function(require,module,exports){
+},{"events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream/duplex.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/duplex-browser.js","readable-stream/passthrough.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/passthrough.js","readable-stream/readable.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","readable-stream/transform.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/transform.js","readable-stream/writable.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/writable-browser.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/index.js":[function(require,module,exports){
 (function (global){
 var ClientRequest = require('./lib/request')
 var response = require('./lib/response')
@@ -35544,7 +35544,7 @@ exports.raw = function (stream) {
 }
 
 
-},{"events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-shift/index.js":[function(require,module,exports){
+},{"events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-shift/index.js":[function(require,module,exports){
 module.exports = shift
 
 function shift (stream) {
@@ -41469,7 +41469,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1537552317 || 'development')
+const buildVersion = String(1538161217 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -41535,7 +41535,7 @@ async function setupAdmin () {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"../network/telemetry":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js","../rpc/base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","../rpc/rpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js","../rpc/serverAdmin":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/serverAdmin.js","../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","./app":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/app.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","obs-store":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","qs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/qs/lib/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
+},{"../network/telemetry":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/network/telemetry.js","../rpc/base":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/base.js","../rpc/rpc":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/rpc.js","../rpc/serverAdmin":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/rpc/serverAdmin.js","../util/jsonPatchStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/jsonSerializeStream.js","./app":"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/app.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js","obs-store":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js","qs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/qs/lib/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
 const d3 = require('d3')
 
 const graphWidth = 960
