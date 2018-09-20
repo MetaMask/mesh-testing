@@ -13,7 +13,7 @@ const maxDiscovered = 25
 const clientStateSubmitInterval = 15 * sec
 const autoConnectAttemptInterval = 10 * sec
 
-const maxPeers = 8
+const maxPeers = 16
 
 module.exports = function (clientState, node, stats) {
   let telemetryRpc = null
