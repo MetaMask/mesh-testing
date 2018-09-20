@@ -46,14 +46,14 @@ class Node extends Libp2p {
             enabled: true,
             list: bootstrapers
           }
-        },
-        relay: {
-          enabled: true,
-          hop: {
-            enabled: true,
-            active: true
-          }
         }
+        // relay: {
+        //   enabled: true,
+        //   hop: {
+        //     enabled: true,
+        //     active: true
+        //   }
+        // }
       }
     }
 

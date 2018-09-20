@@ -14,14 +14,14 @@ module.exports = async (rpc, pingTimeout) => {
       heardPing = true
       const end = Date.now()
       const rtt = end - start
+      console.log('timeout check - got ping')
       return rtt
-      // console.log('timeout check - got ping', client.peerId)
     })(),
     // disconnect peer on timeout
     (async () => {
       await timeout(pingTimeout)
       if (heardPing) return
-      // console.log('timeout check - failed', client.peerId)
+      console.log('timeout check - failed')
       throw new Error('ping timed out')
     })()
   ])
