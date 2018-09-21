@@ -40719,6 +40719,7 @@ function startApp (opts = {}) {
   const viewModes = [
     'normal',
     'kitsunet',
+    'ping',
     'pubsub',
     'multicast',
     'ebt',
@@ -40823,7 +40824,8 @@ function startApp (opts = {}) {
         networkFilter = 'multicast'
         break
     }
-    const newGraph = buildGraph(clientData, networkFilter)
+    const latencyMode = (viewMode === 'ping')
+    const newGraph = buildGraph(clientData, networkFilter, latencyMode)
     currentGraph = mergeGraph(currentGraph, newGraph)
     // reset simulation
     setupSimulationForces(simulation, currentGraph)
@@ -40918,6 +40920,7 @@ function renderGraph (state, actions) {
   switch (viewMode) {
     case 'normal': return renderGraphNormal(state, actions)
     case 'kitsunet': return renderGraphNormal(state, actions)
+    case 'ping': return renderGraphNormal(state, actions)
     case 'pie(tx)': return renderGraphPieTransportTx(state, actions)
     case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
     case 'mesh': return renderGraphMesh(state, actions)
@@ -41372,7 +41375,7 @@ StatsObj shape
 }
 */
 
-function buildGraph (networkState, networkFilter) {
+function buildGraph (networkState, networkFilter, latencyMode) {
   const graph = { nodes: [], links: [] }
 
   // first add kitsunet nodes
@@ -41389,23 +41392,29 @@ function buildGraph (networkState, networkFilter) {
     const peers = clientStats.peers
     if (!peers) return
 
-    Object.entries(peers).forEach(([peerId, peerData]) => {
+    Object.entries(peers).forEach(([peerId, peerStats]) => {
       // if connected to a missing node, create missing node
       const alreadyExists = !!graph.nodes.find(item => item.id === peerId)
       if (!alreadyExists) {
         const newNode = { id: peerId, type: 'missing' }
         graph.nodes.push(newNode)
       }
-      const protocolNames = Object.keys(peerData.protocols)
+      const protocolNames = Object.keys(peerStats.protocols)
       // abort if network filter miss
       if (networkFilter && !protocolNames.some(name => name.includes(networkFilter))) return
-      // const rtt = peerData[peerId].ping
-      // const didTimeout = rtt === 'timeout'
-      // const linkValue = Math.pow((10 - Math.log(rtt)), 2)
-      // const linkValue = didTimeout ? 0.1 : 2
+      const peerData = clientData.peers[peerId]
+      const ping = peerData ? peerData.ping : null
+      const pingDistance = 60 * Math.log(ping || 1000)
+      const distance = latencyMode ? pingDistance : 30
       const linkValue = 2
       const linkId = `${clientId}-${peerId}`
-      const newLink = { id: linkId, source: clientId, target: peerId, value: linkValue }
+      const newLink = {
+        id: linkId,
+        source: clientId,
+        target: peerId,
+        value: linkValue,
+        distance,
+      }
       graph.links.push(newLink)
     })
   })
@@ -41460,7 +41469,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1537423501 || 'development')
+const buildVersion = String(1537552317 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -41547,7 +41556,7 @@ function setupSimulationForces (simulation, state) {
   simulation
     .nodes(nodes)
     // pull nodes along links
-    .force('link', d3.forceLink().id(d => d.id).links(links))
+    .force('link', d3.forceLink().id(d => d.id).links(links).distance(d => d.distance))
     // push nodes away from each other
     .force('charge', d3.forceManyBody().strength(-30))
     // translate nodes around the center
@@ -41610,15 +41619,14 @@ function renderGraph(state, actions) {
       TERRIBLE: '#FF0000',
     }
 
-    if (!networkState.clients[node.id]
-      || !(networkState.clients[node.id]
-        && networkState.clients[node.id].block)) {
+    const clientState = networkState.clients[node.id]
+    if (!(clientState && clientState.block)) {
       return
     }
 
     let color = colors['TERRIBLE']
-    const blockNumber = networkState.clients[node.id].block.number
-      ? Number(networkState.clients[node.id].block.number)
+    const blockNumber = clientState.block.number
+      ? Number(clientState.block.number)
       : 0
 
     if (blockNumber > 0) {
@@ -41636,7 +41644,7 @@ function renderGraph(state, actions) {
 
     const radius = isSelected ? 10 : 5
 
-    const isTracking = networkState.clients[node.id].blockTrackerEnabled
+    const isTracking = clientState.blockTrackerEnabled
     return (
 
       s('circle', Object.assign({
@@ -41658,15 +41666,13 @@ function renderGraph(state, actions) {
   function renderLink(link, state, actions) {
     const { source, target } = link
 
-    if (!state.networkState.clients[source.id]
-      || !(state.networkState.clients[source.id]
-        && state.networkState.clients[source.id].block)) {
+    const sourceState = state.networkState.clients[source.id]
+    if (!(sourceState && sourceState.block)) {
       return
     }
 
-    if (!state.networkState.clients[target.id]
-      || !(state.networkState.clients[target.id]
-        && state.networkState.clients[target.id].block)) {
+    const targetState = state.networkState.clients[target.id]
+    if (!(targetState && targetState.block)) {
       return
     }
 
