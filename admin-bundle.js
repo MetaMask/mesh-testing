@@ -663,119 +663,7 @@ for (orig in aliases) {
 
 }).call(this,require('_process'))
 
-},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","q":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/q/q.js","throat":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js":[function(require,module,exports){
-
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-split/index.js":[function(require,module,exports){
-/*!
- * Cross-Browser Split 1.1.1
- * Copyright 2007-2012 Steven Levithan <stevenlevithan.com>
- * Available under the MIT License
- * ECMAScript compliant, uniform cross-browser split method
- */
-
-/**
- * Splits a string into an array of strings using a regex or string separator. Matches of the
- * separator are not included in the result array. However, if `separator` is a regex that contains
- * capturing groups, backreferences are spliced into the result each time `separator` is matched.
- * Fixes browser bugs compared to the native `String.prototype.split` and can be used reliably
- * cross-browser.
- * @param {String} str String to split.
- * @param {RegExp|String} separator Regex or string to use for separating the string.
- * @param {Number} [limit] Maximum number of items to include in the result array.
- * @returns {Array} Array of substrings.
- * @example
- *
- * // Basic use
- * split('a b c d', ' ');
- * // -> ['a', 'b', 'c', 'd']
- *
- * // With limit
- * split('a b c d', ' ', 2);
- * // -> ['a', 'b']
- *
- * // Backreferences in result array
- * split('..word1 word2..', /([a-z]+)(\d+)/i);
- * // -> ['..', 'word', '1', ' ', 'word', '2', '..']
- */
-module.exports = (function split(undef) {
-
-  var nativeSplit = String.prototype.split,
-    compliantExecNpcg = /()??/.exec("")[1] === undef,
-    // NPCG: nonparticipating capturing group
-    self;
-
-  self = function(str, separator, limit) {
-    // If `separator` is not a regex, use `nativeSplit`
-    if (Object.prototype.toString.call(separator) !== "[object RegExp]") {
-      return nativeSplit.call(str, separator, limit);
-    }
-    var output = [],
-      flags = (separator.ignoreCase ? "i" : "") + (separator.multiline ? "m" : "") + (separator.extended ? "x" : "") + // Proposed for ES6
-      (separator.sticky ? "y" : ""),
-      // Firefox 3+
-      lastLastIndex = 0,
-      // Make `global` and avoid `lastIndex` issues by working with a copy
-      separator = new RegExp(separator.source, flags + "g"),
-      separator2, match, lastIndex, lastLength;
-    str += ""; // Type-convert
-    if (!compliantExecNpcg) {
-      // Doesn't need flags gy, but they don't hurt
-      separator2 = new RegExp("^" + separator.source + "$(?!\\s)", flags);
-    }
-    /* Values for `limit`, per the spec:
-     * If undefined: 4294967295 // Math.pow(2, 32) - 1
-     * If 0, Infinity, or NaN: 0
-     * If positive number: limit = Math.floor(limit); if (limit > 4294967295) limit -= 4294967296;
-     * If negative number: 4294967296 - Math.floor(Math.abs(limit))
-     * If other: Type-convert, then use the above rules
-     */
-    limit = limit === undef ? -1 >>> 0 : // Math.pow(2, 32) - 1
-    limit >>> 0; // ToUint32(limit)
-    while (match = separator.exec(str)) {
-      // `separator.lastIndex` is not reliable cross-browser
-      lastIndex = match.index + match[0].length;
-      if (lastIndex > lastLastIndex) {
-        output.push(str.slice(lastLastIndex, match.index));
-        // Fix browsers whose `exec` methods don't consistently return `undefined` for
-        // nonparticipating capturing groups
-        if (!compliantExecNpcg && match.length > 1) {
-          match[0].replace(separator2, function() {
-            for (var i = 1; i < arguments.length - 2; i++) {
-              if (arguments[i] === undef) {
-                match[i] = undef;
-              }
-            }
-          });
-        }
-        if (match.length > 1 && match.index < str.length) {
-          Array.prototype.push.apply(output, match.slice(1));
-        }
-        lastLength = match[0].length;
-        lastLastIndex = lastIndex;
-        if (output.length >= limit) {
-          break;
-        }
-      }
-      if (separator.lastIndex === match.index) {
-        separator.lastIndex++; // Avoid an infinite loop
-      }
-    }
-    if (lastLastIndex === str.length) {
-      if (lastLength || !separator.test("")) {
-        output.push("");
-      }
-    } else {
-      output.push(str.slice(lastLastIndex));
-    }
-    return output.length > limit ? output.slice(0, limit) : output;
-  };
-
-  return self;
-})();
-
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/lib/_empty.js":[function(require,module,exports){
-arguments[4]["/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js"][0].apply(exports,arguments)
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/base64-js/index.js":[function(require,module,exports){
+},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","q":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/q/q.js","throat":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/base64-js/index.js":[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -928,7 +816,305 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js":[function(require,module,exports){
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js":[function(require,module,exports){
+
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-split/index.js":[function(require,module,exports){
+/*!
+ * Cross-Browser Split 1.1.1
+ * Copyright 2007-2012 Steven Levithan <stevenlevithan.com>
+ * Available under the MIT License
+ * ECMAScript compliant, uniform cross-browser split method
+ */
+
+/**
+ * Splits a string into an array of strings using a regex or string separator. Matches of the
+ * separator are not included in the result array. However, if `separator` is a regex that contains
+ * capturing groups, backreferences are spliced into the result each time `separator` is matched.
+ * Fixes browser bugs compared to the native `String.prototype.split` and can be used reliably
+ * cross-browser.
+ * @param {String} str String to split.
+ * @param {RegExp|String} separator Regex or string to use for separating the string.
+ * @param {Number} [limit] Maximum number of items to include in the result array.
+ * @returns {Array} Array of substrings.
+ * @example
+ *
+ * // Basic use
+ * split('a b c d', ' ');
+ * // -> ['a', 'b', 'c', 'd']
+ *
+ * // With limit
+ * split('a b c d', ' ', 2);
+ * // -> ['a', 'b']
+ *
+ * // Backreferences in result array
+ * split('..word1 word2..', /([a-z]+)(\d+)/i);
+ * // -> ['..', 'word', '1', ' ', 'word', '2', '..']
+ */
+module.exports = (function split(undef) {
+
+  var nativeSplit = String.prototype.split,
+    compliantExecNpcg = /()??/.exec("")[1] === undef,
+    // NPCG: nonparticipating capturing group
+    self;
+
+  self = function(str, separator, limit) {
+    // If `separator` is not a regex, use `nativeSplit`
+    if (Object.prototype.toString.call(separator) !== "[object RegExp]") {
+      return nativeSplit.call(str, separator, limit);
+    }
+    var output = [],
+      flags = (separator.ignoreCase ? "i" : "") + (separator.multiline ? "m" : "") + (separator.extended ? "x" : "") + // Proposed for ES6
+      (separator.sticky ? "y" : ""),
+      // Firefox 3+
+      lastLastIndex = 0,
+      // Make `global` and avoid `lastIndex` issues by working with a copy
+      separator = new RegExp(separator.source, flags + "g"),
+      separator2, match, lastIndex, lastLength;
+    str += ""; // Type-convert
+    if (!compliantExecNpcg) {
+      // Doesn't need flags gy, but they don't hurt
+      separator2 = new RegExp("^" + separator.source + "$(?!\\s)", flags);
+    }
+    /* Values for `limit`, per the spec:
+     * If undefined: 4294967295 // Math.pow(2, 32) - 1
+     * If 0, Infinity, or NaN: 0
+     * If positive number: limit = Math.floor(limit); if (limit > 4294967295) limit -= 4294967296;
+     * If negative number: 4294967296 - Math.floor(Math.abs(limit))
+     * If other: Type-convert, then use the above rules
+     */
+    limit = limit === undef ? -1 >>> 0 : // Math.pow(2, 32) - 1
+    limit >>> 0; // ToUint32(limit)
+    while (match = separator.exec(str)) {
+      // `separator.lastIndex` is not reliable cross-browser
+      lastIndex = match.index + match[0].length;
+      if (lastIndex > lastLastIndex) {
+        output.push(str.slice(lastLastIndex, match.index));
+        // Fix browsers whose `exec` methods don't consistently return `undefined` for
+        // nonparticipating capturing groups
+        if (!compliantExecNpcg && match.length > 1) {
+          match[0].replace(separator2, function() {
+            for (var i = 1; i < arguments.length - 2; i++) {
+              if (arguments[i] === undef) {
+                match[i] = undef;
+              }
+            }
+          });
+        }
+        if (match.length > 1 && match.index < str.length) {
+          Array.prototype.push.apply(output, match.slice(1));
+        }
+        lastLength = match[0].length;
+        lastLastIndex = lastIndex;
+        if (output.length >= limit) {
+          break;
+        }
+      }
+      if (separator.lastIndex === match.index) {
+        separator.lastIndex++; // Avoid an infinite loop
+      }
+    }
+    if (lastLastIndex === str.length) {
+      if (lastLength || !separator.test("")) {
+        output.push("");
+      }
+    } else {
+      output.push(str.slice(lastLastIndex));
+    }
+    return output.length > limit ? output.slice(0, limit) : output;
+  };
+
+  return self;
+})();
+
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/lib/_empty.js":[function(require,module,exports){
+arguments[4]["/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js"][0].apply(exports,arguments)
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js":[function(require,module,exports){
+// shim for using process in browser
+var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+(function () {
+    try {
+        if (typeof setTimeout === 'function') {
+            cachedSetTimeout = setTimeout;
+        } else {
+            cachedSetTimeout = defaultSetTimout;
+        }
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
+    }
+    try {
+        if (typeof clearTimeout === 'function') {
+            cachedClearTimeout = clearTimeout;
+        } else {
+            cachedClearTimeout = defaultClearTimeout;
+        }
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+} ())
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js":[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -977,7 +1163,7 @@ function typedArraySupport () {
   // Can typed array instances can be augmented?
   try {
     var arr = new Uint8Array(1)
-    arr.__proto__ = {__proto__: Uint8Array.prototype, foo: function () { return 42 }}
+    arr.__proto__ = { __proto__: Uint8Array.prototype, foo: function () { return 42 } }
     return arr.foo() === 42
   } catch (e) {
     return false
@@ -985,26 +1171,24 @@ function typedArraySupport () {
 }
 
 Object.defineProperty(Buffer.prototype, 'parent', {
+  enumerable: true,
   get: function () {
-    if (!(this instanceof Buffer)) {
-      return undefined
-    }
+    if (!Buffer.isBuffer(this)) return undefined
     return this.buffer
   }
 })
 
 Object.defineProperty(Buffer.prototype, 'offset', {
+  enumerable: true,
   get: function () {
-    if (!(this instanceof Buffer)) {
-      return undefined
-    }
+    if (!Buffer.isBuffer(this)) return undefined
     return this.byteOffset
   }
 })
 
 function createBuffer (length) {
   if (length > K_MAX_LENGTH) {
-    throw new RangeError('Invalid typed array length')
+    throw new RangeError('The value "' + length + '" is invalid for option "size"')
   }
   // Return an augmented `Uint8Array` instance
   var buf = new Uint8Array(length)
@@ -1026,8 +1210,8 @@ function Buffer (arg, encodingOrOffset, length) {
   // Common case.
   if (typeof arg === 'number') {
     if (typeof encodingOrOffset === 'string') {
-      throw new Error(
-        'If encoding is specified then the first argument must be a string'
+      throw new TypeError(
+        'The "string" argument must be of type string. Received type number'
       )
     }
     return allocUnsafe(arg)
@@ -1036,7 +1220,7 @@ function Buffer (arg, encodingOrOffset, length) {
 }
 
 // Fix subarray() in ES2016. See: https://github.com/feross/buffer/pull/97
-if (typeof Symbol !== 'undefined' && Symbol.species &&
+if (typeof Symbol !== 'undefined' && Symbol.species != null &&
     Buffer[Symbol.species] === Buffer) {
   Object.defineProperty(Buffer, Symbol.species, {
     value: null,
@@ -1049,19 +1233,51 @@ if (typeof Symbol !== 'undefined' && Symbol.species &&
 Buffer.poolSize = 8192 // not used by this implementation
 
 function from (value, encodingOrOffset, length) {
-  if (typeof value === 'number') {
-    throw new TypeError('"value" argument must not be a number')
-  }
-
-  if (isArrayBuffer(value) || (value && isArrayBuffer(value.buffer))) {
-    return fromArrayBuffer(value, encodingOrOffset, length)
-  }
-
   if (typeof value === 'string') {
     return fromString(value, encodingOrOffset)
   }
 
-  return fromObject(value)
+  if (ArrayBuffer.isView(value)) {
+    return fromArrayLike(value)
+  }
+
+  if (value == null) {
+    throw TypeError(
+      'The first argument must be one of type string, Buffer, ArrayBuffer, Array, ' +
+      'or Array-like Object. Received type ' + (typeof value)
+    )
+  }
+
+  if (isInstance(value, ArrayBuffer) ||
+      (value && isInstance(value.buffer, ArrayBuffer))) {
+    return fromArrayBuffer(value, encodingOrOffset, length)
+  }
+
+  if (typeof value === 'number') {
+    throw new TypeError(
+      'The "value" argument must not be of type number. Received type number'
+    )
+  }
+
+  var valueOf = value.valueOf && value.valueOf()
+  if (valueOf != null && valueOf !== value) {
+    return Buffer.from(valueOf, encodingOrOffset, length)
+  }
+
+  var b = fromObject(value)
+  if (b) return b
+
+  if (typeof Symbol !== 'undefined' && Symbol.toPrimitive != null &&
+      typeof value[Symbol.toPrimitive] === 'function') {
+    return Buffer.from(
+      value[Symbol.toPrimitive]('string'), encodingOrOffset, length
+    )
+  }
+
+  throw new TypeError(
+    'The first argument must be one of type string, Buffer, ArrayBuffer, Array, ' +
+    'or Array-like Object. Received type ' + (typeof value)
+  )
 }
 
 /**
@@ -1085,7 +1301,7 @@ function assertSize (size) {
   if (typeof size !== 'number') {
     throw new TypeError('"size" argument must be of type number')
   } else if (size < 0) {
-    throw new RangeError('"size" argument must not be negative')
+    throw new RangeError('The value "' + size + '" is invalid for option "size"')
   }
 }
 
@@ -1200,20 +1416,16 @@ function fromObject (obj) {
     return buf
   }
 
-  if (obj) {
-    if (ArrayBuffer.isView(obj) || 'length' in obj) {
-      if (typeof obj.length !== 'number' || numberIsNaN(obj.length)) {
-        return createBuffer(0)
-      }
-      return fromArrayLike(obj)
+  if (obj.length !== undefined) {
+    if (typeof obj.length !== 'number' || numberIsNaN(obj.length)) {
+      return createBuffer(0)
     }
-
-    if (obj.type === 'Buffer' && Array.isArray(obj.data)) {
-      return fromArrayLike(obj.data)
-    }
+    return fromArrayLike(obj)
   }
 
-  throw new TypeError('The first argument must be one of type string, Buffer, ArrayBuffer, Array, or Array-like Object.')
+  if (obj.type === 'Buffer' && Array.isArray(obj.data)) {
+    return fromArrayLike(obj.data)
+  }
 }
 
 function checked (length) {
@@ -1234,12 +1446,17 @@ function SlowBuffer (length) {
 }
 
 Buffer.isBuffer = function isBuffer (b) {
-  return b != null && b._isBuffer === true
+  return b != null && b._isBuffer === true &&
+    b !== Buffer.prototype // so Buffer.isBuffer(Buffer.prototype) will be false
 }
 
 Buffer.compare = function compare (a, b) {
+  if (isInstance(a, Uint8Array)) a = Buffer.from(a, a.offset, a.byteLength)
+  if (isInstance(b, Uint8Array)) b = Buffer.from(b, b.offset, b.byteLength)
   if (!Buffer.isBuffer(a) || !Buffer.isBuffer(b)) {
-    throw new TypeError('Arguments must be Buffers')
+    throw new TypeError(
+      'The "buf1", "buf2" arguments must be one of type Buffer or Uint8Array'
+    )
   }
 
   if (a === b) return 0
@@ -1300,7 +1517,7 @@ Buffer.concat = function concat (list, length) {
   var pos = 0
   for (i = 0; i < list.length; ++i) {
     var buf = list[i]
-    if (ArrayBuffer.isView(buf)) {
+    if (isInstance(buf, Uint8Array)) {
       buf = Buffer.from(buf)
     }
     if (!Buffer.isBuffer(buf)) {
@@ -1316,15 +1533,19 @@ function byteLength (string, encoding) {
   if (Buffer.isBuffer(string)) {
     return string.length
   }
-  if (ArrayBuffer.isView(string) || isArrayBuffer(string)) {
+  if (ArrayBuffer.isView(string) || isInstance(string, ArrayBuffer)) {
     return string.byteLength
   }
   if (typeof string !== 'string') {
-    string = '' + string
+    throw new TypeError(
+      'The "string" argument must be one of type string, Buffer, or ArrayBuffer. ' +
+      'Received type ' + typeof string
+    )
   }
 
   var len = string.length
-  if (len === 0) return 0
+  var mustMatch = (arguments.length > 2 && arguments[2] === true)
+  if (!mustMatch && len === 0) return 0
 
   // Use a for loop to avoid recursion
   var loweredCase = false
@@ -1336,7 +1557,6 @@ function byteLength (string, encoding) {
         return len
       case 'utf8':
       case 'utf-8':
-      case undefined:
         return utf8ToBytes(string).length
       case 'ucs2':
       case 'ucs-2':
@@ -1348,7 +1568,9 @@ function byteLength (string, encoding) {
       case 'base64':
         return base64ToBytes(string).length
       default:
-        if (loweredCase) return utf8ToBytes(string).length // assume utf8
+        if (loweredCase) {
+          return mustMatch ? -1 : utf8ToBytes(string).length // assume utf8
+        }
         encoding = ('' + encoding).toLowerCase()
         loweredCase = true
     }
@@ -1495,16 +1717,20 @@ Buffer.prototype.equals = function equals (b) {
 Buffer.prototype.inspect = function inspect () {
   var str = ''
   var max = exports.INSPECT_MAX_BYTES
-  if (this.length > 0) {
-    str = this.toString('hex', 0, max).match(/.{2}/g).join(' ')
-    if (this.length > max) str += ' ... '
-  }
+  str = this.toString('hex', 0, max).replace(/(.{2})/g, '$1 ').trim()
+  if (this.length > max) str += ' ... '
   return '<Buffer ' + str + '>'
 }
 
 Buffer.prototype.compare = function compare (target, start, end, thisStart, thisEnd) {
+  if (isInstance(target, Uint8Array)) {
+    target = Buffer.from(target, target.offset, target.byteLength)
+  }
   if (!Buffer.isBuffer(target)) {
-    throw new TypeError('Argument must be a Buffer')
+    throw new TypeError(
+      'The "target" argument must be one of type Buffer or Uint8Array. ' +
+      'Received type ' + (typeof target)
+    )
   }
 
   if (start === undefined) {
@@ -1583,7 +1809,7 @@ function bidirectionalIndexOf (buffer, val, byteOffset, encoding, dir) {
   } else if (byteOffset < -0x80000000) {
     byteOffset = -0x80000000
   }
-  byteOffset = +byteOffset  // Coerce to Number.
+  byteOffset = +byteOffset // Coerce to Number.
   if (numberIsNaN(byteOffset)) {
     // byteOffset: it it's undefined, null, NaN, "foo", etc, search whole buffer
     byteOffset = dir ? 0 : (buffer.length - 1)
@@ -1835,8 +2061,8 @@ function utf8Slice (buf, start, end) {
     var codePoint = null
     var bytesPerSequence = (firstByte > 0xEF) ? 4
       : (firstByte > 0xDF) ? 3
-      : (firstByte > 0xBF) ? 2
-      : 1
+        : (firstByte > 0xBF) ? 2
+          : 1
 
     if (i + bytesPerSequence <= end) {
       var secondByte, thirdByte, fourthByte, tempCodePoint
@@ -2499,7 +2725,7 @@ Buffer.prototype.fill = function fill (val, start, end, encoding) {
   } else {
     var bytes = Buffer.isBuffer(val)
       ? val
-      : new Buffer(val, encoding)
+      : Buffer.from(val, encoding)
     var len = bytes.length
     if (len === 0) {
       throw new TypeError('The value "' + val +
@@ -2654,817 +2880,20 @@ function blitBuffer (src, dst, offset, length) {
   return i
 }
 
-// ArrayBuffers from another context (i.e. an iframe) do not pass the `instanceof` check
-// but they should be treated as valid. See: https://github.com/feross/buffer/issues/166
-function isArrayBuffer (obj) {
-  return obj instanceof ArrayBuffer ||
-    (obj != null && obj.constructor != null && obj.constructor.name === 'ArrayBuffer' &&
-      typeof obj.byteLength === 'number')
+// ArrayBuffer or Uint8Array objects from other contexts (i.e. iframes) do not pass
+// the `instanceof` check but they should be treated as of that type.
+// See: https://github.com/feross/buffer/issues/166
+function isInstance (obj, type) {
+  return obj instanceof type ||
+    (obj != null && obj.constructor != null && obj.constructor.name != null &&
+      obj.constructor.name === type.name)
 }
-
 function numberIsNaN (obj) {
+  // For IE11 support
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/base64-js/index.js","ieee754":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/ieee754/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js":[function(require,module,exports){
-// shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-(function () {
-    try {
-        if (typeof setTimeout === 'function') {
-            cachedSetTimeout = setTimeout;
-        } else {
-            cachedSetTimeout = defaultSetTimout;
-        }
-    } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
-    }
-    try {
-        if (typeof clearTimeout === 'function') {
-            cachedClearTimeout = clearTimeout;
-        } else {
-            cachedClearTimeout = defaultClearTimeout;
-        }
-    } catch (e) {
-        cachedClearTimeout = defaultClearTimeout;
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-process.prependListener = noop;
-process.prependOnceListener = noop;
-
-process.listeners = function (name) { return [] }
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/punycode/punycode.js":[function(require,module,exports){
-(function (global){
-/*! https://mths.be/punycode v1.4.1 by @mathias */
-;(function(root) {
-
-	/** Detect free variables */
-	var freeExports = typeof exports == 'object' && exports &&
-		!exports.nodeType && exports;
-	var freeModule = typeof module == 'object' && module &&
-		!module.nodeType && module;
-	var freeGlobal = typeof global == 'object' && global;
-	if (
-		freeGlobal.global === freeGlobal ||
-		freeGlobal.window === freeGlobal ||
-		freeGlobal.self === freeGlobal
-	) {
-		root = freeGlobal;
-	}
-
-	/**
-	 * The `punycode` object.
-	 * @name punycode
-	 * @type Object
-	 */
-	var punycode,
-
-	/** Highest positive signed 32-bit float value */
-	maxInt = 2147483647, // aka. 0x7FFFFFFF or 2^31-1
-
-	/** Bootstring parameters */
-	base = 36,
-	tMin = 1,
-	tMax = 26,
-	skew = 38,
-	damp = 700,
-	initialBias = 72,
-	initialN = 128, // 0x80
-	delimiter = '-', // '\x2D'
-
-	/** Regular expressions */
-	regexPunycode = /^xn--/,
-	regexNonASCII = /[^\x20-\x7E]/, // unprintable ASCII chars + non-ASCII chars
-	regexSeparators = /[\x2E\u3002\uFF0E\uFF61]/g, // RFC 3490 separators
-
-	/** Error messages */
-	errors = {
-		'overflow': 'Overflow: input needs wider integers to process',
-		'not-basic': 'Illegal input >= 0x80 (not a basic code point)',
-		'invalid-input': 'Invalid input'
-	},
-
-	/** Convenience shortcuts */
-	baseMinusTMin = base - tMin,
-	floor = Math.floor,
-	stringFromCharCode = String.fromCharCode,
-
-	/** Temporary variable */
-	key;
-
-	/*--------------------------------------------------------------------------*/
-
-	/**
-	 * A generic error utility function.
-	 * @private
-	 * @param {String} type The error type.
-	 * @returns {Error} Throws a `RangeError` with the applicable error message.
-	 */
-	function error(type) {
-		throw new RangeError(errors[type]);
-	}
-
-	/**
-	 * A generic `Array#map` utility function.
-	 * @private
-	 * @param {Array} array The array to iterate over.
-	 * @param {Function} callback The function that gets called for every array
-	 * item.
-	 * @returns {Array} A new array of values returned by the callback function.
-	 */
-	function map(array, fn) {
-		var length = array.length;
-		var result = [];
-		while (length--) {
-			result[length] = fn(array[length]);
-		}
-		return result;
-	}
-
-	/**
-	 * A simple `Array#map`-like wrapper to work with domain name strings or email
-	 * addresses.
-	 * @private
-	 * @param {String} domain The domain name or email address.
-	 * @param {Function} callback The function that gets called for every
-	 * character.
-	 * @returns {Array} A new string of characters returned by the callback
-	 * function.
-	 */
-	function mapDomain(string, fn) {
-		var parts = string.split('@');
-		var result = '';
-		if (parts.length > 1) {
-			// In email addresses, only the domain name should be punycoded. Leave
-			// the local part (i.e. everything up to `@`) intact.
-			result = parts[0] + '@';
-			string = parts[1];
-		}
-		// Avoid `split(regex)` for IE8 compatibility. See #17.
-		string = string.replace(regexSeparators, '\x2E');
-		var labels = string.split('.');
-		var encoded = map(labels, fn).join('.');
-		return result + encoded;
-	}
-
-	/**
-	 * Creates an array containing the numeric code points of each Unicode
-	 * character in the string. While JavaScript uses UCS-2 internally,
-	 * this function will convert a pair of surrogate halves (each of which
-	 * UCS-2 exposes as separate characters) into a single code point,
-	 * matching UTF-16.
-	 * @see `punycode.ucs2.encode`
-	 * @see <https://mathiasbynens.be/notes/javascript-encoding>
-	 * @memberOf punycode.ucs2
-	 * @name decode
-	 * @param {String} string The Unicode input string (UCS-2).
-	 * @returns {Array} The new array of code points.
-	 */
-	function ucs2decode(string) {
-		var output = [],
-		    counter = 0,
-		    length = string.length,
-		    value,
-		    extra;
-		while (counter < length) {
-			value = string.charCodeAt(counter++);
-			if (value >= 0xD800 && value <= 0xDBFF && counter < length) {
-				// high surrogate, and there is a next character
-				extra = string.charCodeAt(counter++);
-				if ((extra & 0xFC00) == 0xDC00) { // low surrogate
-					output.push(((value & 0x3FF) << 10) + (extra & 0x3FF) + 0x10000);
-				} else {
-					// unmatched surrogate; only append this code unit, in case the next
-					// code unit is the high surrogate of a surrogate pair
-					output.push(value);
-					counter--;
-				}
-			} else {
-				output.push(value);
-			}
-		}
-		return output;
-	}
-
-	/**
-	 * Creates a string based on an array of numeric code points.
-	 * @see `punycode.ucs2.decode`
-	 * @memberOf punycode.ucs2
-	 * @name encode
-	 * @param {Array} codePoints The array of numeric code points.
-	 * @returns {String} The new Unicode string (UCS-2).
-	 */
-	function ucs2encode(array) {
-		return map(array, function(value) {
-			var output = '';
-			if (value > 0xFFFF) {
-				value -= 0x10000;
-				output += stringFromCharCode(value >>> 10 & 0x3FF | 0xD800);
-				value = 0xDC00 | value & 0x3FF;
-			}
-			output += stringFromCharCode(value);
-			return output;
-		}).join('');
-	}
-
-	/**
-	 * Converts a basic code point into a digit/integer.
-	 * @see `digitToBasic()`
-	 * @private
-	 * @param {Number} codePoint The basic numeric code point value.
-	 * @returns {Number} The numeric value of a basic code point (for use in
-	 * representing integers) in the range `0` to `base - 1`, or `base` if
-	 * the code point does not represent a value.
-	 */
-	function basicToDigit(codePoint) {
-		if (codePoint - 48 < 10) {
-			return codePoint - 22;
-		}
-		if (codePoint - 65 < 26) {
-			return codePoint - 65;
-		}
-		if (codePoint - 97 < 26) {
-			return codePoint - 97;
-		}
-		return base;
-	}
-
-	/**
-	 * Converts a digit/integer into a basic code point.
-	 * @see `basicToDigit()`
-	 * @private
-	 * @param {Number} digit The numeric value of a basic code point.
-	 * @returns {Number} The basic code point whose value (when used for
-	 * representing integers) is `digit`, which needs to be in the range
-	 * `0` to `base - 1`. If `flag` is non-zero, the uppercase form is
-	 * used; else, the lowercase form is used. The behavior is undefined
-	 * if `flag` is non-zero and `digit` has no uppercase form.
-	 */
-	function digitToBasic(digit, flag) {
-		//  0..25 map to ASCII a..z or A..Z
-		// 26..35 map to ASCII 0..9
-		return digit + 22 + 75 * (digit < 26) - ((flag != 0) << 5);
-	}
-
-	/**
-	 * Bias adaptation function as per section 3.4 of RFC 3492.
-	 * https://tools.ietf.org/html/rfc3492#section-3.4
-	 * @private
-	 */
-	function adapt(delta, numPoints, firstTime) {
-		var k = 0;
-		delta = firstTime ? floor(delta / damp) : delta >> 1;
-		delta += floor(delta / numPoints);
-		for (/* no initialization */; delta > baseMinusTMin * tMax >> 1; k += base) {
-			delta = floor(delta / baseMinusTMin);
-		}
-		return floor(k + (baseMinusTMin + 1) * delta / (delta + skew));
-	}
-
-	/**
-	 * Converts a Punycode string of ASCII-only symbols to a string of Unicode
-	 * symbols.
-	 * @memberOf punycode
-	 * @param {String} input The Punycode string of ASCII-only symbols.
-	 * @returns {String} The resulting string of Unicode symbols.
-	 */
-	function decode(input) {
-		// Don't use UCS-2
-		var output = [],
-		    inputLength = input.length,
-		    out,
-		    i = 0,
-		    n = initialN,
-		    bias = initialBias,
-		    basic,
-		    j,
-		    index,
-		    oldi,
-		    w,
-		    k,
-		    digit,
-		    t,
-		    /** Cached calculation results */
-		    baseMinusT;
-
-		// Handle the basic code points: let `basic` be the number of input code
-		// points before the last delimiter, or `0` if there is none, then copy
-		// the first basic code points to the output.
-
-		basic = input.lastIndexOf(delimiter);
-		if (basic < 0) {
-			basic = 0;
-		}
-
-		for (j = 0; j < basic; ++j) {
-			// if it's not a basic code point
-			if (input.charCodeAt(j) >= 0x80) {
-				error('not-basic');
-			}
-			output.push(input.charCodeAt(j));
-		}
-
-		// Main decoding loop: start just after the last delimiter if any basic code
-		// points were copied; start at the beginning otherwise.
-
-		for (index = basic > 0 ? basic + 1 : 0; index < inputLength; /* no final expression */) {
-
-			// `index` is the index of the next character to be consumed.
-			// Decode a generalized variable-length integer into `delta`,
-			// which gets added to `i`. The overflow checking is easier
-			// if we increase `i` as we go, then subtract off its starting
-			// value at the end to obtain `delta`.
-			for (oldi = i, w = 1, k = base; /* no condition */; k += base) {
-
-				if (index >= inputLength) {
-					error('invalid-input');
-				}
-
-				digit = basicToDigit(input.charCodeAt(index++));
-
-				if (digit >= base || digit > floor((maxInt - i) / w)) {
-					error('overflow');
-				}
-
-				i += digit * w;
-				t = k <= bias ? tMin : (k >= bias + tMax ? tMax : k - bias);
-
-				if (digit < t) {
-					break;
-				}
-
-				baseMinusT = base - t;
-				if (w > floor(maxInt / baseMinusT)) {
-					error('overflow');
-				}
-
-				w *= baseMinusT;
-
-			}
-
-			out = output.length + 1;
-			bias = adapt(i - oldi, out, oldi == 0);
-
-			// `i` was supposed to wrap around from `out` to `0`,
-			// incrementing `n` each time, so we'll fix that now:
-			if (floor(i / out) > maxInt - n) {
-				error('overflow');
-			}
-
-			n += floor(i / out);
-			i %= out;
-
-			// Insert `n` at position `i` of the output
-			output.splice(i++, 0, n);
-
-		}
-
-		return ucs2encode(output);
-	}
-
-	/**
-	 * Converts a string of Unicode symbols (e.g. a domain name label) to a
-	 * Punycode string of ASCII-only symbols.
-	 * @memberOf punycode
-	 * @param {String} input The string of Unicode symbols.
-	 * @returns {String} The resulting Punycode string of ASCII-only symbols.
-	 */
-	function encode(input) {
-		var n,
-		    delta,
-		    handledCPCount,
-		    basicLength,
-		    bias,
-		    j,
-		    m,
-		    q,
-		    k,
-		    t,
-		    currentValue,
-		    output = [],
-		    /** `inputLength` will hold the number of code points in `input`. */
-		    inputLength,
-		    /** Cached calculation results */
-		    handledCPCountPlusOne,
-		    baseMinusT,
-		    qMinusT;
-
-		// Convert the input in UCS-2 to Unicode
-		input = ucs2decode(input);
-
-		// Cache the length
-		inputLength = input.length;
-
-		// Initialize the state
-		n = initialN;
-		delta = 0;
-		bias = initialBias;
-
-		// Handle the basic code points
-		for (j = 0; j < inputLength; ++j) {
-			currentValue = input[j];
-			if (currentValue < 0x80) {
-				output.push(stringFromCharCode(currentValue));
-			}
-		}
-
-		handledCPCount = basicLength = output.length;
-
-		// `handledCPCount` is the number of code points that have been handled;
-		// `basicLength` is the number of basic code points.
-
-		// Finish the basic string - if it is not empty - with a delimiter
-		if (basicLength) {
-			output.push(delimiter);
-		}
-
-		// Main encoding loop:
-		while (handledCPCount < inputLength) {
-
-			// All non-basic code points < n have been handled already. Find the next
-			// larger one:
-			for (m = maxInt, j = 0; j < inputLength; ++j) {
-				currentValue = input[j];
-				if (currentValue >= n && currentValue < m) {
-					m = currentValue;
-				}
-			}
-
-			// Increase `delta` enough to advance the decoder's <n,i> state to <m,0>,
-			// but guard against overflow
-			handledCPCountPlusOne = handledCPCount + 1;
-			if (m - n > floor((maxInt - delta) / handledCPCountPlusOne)) {
-				error('overflow');
-			}
-
-			delta += (m - n) * handledCPCountPlusOne;
-			n = m;
-
-			for (j = 0; j < inputLength; ++j) {
-				currentValue = input[j];
-
-				if (currentValue < n && ++delta > maxInt) {
-					error('overflow');
-				}
-
-				if (currentValue == n) {
-					// Represent delta as a generalized variable-length integer
-					for (q = delta, k = base; /* no condition */; k += base) {
-						t = k <= bias ? tMin : (k >= bias + tMax ? tMax : k - bias);
-						if (q < t) {
-							break;
-						}
-						qMinusT = q - t;
-						baseMinusT = base - t;
-						output.push(
-							stringFromCharCode(digitToBasic(t + qMinusT % baseMinusT, 0))
-						);
-						q = floor(qMinusT / baseMinusT);
-					}
-
-					output.push(stringFromCharCode(digitToBasic(q, 0)));
-					bias = adapt(delta, handledCPCountPlusOne, handledCPCount == basicLength);
-					delta = 0;
-					++handledCPCount;
-				}
-			}
-
-			++delta;
-			++n;
-
-		}
-		return output.join('');
-	}
-
-	/**
-	 * Converts a Punycode string representing a domain name or an email address
-	 * to Unicode. Only the Punycoded parts of the input will be converted, i.e.
-	 * it doesn't matter if you call it on a string that has already been
-	 * converted to Unicode.
-	 * @memberOf punycode
-	 * @param {String} input The Punycoded domain name or email address to
-	 * convert to Unicode.
-	 * @returns {String} The Unicode representation of the given Punycode
-	 * string.
-	 */
-	function toUnicode(input) {
-		return mapDomain(input, function(string) {
-			return regexPunycode.test(string)
-				? decode(string.slice(4).toLowerCase())
-				: string;
-		});
-	}
-
-	/**
-	 * Converts a Unicode string representing a domain name or an email address to
-	 * Punycode. Only the non-ASCII parts of the domain name will be converted,
-	 * i.e. it doesn't matter if you call it with a domain that's already in
-	 * ASCII.
-	 * @memberOf punycode
-	 * @param {String} input The domain name or email address to convert, as a
-	 * Unicode string.
-	 * @returns {String} The Punycode representation of the given domain name or
-	 * email address.
-	 */
-	function toASCII(input) {
-		return mapDomain(input, function(string) {
-			return regexNonASCII.test(string)
-				? 'xn--' + encode(string)
-				: string;
-		});
-	}
-
-	/*--------------------------------------------------------------------------*/
-
-	/** Define the public API */
-	punycode = {
-		/**
-		 * A string representing the current Punycode.js version number.
-		 * @memberOf punycode
-		 * @type String
-		 */
-		'version': '1.4.1',
-		/**
-		 * An object of methods to convert from JavaScript's internal character
-		 * representation (UCS-2) to Unicode code points, and back.
-		 * @see <https://mathiasbynens.be/notes/javascript-encoding>
-		 * @memberOf punycode
-		 * @type Object
-		 */
-		'ucs2': {
-			'decode': ucs2decode,
-			'encode': ucs2encode
-		},
-		'decode': decode,
-		'encode': encode,
-		'toASCII': toASCII,
-		'toUnicode': toUnicode
-	};
-
-	/** Expose `punycode` */
-	// Some AMD build optimizers, like r.js, check for specific condition patterns
-	// like the following:
-	if (
-		typeof define == 'function' &&
-		typeof define.amd == 'object' &&
-		define.amd
-	) {
-		define('punycode', function() {
-			return punycode;
-		});
-	} else if (freeExports && freeModule) {
-		if (module.exports == freeExports) {
-			// in Node.js, io.js, or RingoJS v0.8.0+
-			freeModule.exports = punycode;
-		} else {
-			// in Narwhal or RingoJS v0.7.0-
-			for (key in punycode) {
-				punycode.hasOwnProperty(key) && (freeExports[key] = punycode[key]);
-			}
-		}
-	} else {
-		// in Rhino or a web browser
-		root.punycode = punycode;
-	}
-
-}(this));
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer-from/index.js":[function(require,module,exports){
-(function (Buffer){
-var toString = Object.prototype.toString
-
-var isModern = (
-  typeof Buffer.alloc === 'function' &&
-  typeof Buffer.allocUnsafe === 'function' &&
-  typeof Buffer.from === 'function'
-)
-
-function isArrayBuffer (input) {
-  return toString.call(input).slice(8, -1) === 'ArrayBuffer'
-}
-
-function fromArrayBuffer (obj, byteOffset, length) {
-  byteOffset >>>= 0
-
-  var maxLength = obj.byteLength - byteOffset
-
-  if (maxLength < 0) {
-    throw new RangeError("'offset' is out of bounds")
-  }
-
-  if (length === undefined) {
-    length = maxLength
-  } else {
-    length >>>= 0
-
-    if (length > maxLength) {
-      throw new RangeError("'length' is out of bounds")
-    }
-  }
-
-  return isModern
-    ? Buffer.from(obj.slice(byteOffset, byteOffset + length))
-    : new Buffer(new Uint8Array(obj.slice(byteOffset, byteOffset + length)))
-}
-
-function fromString (string, encoding) {
-  if (typeof encoding !== 'string' || encoding === '') {
-    encoding = 'utf8'
-  }
-
-  if (!Buffer.isEncoding(encoding)) {
-    throw new TypeError('"encoding" must be a valid string encoding')
-  }
-
-  return isModern
-    ? Buffer.from(string, encoding)
-    : new Buffer(string, encoding)
-}
-
-function bufferFrom (value, encodingOrOffset, length) {
-  if (typeof value === 'number') {
-    throw new TypeError('"value" argument must not be a number')
-  }
-
-  if (isArrayBuffer(value)) {
-    return fromArrayBuffer(value, encodingOrOffset, length)
-  }
-
-  if (typeof value === 'string') {
-    return fromString(value, encodingOrOffset)
-  }
-
-  return isModern
-    ? Buffer.from(value)
-    : new Buffer(value)
-}
-
-module.exports = bufferFrom
-
-}).call(this,require("buffer").Buffer)
-
-},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/builtin-status-codes/browser.js":[function(require,module,exports){
+},{"base64-js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/base64-js/index.js","ieee754":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/ieee754/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/builtin-status-codes/browser.js":[function(require,module,exports){
 module.exports = {
   "100": "Continue",
   "101": "Switching Protocols",
@@ -22562,7 +21991,7 @@ function indexOf (xs, x) {
 
 }).call(this,require('_process'))
 
-},{"./_stream_duplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/lib/_stream_duplex.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","isarray":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/isarray/index.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js","string_decoder/":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/string_decoder/index.js","util":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
+},{"./_stream_duplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/lib/_stream_duplex.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","isarray":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/isarray/index.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js","string_decoder/":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/string_decoder/index.js","util":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -23255,7 +22684,7 @@ function endWritable(stream, state, cb) {
 
 }).call(this,require('_process'))
 
-},{"./_stream_duplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/lib/_stream_duplex.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/readable.js":[function(require,module,exports){
+},{"./_stream_duplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/lib/_stream_duplex.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/readable-stream/readable.js":[function(require,module,exports){
 (function (process){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = require('stream');
@@ -23493,7 +22922,7 @@ function base64DetectIncompleteChar(buffer) {
   this.charLength = this.charReceived ? 3 : 0;
 }
 
-},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexify/index.js":[function(require,module,exports){
+},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexify/index.js":[function(require,module,exports){
 (function (process,Buffer){
 var stream = require('readable-stream')
 var eos = require('end-of-stream')
@@ -23733,7 +23162,7 @@ module.exports = Duplexify
 
 }).call(this,require('_process'),require("buffer").Buffer)
 
-},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","stream-shift":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-shift/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js":[function(require,module,exports){
+},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","stream-shift":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-shift/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js":[function(require,module,exports){
 var once = require('once');
 
 var noop = function() {};
@@ -25367,7 +24796,81 @@ Req.prototype.setLocation = function (uri) {
 
 }).call(this,require('_process'))
 
-},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer-from":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer-from/index.js","duplexer2":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/index.js","http":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/index.js","https":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/https-browserify/index.js","through2":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/through2/through2.js","url":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/url/url.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/isarray/index.js":[function(require,module,exports){
+},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer-from":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/buffer-from/index.js","duplexer2":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/index.js","http":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/index.js","https":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/https-browserify/index.js","through2":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/through2/through2.js","url":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/url/url.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/buffer-from/index.js":[function(require,module,exports){
+(function (Buffer){
+var toString = Object.prototype.toString
+
+var isModern = (
+  typeof Buffer.alloc === 'function' &&
+  typeof Buffer.allocUnsafe === 'function' &&
+  typeof Buffer.from === 'function'
+)
+
+function isArrayBuffer (input) {
+  return toString.call(input).slice(8, -1) === 'ArrayBuffer'
+}
+
+function fromArrayBuffer (obj, byteOffset, length) {
+  byteOffset >>>= 0
+
+  var maxLength = obj.byteLength - byteOffset
+
+  if (maxLength < 0) {
+    throw new RangeError("'offset' is out of bounds")
+  }
+
+  if (length === undefined) {
+    length = maxLength
+  } else {
+    length >>>= 0
+
+    if (length > maxLength) {
+      throw new RangeError("'length' is out of bounds")
+    }
+  }
+
+  return isModern
+    ? Buffer.from(obj.slice(byteOffset, byteOffset + length))
+    : new Buffer(new Uint8Array(obj.slice(byteOffset, byteOffset + length)))
+}
+
+function fromString (string, encoding) {
+  if (typeof encoding !== 'string' || encoding === '') {
+    encoding = 'utf8'
+  }
+
+  if (!Buffer.isEncoding(encoding)) {
+    throw new TypeError('"encoding" must be a valid string encoding')
+  }
+
+  return isModern
+    ? Buffer.from(string, encoding)
+    : new Buffer(string, encoding)
+}
+
+function bufferFrom (value, encodingOrOffset, length) {
+  if (typeof value === 'number') {
+    throw new TypeError('"value" argument must not be a number')
+  }
+
+  if (isArrayBuffer(value)) {
+    return fromArrayBuffer(value, encodingOrOffset, length)
+  }
+
+  if (typeof value === 'string') {
+    return fromString(value, encodingOrOffset)
+  }
+
+  return isModern
+    ? Buffer.from(value)
+    : new Buffer(value)
+}
+
+module.exports = bufferFrom
+
+}).call(this,require("buffer").Buffer)
+
+},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/isarray/index.js":[function(require,module,exports){
 arguments[4]["/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/isarray/index.js"][0].apply(exports,arguments)
 },{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/readable-stream/lib/_stream_duplex.js":[function(require,module,exports){
 (function (process){
@@ -26450,7 +25953,7 @@ function indexOf (xs, x) {
 
 }).call(this,require('_process'))
 
-},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","isarray":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/isarray/index.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js","string_decoder/":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/string_decoder/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
+},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","isarray":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/isarray/index.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js","string_decoder/":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/string_decoder/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -27053,12 +26556,12 @@ function endWritable(stream, state, cb) {
 
 }).call(this,require('_process'))
 
-},{"./_stream_duplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/readable-stream/lib/_stream_duplex.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/readable-stream/transform.js":[function(require,module,exports){
+},{"./_stream_duplex":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/readable-stream/lib/_stream_duplex.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","core-util-is":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/core-util-is/lib/util.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-browserify/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/readable-stream/transform.js":[function(require,module,exports){
 module.exports = require("./lib/_stream_transform.js")
 
 },{"./lib/_stream_transform.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/readable-stream/lib/_stream_transform.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/string_decoder/index.js":[function(require,module,exports){
 arguments[4]["/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexer2/node_modules/string_decoder/index.js"][0].apply(exports,arguments)
-},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/through2/through2.js":[function(require,module,exports){
+},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/hyperquest/node_modules/through2/through2.js":[function(require,module,exports){
 (function (process){
 var Transform = require('readable-stream/transform')
   , inherits  = require('util').inherits
@@ -28610,7 +28113,7 @@ module.exports = Multiplex
 
 }).call(this,require("buffer").Buffer)
 
-},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","duplexify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexify/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","varint":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/index.js","xtend":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/xtend/immutable.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/decode.js":[function(require,module,exports){
+},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","duplexify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexify/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","varint":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/index.js","xtend":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/xtend/immutable.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/decode.js":[function(require,module,exports){
 module.exports = read
 
 var MSB = 0x80
@@ -28813,6 +28316,8 @@ module.exports = ObservableStore;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -28845,11 +28350,13 @@ var ObsStoreStream = function (_DuplexStream) {
     }));
 
     _this.resume();
+    // save handler so we can unsubscribe later
+    _this.handler = function (state) {
+      return _this.push(state);
+    };
     // subscribe to obsStore changes
     _this.obsStore = obsStore;
-    _this.obsStore.subscribe(function (state) {
-      return _this.push(state);
-    });
+    _this.obsStore.subscribe(_this.handler);
     return _this;
   }
 
@@ -28878,6 +28385,15 @@ var ObsStoreStream = function (_DuplexStream) {
   }, {
     key: '_read',
     value: function _read(size) {}
+
+    // unsubscribe from event emitter
+
+  }, {
+    key: '_destroy',
+    value: function _destroy(err, callback) {
+      this.obsStore.unsubscribe(this.handler);
+      _get(ObsStoreStream.prototype.__proto__ || Object.getPrototypeOf(ObsStoreStream.prototype), '_destroy', this).call(this, err, callback);
+    }
   }]);
 
   return ObsStoreStream;
@@ -29081,221 +28597,7 @@ module.exports = function (promise) {
 	};
 };
 
-},{"is-fn":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/is-fn/index.js","set-immediate-shim":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/set-immediate-shim/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/promise/core.js":[function(require,module,exports){
-'use strict'
-
-var nextTick = require('./lib/next-tick')
-
-module.exports = Promise
-function Promise(fn) {
-  if (!(this instanceof Promise)) return new Promise(fn)
-  if (typeof fn !== 'function') throw new TypeError('not a function')
-  var state = null
-  var delegating = false
-  var value = null
-  var deferreds = []
-  var self = this
-
-  this.then = function(onFulfilled, onRejected) {
-    return new Promise(function(resolve, reject) {
-      handle(new Handler(onFulfilled, onRejected, resolve, reject))
-    })
-  }
-
-  function handle(deferred) {
-    if (state === null) {
-      deferreds.push(deferred)
-      return
-    }
-    nextTick(function() {
-      var cb = state ? deferred.onFulfilled : deferred.onRejected
-      if (cb === null) {
-        (state ? deferred.resolve : deferred.reject)(value)
-        return
-      }
-      var ret
-      try {
-        ret = cb(value)
-      }
-      catch (e) {
-        deferred.reject(e)
-        return
-      }
-      deferred.resolve(ret)
-    })
-  }
-
-  function resolve(newValue) {
-    if (delegating)
-      return
-    resolve_(newValue)
-  }
-
-  function resolve_(newValue) {
-    if (state !== null)
-      return
-    try { //Promise Resolution Procedure: https://github.com/promises-aplus/promises-spec#the-promise-resolution-procedure
-      if (newValue === self) throw new TypeError('A promise cannot be resolved with itself.')
-      if (newValue && (typeof newValue === 'object' || typeof newValue === 'function')) {
-        var then = newValue.then
-        if (typeof then === 'function') {
-          delegating = true
-          then.call(newValue, resolve_, reject_)
-          return
-        }
-      }
-      state = true
-      value = newValue
-      finale()
-    } catch (e) { reject_(e) }
-  }
-
-  function reject(newValue) {
-    if (delegating)
-      return
-    reject_(newValue)
-  }
-
-  function reject_(newValue) {
-    if (state !== null)
-      return
-    state = false
-    value = newValue
-    finale()
-  }
-
-  function finale() {
-    for (var i = 0, len = deferreds.length; i < len; i++)
-      handle(deferreds[i])
-    deferreds = null
-  }
-
-  try { fn(resolve, reject) }
-  catch(e) { reject(e) }
-}
-
-
-function Handler(onFulfilled, onRejected, resolve, reject){
-  this.onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : null
-  this.onRejected = typeof onRejected === 'function' ? onRejected : null
-  this.resolve = resolve
-  this.reject = reject
-}
-
-},{"./lib/next-tick":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/promise/lib/next-tick.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/promise/index.js":[function(require,module,exports){
-'use strict'
-
-//This file contains then/promise specific extensions to the core promise API
-
-var Promise = require('./core.js')
-var nextTick = require('./lib/next-tick')
-
-module.exports = Promise
-
-/* Static Functions */
-
-Promise.from = function (value) {
-  if (value instanceof Promise) return value
-  return new Promise(function (resolve) { resolve(value) })
-}
-Promise.denodeify = function (fn) {
-  return function () {
-    var self = this
-    var args = Array.prototype.slice.call(arguments)
-    return new Promise(function (resolve, reject) {
-      args.push(function (err, res) {
-        if (err) reject(err)
-        else resolve(res)
-      })
-      fn.apply(self, args)
-    })
-  }
-}
-Promise.nodeify = function (fn) {
-  return function () {
-    var args = Array.prototype.slice.call(arguments)
-    var callback = typeof args[args.length - 1] === 'function' ? args.pop() : null
-    try {
-      return fn.apply(this, arguments).nodeify(callback)
-    } catch (ex) {
-      if (callback == null) {
-        return new Promise(function (resolve, reject) { reject(ex) })
-      } else {
-        nextTick(function () {
-          callback(ex)
-        })
-      }
-    }
-  }
-}
-
-Promise.all = function () {
-  var args = Array.prototype.slice.call(arguments.length === 1 && Array.isArray(arguments[0]) ? arguments[0] : arguments)
-
-  return new Promise(function (resolve, reject) {
-    if (args.length === 0) return resolve([])
-    var remaining = args.length
-    function res(i, val) {
-      try {
-        if (val && (typeof val === 'object' || typeof val === 'function')) {
-          var then = val.then
-          if (typeof then === 'function') {
-            then.call(val, function (val) { res(i, val) }, reject)
-            return
-          }
-        }
-        args[i] = val
-        if (--remaining === 0) {
-          resolve(args);
-        }
-      } catch (ex) {
-        reject(ex)
-      }
-    }
-    for (var i = 0; i < args.length; i++) {
-      res(i, args[i])
-    }
-  })
-}
-
-/* Prototype Methods */
-
-Promise.prototype.done = function (onFulfilled, onRejected) {
-  var self = arguments.length ? this.then.apply(this, arguments) : this
-  self.then(null, function (err) {
-    nextTick(function () {
-      throw err
-    })
-  })
-}
-Promise.prototype.nodeify = function (callback) {
-  if (callback == null) return this
-
-  this.then(function (value) {
-    nextTick(function () {
-      callback(null, value)
-    })
-  }, function (err) {
-    nextTick(function () {
-      callback(err)
-    })
-  })
-}
-},{"./core.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/promise/core.js","./lib/next-tick":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/promise/lib/next-tick.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/promise/lib/next-tick.js":[function(require,module,exports){
-(function (process,setImmediate){
-'use strict'
-
-if (typeof setImmediate === 'function') { // IE >= 10 & node.js >= 0.10
-  module.exports = function(fn){ setImmediate(fn) }
-} else if (typeof process !== 'undefined' && process && typeof process.nextTick === 'function') { // node.js before 0.10
-  module.exports = function(fn){ process.nextTick(fn) }
-} else {
-  module.exports = function(fn){ setTimeout(fn, 0) }
-}
-
-}).call(this,require('_process'),require("timers").setImmediate)
-
-},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","timers":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/timers-browserify/main.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js":[function(require,module,exports){
+},{"is-fn":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/is-fn/index.js","set-immediate-shim":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/set-immediate-shim/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/pump/index.js":[function(require,module,exports){
 (function (process){
 var once = require('once')
 var eos = require('end-of-stream')
@@ -29382,7 +28684,545 @@ module.exports = pump
 
 }).call(this,require('_process'))
 
-},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","fs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js","once":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/once/once.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/q/q.js":[function(require,module,exports){
+},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","end-of-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/end-of-stream/index.js","fs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browser-resolve/empty.js","once":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/once/once.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/punycode/punycode.js":[function(require,module,exports){
+(function (global){
+/*! https://mths.be/punycode v1.4.1 by @mathias */
+;(function(root) {
+
+	/** Detect free variables */
+	var freeExports = typeof exports == 'object' && exports &&
+		!exports.nodeType && exports;
+	var freeModule = typeof module == 'object' && module &&
+		!module.nodeType && module;
+	var freeGlobal = typeof global == 'object' && global;
+	if (
+		freeGlobal.global === freeGlobal ||
+		freeGlobal.window === freeGlobal ||
+		freeGlobal.self === freeGlobal
+	) {
+		root = freeGlobal;
+	}
+
+	/**
+	 * The `punycode` object.
+	 * @name punycode
+	 * @type Object
+	 */
+	var punycode,
+
+	/** Highest positive signed 32-bit float value */
+	maxInt = 2147483647, // aka. 0x7FFFFFFF or 2^31-1
+
+	/** Bootstring parameters */
+	base = 36,
+	tMin = 1,
+	tMax = 26,
+	skew = 38,
+	damp = 700,
+	initialBias = 72,
+	initialN = 128, // 0x80
+	delimiter = '-', // '\x2D'
+
+	/** Regular expressions */
+	regexPunycode = /^xn--/,
+	regexNonASCII = /[^\x20-\x7E]/, // unprintable ASCII chars + non-ASCII chars
+	regexSeparators = /[\x2E\u3002\uFF0E\uFF61]/g, // RFC 3490 separators
+
+	/** Error messages */
+	errors = {
+		'overflow': 'Overflow: input needs wider integers to process',
+		'not-basic': 'Illegal input >= 0x80 (not a basic code point)',
+		'invalid-input': 'Invalid input'
+	},
+
+	/** Convenience shortcuts */
+	baseMinusTMin = base - tMin,
+	floor = Math.floor,
+	stringFromCharCode = String.fromCharCode,
+
+	/** Temporary variable */
+	key;
+
+	/*--------------------------------------------------------------------------*/
+
+	/**
+	 * A generic error utility function.
+	 * @private
+	 * @param {String} type The error type.
+	 * @returns {Error} Throws a `RangeError` with the applicable error message.
+	 */
+	function error(type) {
+		throw new RangeError(errors[type]);
+	}
+
+	/**
+	 * A generic `Array#map` utility function.
+	 * @private
+	 * @param {Array} array The array to iterate over.
+	 * @param {Function} callback The function that gets called for every array
+	 * item.
+	 * @returns {Array} A new array of values returned by the callback function.
+	 */
+	function map(array, fn) {
+		var length = array.length;
+		var result = [];
+		while (length--) {
+			result[length] = fn(array[length]);
+		}
+		return result;
+	}
+
+	/**
+	 * A simple `Array#map`-like wrapper to work with domain name strings or email
+	 * addresses.
+	 * @private
+	 * @param {String} domain The domain name or email address.
+	 * @param {Function} callback The function that gets called for every
+	 * character.
+	 * @returns {Array} A new string of characters returned by the callback
+	 * function.
+	 */
+	function mapDomain(string, fn) {
+		var parts = string.split('@');
+		var result = '';
+		if (parts.length > 1) {
+			// In email addresses, only the domain name should be punycoded. Leave
+			// the local part (i.e. everything up to `@`) intact.
+			result = parts[0] + '@';
+			string = parts[1];
+		}
+		// Avoid `split(regex)` for IE8 compatibility. See #17.
+		string = string.replace(regexSeparators, '\x2E');
+		var labels = string.split('.');
+		var encoded = map(labels, fn).join('.');
+		return result + encoded;
+	}
+
+	/**
+	 * Creates an array containing the numeric code points of each Unicode
+	 * character in the string. While JavaScript uses UCS-2 internally,
+	 * this function will convert a pair of surrogate halves (each of which
+	 * UCS-2 exposes as separate characters) into a single code point,
+	 * matching UTF-16.
+	 * @see `punycode.ucs2.encode`
+	 * @see <https://mathiasbynens.be/notes/javascript-encoding>
+	 * @memberOf punycode.ucs2
+	 * @name decode
+	 * @param {String} string The Unicode input string (UCS-2).
+	 * @returns {Array} The new array of code points.
+	 */
+	function ucs2decode(string) {
+		var output = [],
+		    counter = 0,
+		    length = string.length,
+		    value,
+		    extra;
+		while (counter < length) {
+			value = string.charCodeAt(counter++);
+			if (value >= 0xD800 && value <= 0xDBFF && counter < length) {
+				// high surrogate, and there is a next character
+				extra = string.charCodeAt(counter++);
+				if ((extra & 0xFC00) == 0xDC00) { // low surrogate
+					output.push(((value & 0x3FF) << 10) + (extra & 0x3FF) + 0x10000);
+				} else {
+					// unmatched surrogate; only append this code unit, in case the next
+					// code unit is the high surrogate of a surrogate pair
+					output.push(value);
+					counter--;
+				}
+			} else {
+				output.push(value);
+			}
+		}
+		return output;
+	}
+
+	/**
+	 * Creates a string based on an array of numeric code points.
+	 * @see `punycode.ucs2.decode`
+	 * @memberOf punycode.ucs2
+	 * @name encode
+	 * @param {Array} codePoints The array of numeric code points.
+	 * @returns {String} The new Unicode string (UCS-2).
+	 */
+	function ucs2encode(array) {
+		return map(array, function(value) {
+			var output = '';
+			if (value > 0xFFFF) {
+				value -= 0x10000;
+				output += stringFromCharCode(value >>> 10 & 0x3FF | 0xD800);
+				value = 0xDC00 | value & 0x3FF;
+			}
+			output += stringFromCharCode(value);
+			return output;
+		}).join('');
+	}
+
+	/**
+	 * Converts a basic code point into a digit/integer.
+	 * @see `digitToBasic()`
+	 * @private
+	 * @param {Number} codePoint The basic numeric code point value.
+	 * @returns {Number} The numeric value of a basic code point (for use in
+	 * representing integers) in the range `0` to `base - 1`, or `base` if
+	 * the code point does not represent a value.
+	 */
+	function basicToDigit(codePoint) {
+		if (codePoint - 48 < 10) {
+			return codePoint - 22;
+		}
+		if (codePoint - 65 < 26) {
+			return codePoint - 65;
+		}
+		if (codePoint - 97 < 26) {
+			return codePoint - 97;
+		}
+		return base;
+	}
+
+	/**
+	 * Converts a digit/integer into a basic code point.
+	 * @see `basicToDigit()`
+	 * @private
+	 * @param {Number} digit The numeric value of a basic code point.
+	 * @returns {Number} The basic code point whose value (when used for
+	 * representing integers) is `digit`, which needs to be in the range
+	 * `0` to `base - 1`. If `flag` is non-zero, the uppercase form is
+	 * used; else, the lowercase form is used. The behavior is undefined
+	 * if `flag` is non-zero and `digit` has no uppercase form.
+	 */
+	function digitToBasic(digit, flag) {
+		//  0..25 map to ASCII a..z or A..Z
+		// 26..35 map to ASCII 0..9
+		return digit + 22 + 75 * (digit < 26) - ((flag != 0) << 5);
+	}
+
+	/**
+	 * Bias adaptation function as per section 3.4 of RFC 3492.
+	 * https://tools.ietf.org/html/rfc3492#section-3.4
+	 * @private
+	 */
+	function adapt(delta, numPoints, firstTime) {
+		var k = 0;
+		delta = firstTime ? floor(delta / damp) : delta >> 1;
+		delta += floor(delta / numPoints);
+		for (/* no initialization */; delta > baseMinusTMin * tMax >> 1; k += base) {
+			delta = floor(delta / baseMinusTMin);
+		}
+		return floor(k + (baseMinusTMin + 1) * delta / (delta + skew));
+	}
+
+	/**
+	 * Converts a Punycode string of ASCII-only symbols to a string of Unicode
+	 * symbols.
+	 * @memberOf punycode
+	 * @param {String} input The Punycode string of ASCII-only symbols.
+	 * @returns {String} The resulting string of Unicode symbols.
+	 */
+	function decode(input) {
+		// Don't use UCS-2
+		var output = [],
+		    inputLength = input.length,
+		    out,
+		    i = 0,
+		    n = initialN,
+		    bias = initialBias,
+		    basic,
+		    j,
+		    index,
+		    oldi,
+		    w,
+		    k,
+		    digit,
+		    t,
+		    /** Cached calculation results */
+		    baseMinusT;
+
+		// Handle the basic code points: let `basic` be the number of input code
+		// points before the last delimiter, or `0` if there is none, then copy
+		// the first basic code points to the output.
+
+		basic = input.lastIndexOf(delimiter);
+		if (basic < 0) {
+			basic = 0;
+		}
+
+		for (j = 0; j < basic; ++j) {
+			// if it's not a basic code point
+			if (input.charCodeAt(j) >= 0x80) {
+				error('not-basic');
+			}
+			output.push(input.charCodeAt(j));
+		}
+
+		// Main decoding loop: start just after the last delimiter if any basic code
+		// points were copied; start at the beginning otherwise.
+
+		for (index = basic > 0 ? basic + 1 : 0; index < inputLength; /* no final expression */) {
+
+			// `index` is the index of the next character to be consumed.
+			// Decode a generalized variable-length integer into `delta`,
+			// which gets added to `i`. The overflow checking is easier
+			// if we increase `i` as we go, then subtract off its starting
+			// value at the end to obtain `delta`.
+			for (oldi = i, w = 1, k = base; /* no condition */; k += base) {
+
+				if (index >= inputLength) {
+					error('invalid-input');
+				}
+
+				digit = basicToDigit(input.charCodeAt(index++));
+
+				if (digit >= base || digit > floor((maxInt - i) / w)) {
+					error('overflow');
+				}
+
+				i += digit * w;
+				t = k <= bias ? tMin : (k >= bias + tMax ? tMax : k - bias);
+
+				if (digit < t) {
+					break;
+				}
+
+				baseMinusT = base - t;
+				if (w > floor(maxInt / baseMinusT)) {
+					error('overflow');
+				}
+
+				w *= baseMinusT;
+
+			}
+
+			out = output.length + 1;
+			bias = adapt(i - oldi, out, oldi == 0);
+
+			// `i` was supposed to wrap around from `out` to `0`,
+			// incrementing `n` each time, so we'll fix that now:
+			if (floor(i / out) > maxInt - n) {
+				error('overflow');
+			}
+
+			n += floor(i / out);
+			i %= out;
+
+			// Insert `n` at position `i` of the output
+			output.splice(i++, 0, n);
+
+		}
+
+		return ucs2encode(output);
+	}
+
+	/**
+	 * Converts a string of Unicode symbols (e.g. a domain name label) to a
+	 * Punycode string of ASCII-only symbols.
+	 * @memberOf punycode
+	 * @param {String} input The string of Unicode symbols.
+	 * @returns {String} The resulting Punycode string of ASCII-only symbols.
+	 */
+	function encode(input) {
+		var n,
+		    delta,
+		    handledCPCount,
+		    basicLength,
+		    bias,
+		    j,
+		    m,
+		    q,
+		    k,
+		    t,
+		    currentValue,
+		    output = [],
+		    /** `inputLength` will hold the number of code points in `input`. */
+		    inputLength,
+		    /** Cached calculation results */
+		    handledCPCountPlusOne,
+		    baseMinusT,
+		    qMinusT;
+
+		// Convert the input in UCS-2 to Unicode
+		input = ucs2decode(input);
+
+		// Cache the length
+		inputLength = input.length;
+
+		// Initialize the state
+		n = initialN;
+		delta = 0;
+		bias = initialBias;
+
+		// Handle the basic code points
+		for (j = 0; j < inputLength; ++j) {
+			currentValue = input[j];
+			if (currentValue < 0x80) {
+				output.push(stringFromCharCode(currentValue));
+			}
+		}
+
+		handledCPCount = basicLength = output.length;
+
+		// `handledCPCount` is the number of code points that have been handled;
+		// `basicLength` is the number of basic code points.
+
+		// Finish the basic string - if it is not empty - with a delimiter
+		if (basicLength) {
+			output.push(delimiter);
+		}
+
+		// Main encoding loop:
+		while (handledCPCount < inputLength) {
+
+			// All non-basic code points < n have been handled already. Find the next
+			// larger one:
+			for (m = maxInt, j = 0; j < inputLength; ++j) {
+				currentValue = input[j];
+				if (currentValue >= n && currentValue < m) {
+					m = currentValue;
+				}
+			}
+
+			// Increase `delta` enough to advance the decoder's <n,i> state to <m,0>,
+			// but guard against overflow
+			handledCPCountPlusOne = handledCPCount + 1;
+			if (m - n > floor((maxInt - delta) / handledCPCountPlusOne)) {
+				error('overflow');
+			}
+
+			delta += (m - n) * handledCPCountPlusOne;
+			n = m;
+
+			for (j = 0; j < inputLength; ++j) {
+				currentValue = input[j];
+
+				if (currentValue < n && ++delta > maxInt) {
+					error('overflow');
+				}
+
+				if (currentValue == n) {
+					// Represent delta as a generalized variable-length integer
+					for (q = delta, k = base; /* no condition */; k += base) {
+						t = k <= bias ? tMin : (k >= bias + tMax ? tMax : k - bias);
+						if (q < t) {
+							break;
+						}
+						qMinusT = q - t;
+						baseMinusT = base - t;
+						output.push(
+							stringFromCharCode(digitToBasic(t + qMinusT % baseMinusT, 0))
+						);
+						q = floor(qMinusT / baseMinusT);
+					}
+
+					output.push(stringFromCharCode(digitToBasic(q, 0)));
+					bias = adapt(delta, handledCPCountPlusOne, handledCPCount == basicLength);
+					delta = 0;
+					++handledCPCount;
+				}
+			}
+
+			++delta;
+			++n;
+
+		}
+		return output.join('');
+	}
+
+	/**
+	 * Converts a Punycode string representing a domain name or an email address
+	 * to Unicode. Only the Punycoded parts of the input will be converted, i.e.
+	 * it doesn't matter if you call it on a string that has already been
+	 * converted to Unicode.
+	 * @memberOf punycode
+	 * @param {String} input The Punycoded domain name or email address to
+	 * convert to Unicode.
+	 * @returns {String} The Unicode representation of the given Punycode
+	 * string.
+	 */
+	function toUnicode(input) {
+		return mapDomain(input, function(string) {
+			return regexPunycode.test(string)
+				? decode(string.slice(4).toLowerCase())
+				: string;
+		});
+	}
+
+	/**
+	 * Converts a Unicode string representing a domain name or an email address to
+	 * Punycode. Only the non-ASCII parts of the domain name will be converted,
+	 * i.e. it doesn't matter if you call it with a domain that's already in
+	 * ASCII.
+	 * @memberOf punycode
+	 * @param {String} input The domain name or email address to convert, as a
+	 * Unicode string.
+	 * @returns {String} The Punycode representation of the given domain name or
+	 * email address.
+	 */
+	function toASCII(input) {
+		return mapDomain(input, function(string) {
+			return regexNonASCII.test(string)
+				? 'xn--' + encode(string)
+				: string;
+		});
+	}
+
+	/*--------------------------------------------------------------------------*/
+
+	/** Define the public API */
+	punycode = {
+		/**
+		 * A string representing the current Punycode.js version number.
+		 * @memberOf punycode
+		 * @type String
+		 */
+		'version': '1.4.1',
+		/**
+		 * An object of methods to convert from JavaScript's internal character
+		 * representation (UCS-2) to Unicode code points, and back.
+		 * @see <https://mathiasbynens.be/notes/javascript-encoding>
+		 * @memberOf punycode
+		 * @type Object
+		 */
+		'ucs2': {
+			'decode': ucs2decode,
+			'encode': ucs2encode
+		},
+		'decode': decode,
+		'encode': encode,
+		'toASCII': toASCII,
+		'toUnicode': toUnicode
+	};
+
+	/** Expose `punycode` */
+	// Some AMD build optimizers, like r.js, check for specific condition patterns
+	// like the following:
+	if (
+		typeof define == 'function' &&
+		typeof define.amd == 'object' &&
+		define.amd
+	) {
+		define('punycode', function() {
+			return punycode;
+		});
+	} else if (freeExports && freeModule) {
+		if (module.exports == freeExports) {
+			// in Node.js, io.js, or RingoJS v0.8.0+
+			freeModule.exports = punycode;
+		} else {
+			// in Narwhal or RingoJS v0.7.0-
+			for (key in punycode) {
+				punycode.hasOwnProperty(key) && (freeExports[key] = punycode[key]);
+			}
+		}
+	} else {
+		// in Rhino or a web browser
+		root.punycode = punycode;
+	}
+
+}(this));
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/q/q.js":[function(require,module,exports){
 (function (process,setImmediate){
 // vim:ts=4:sts=4:sw=4:
 /*!
@@ -34765,7 +34605,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   return buffer.SlowBuffer(size)
 }
 
-},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/set-immediate-shim/index.js":[function(require,module,exports){
+},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/set-immediate-shim/index.js":[function(require,module,exports){
 (function (setImmediate){
 'use strict';
 module.exports = typeof setImmediate === 'function' ? setImmediate :
@@ -35405,7 +35245,7 @@ var unsafeHeaders = [
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
 
-},{"./capability":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/lib/capability.js","./response":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/lib/response.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","to-arraybuffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/to-arraybuffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/lib/response.js":[function(require,module,exports){
+},{"./capability":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/lib/capability.js","./response":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/lib/response.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","to-arraybuffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/to-arraybuffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/lib/response.js":[function(require,module,exports){
 (function (process,global,Buffer){
 var capability = require('./capability')
 var inherits = require('inherits')
@@ -35634,7 +35474,7 @@ IncomingMessage.prototype._onXHRProgress = function () {
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
 
-},{"./capability":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/lib/capability.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-serializer/index.js":[function(require,module,exports){
+},{"./capability":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/lib/capability.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-serializer/index.js":[function(require,module,exports){
 
 var EventEmitter = require('events').EventEmitter
 
@@ -36141,7 +35981,221 @@ function Delayed(resolve, fn, self, args) {
   this.self = self || null
   this.args = args || null
 }
-},{"promise":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/promise/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throttle-obj-stream/index.js":[function(require,module,exports){
+},{"promise":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/node_modules/promise/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/node_modules/promise/core.js":[function(require,module,exports){
+'use strict'
+
+var nextTick = require('./lib/next-tick')
+
+module.exports = Promise
+function Promise(fn) {
+  if (!(this instanceof Promise)) return new Promise(fn)
+  if (typeof fn !== 'function') throw new TypeError('not a function')
+  var state = null
+  var delegating = false
+  var value = null
+  var deferreds = []
+  var self = this
+
+  this.then = function(onFulfilled, onRejected) {
+    return new Promise(function(resolve, reject) {
+      handle(new Handler(onFulfilled, onRejected, resolve, reject))
+    })
+  }
+
+  function handle(deferred) {
+    if (state === null) {
+      deferreds.push(deferred)
+      return
+    }
+    nextTick(function() {
+      var cb = state ? deferred.onFulfilled : deferred.onRejected
+      if (cb === null) {
+        (state ? deferred.resolve : deferred.reject)(value)
+        return
+      }
+      var ret
+      try {
+        ret = cb(value)
+      }
+      catch (e) {
+        deferred.reject(e)
+        return
+      }
+      deferred.resolve(ret)
+    })
+  }
+
+  function resolve(newValue) {
+    if (delegating)
+      return
+    resolve_(newValue)
+  }
+
+  function resolve_(newValue) {
+    if (state !== null)
+      return
+    try { //Promise Resolution Procedure: https://github.com/promises-aplus/promises-spec#the-promise-resolution-procedure
+      if (newValue === self) throw new TypeError('A promise cannot be resolved with itself.')
+      if (newValue && (typeof newValue === 'object' || typeof newValue === 'function')) {
+        var then = newValue.then
+        if (typeof then === 'function') {
+          delegating = true
+          then.call(newValue, resolve_, reject_)
+          return
+        }
+      }
+      state = true
+      value = newValue
+      finale()
+    } catch (e) { reject_(e) }
+  }
+
+  function reject(newValue) {
+    if (delegating)
+      return
+    reject_(newValue)
+  }
+
+  function reject_(newValue) {
+    if (state !== null)
+      return
+    state = false
+    value = newValue
+    finale()
+  }
+
+  function finale() {
+    for (var i = 0, len = deferreds.length; i < len; i++)
+      handle(deferreds[i])
+    deferreds = null
+  }
+
+  try { fn(resolve, reject) }
+  catch(e) { reject(e) }
+}
+
+
+function Handler(onFulfilled, onRejected, resolve, reject){
+  this.onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : null
+  this.onRejected = typeof onRejected === 'function' ? onRejected : null
+  this.resolve = resolve
+  this.reject = reject
+}
+
+},{"./lib/next-tick":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/node_modules/promise/lib/next-tick.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/node_modules/promise/index.js":[function(require,module,exports){
+'use strict'
+
+//This file contains then/promise specific extensions to the core promise API
+
+var Promise = require('./core.js')
+var nextTick = require('./lib/next-tick')
+
+module.exports = Promise
+
+/* Static Functions */
+
+Promise.from = function (value) {
+  if (value instanceof Promise) return value
+  return new Promise(function (resolve) { resolve(value) })
+}
+Promise.denodeify = function (fn) {
+  return function () {
+    var self = this
+    var args = Array.prototype.slice.call(arguments)
+    return new Promise(function (resolve, reject) {
+      args.push(function (err, res) {
+        if (err) reject(err)
+        else resolve(res)
+      })
+      fn.apply(self, args)
+    })
+  }
+}
+Promise.nodeify = function (fn) {
+  return function () {
+    var args = Array.prototype.slice.call(arguments)
+    var callback = typeof args[args.length - 1] === 'function' ? args.pop() : null
+    try {
+      return fn.apply(this, arguments).nodeify(callback)
+    } catch (ex) {
+      if (callback == null) {
+        return new Promise(function (resolve, reject) { reject(ex) })
+      } else {
+        nextTick(function () {
+          callback(ex)
+        })
+      }
+    }
+  }
+}
+
+Promise.all = function () {
+  var args = Array.prototype.slice.call(arguments.length === 1 && Array.isArray(arguments[0]) ? arguments[0] : arguments)
+
+  return new Promise(function (resolve, reject) {
+    if (args.length === 0) return resolve([])
+    var remaining = args.length
+    function res(i, val) {
+      try {
+        if (val && (typeof val === 'object' || typeof val === 'function')) {
+          var then = val.then
+          if (typeof then === 'function') {
+            then.call(val, function (val) { res(i, val) }, reject)
+            return
+          }
+        }
+        args[i] = val
+        if (--remaining === 0) {
+          resolve(args);
+        }
+      } catch (ex) {
+        reject(ex)
+      }
+    }
+    for (var i = 0; i < args.length; i++) {
+      res(i, args[i])
+    }
+  })
+}
+
+/* Prototype Methods */
+
+Promise.prototype.done = function (onFulfilled, onRejected) {
+  var self = arguments.length ? this.then.apply(this, arguments) : this
+  self.then(null, function (err) {
+    nextTick(function () {
+      throw err
+    })
+  })
+}
+Promise.prototype.nodeify = function (callback) {
+  if (callback == null) return this
+
+  this.then(function (value) {
+    nextTick(function () {
+      callback(null, value)
+    })
+  }, function (err) {
+    nextTick(function () {
+      callback(err)
+    })
+  })
+}
+},{"./core.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/node_modules/promise/core.js","./lib/next-tick":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/node_modules/promise/lib/next-tick.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throat/node_modules/promise/lib/next-tick.js":[function(require,module,exports){
+(function (process,setImmediate){
+'use strict'
+
+if (typeof setImmediate === 'function') { // IE >= 10 & node.js >= 0.10
+  module.exports = function(fn){ setImmediate(fn) }
+} else if (typeof process !== 'undefined' && process && typeof process.nextTick === 'function') { // node.js before 0.10
+  module.exports = function(fn){ process.nextTick(fn) }
+} else {
+  module.exports = function(fn){ setTimeout(fn, 0) }
+}
+
+}).call(this,require('_process'),require("timers").setImmediate)
+
+},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","timers":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/timers-browserify/main.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/throttle-obj-stream/index.js":[function(require,module,exports){
 const through = require('through2').obj
 const throttle = require('lodash.throttle')
 
@@ -36485,7 +36539,7 @@ module.exports = function (buf) {
 	}
 }
 
-},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/url/url.js":[function(require,module,exports){
+},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/url/url.js":[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -37219,7 +37273,7 @@ Url.prototype.parseHost = function() {
   if (host) this.hostname = host;
 };
 
-},{"./util":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/url/util.js","punycode":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/punycode/punycode.js","querystring":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/querystring-es3/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/url/util.js":[function(require,module,exports){
+},{"./util":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/url/util.js","punycode":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/punycode/punycode.js","querystring":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/querystring-es3/index.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/url/util.js":[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -37309,8 +37363,6 @@ function config (name) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/util/node_modules/inherits/inherits_browser.js":[function(require,module,exports){
-arguments[4]["/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js"][0].apply(exports,arguments)
 },{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/util/support/isBufferBrowser.js":[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
@@ -37909,7 +37961,7 @@ function hasOwnProperty(obj, prop) {
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./support/isBuffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/util/support/isBufferBrowser.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/util/node_modules/inherits/inherits_browser.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js":[function(require,module,exports){
+},{"./support/isBuffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/util/support/isBufferBrowser.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js":[function(require,module,exports){
 var createElement = require("./vdom/create-element.js")
 
 module.exports = createElement
@@ -40617,7 +40669,7 @@ exports.XMLHttpRequest = function() {
 
 }).call(this,require('_process'),require("buffer").Buffer)
 
-},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","child_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/lib/_empty.js","fs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/lib/_empty.js","http":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/index.js","https":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/https-browserify/index.js","url":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/url/url.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/xtend/immutable.js":[function(require,module,exports){
+},{"_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","child_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/lib/_empty.js","fs":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/lib/_empty.js","http":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/stream-http/index.js","https":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/https-browserify/index.js","url":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/url/url.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/xtend/immutable.js":[function(require,module,exports){
 module.exports = extend
 
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -41408,7 +41460,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global){
 // setup error reporting before anything else
-const buildVersion = String(1535930188 || 'development')
+const buildVersion = String(1537423501 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -42437,7 +42489,7 @@ function createJsonParseStream () {
 
 }).call(this,require("buffer").Buffer)
 
-},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/buffer/index.js","through2":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/through2/through2.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/time.js":[function(require,module,exports){
+},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","through2":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/through2/through2.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/util/time.js":[function(require,module,exports){
 const sec = 1000
 const min = 60 * sec
 const hour = 60 * min

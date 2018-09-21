@@ -47,7 +47,7 @@ module.exports = function (client, node, clientState) {
       const stream = createStream(peerId)
       pump(stream, pullStreamToStream(conn), stream)
     } catch (err) {
-      console.log('MetaMask Mesh Testing - kitsunet-ebt dia l failed:', peerId, err.message)
+      console.log('MetaMask Mesh Testing - kitsunet-ebt dial failed:', peerId, err.message)
     }
   }
 
