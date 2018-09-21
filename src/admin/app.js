@@ -25,6 +25,7 @@ function startApp (opts = {}) {
   const viewModes = [
     'normal',
     'kitsunet',
+    'ping',
     'pubsub',
     'multicast',
     'ebt',
@@ -129,7 +130,8 @@ function startApp (opts = {}) {
         networkFilter = 'multicast'
         break
     }
-    const newGraph = buildGraph(clientData, networkFilter)
+    const latencyMode = (viewMode === 'ping')
+    const newGraph = buildGraph(clientData, networkFilter, latencyMode)
     currentGraph = mergeGraph(currentGraph, newGraph)
     // reset simulation
     setupSimulationForces(simulation, currentGraph)
@@ -224,6 +226,7 @@ function renderGraph (state, actions) {
   switch (viewMode) {
     case 'normal': return renderGraphNormal(state, actions)
     case 'kitsunet': return renderGraphNormal(state, actions)
+    case 'ping': return renderGraphNormal(state, actions)
     case 'pie(tx)': return renderGraphPieTransportTx(state, actions)
     case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
     case 'mesh': return renderGraphMesh(state, actions)
@@ -678,7 +681,7 @@ StatsObj shape
 }
 */
 
-function buildGraph (networkState, networkFilter) {
+function buildGraph (networkState, networkFilter, latencyMode) {
   const graph = { nodes: [], links: [] }
 
   // first add kitsunet nodes
@@ -695,23 +698,29 @@ function buildGraph (networkState, networkFilter) {
     const peers = clientStats.peers
     if (!peers) return
 
-    Object.entries(peers).forEach(([peerId, peerData]) => {
+    Object.entries(peers).forEach(([peerId, peerStats]) => {
       // if connected to a missing node, create missing node
       const alreadyExists = !!graph.nodes.find(item => item.id === peerId)
       if (!alreadyExists) {
         const newNode = { id: peerId, type: 'missing' }
         graph.nodes.push(newNode)
       }
-      const protocolNames = Object.keys(peerData.protocols)
+      const protocolNames = Object.keys(peerStats.protocols)
       // abort if network filter miss
       if (networkFilter && !protocolNames.some(name => name.includes(networkFilter))) return
-      // const rtt = peerData[peerId].ping
-      // const didTimeout = rtt === 'timeout'
-      // const linkValue = Math.pow((10 - Math.log(rtt)), 2)
-      // const linkValue = didTimeout ? 0.1 : 2
+      const peerData = clientData.peers[peerId]
+      const ping = peerData ? peerData.ping : null
+      const pingDistance = 60 * Math.log(ping || 1000)
+      const distance = latencyMode ? pingDistance : 30
       const linkValue = 2
       const linkId = `${clientId}-${peerId}`
-      const newLink = { id: linkId, source: clientId, target: peerId, value: linkValue }
+      const newLink = {
+        id: linkId,
+        source: clientId,
+        target: peerId,
+        value: linkValue,
+        distance,
+      }
       graph.links.push(newLink)
     })
   })
