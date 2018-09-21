@@ -18,15 +18,14 @@ function renderGraph(state, actions) {
       TERRIBLE: '#FF0000',
     }
 
-    if (!networkState.clients[node.id]
-      || !(networkState.clients[node.id]
-        && networkState.clients[node.id].block)) {
+    const clientState = networkState.clients[node.id]
+    if (!(clientState && clientState.block)) {
       return
     }
 
     let color = colors['TERRIBLE']
-    const blockNumber = networkState.clients[node.id].block.number
-      ? Number(networkState.clients[node.id].block.number)
+    const blockNumber = clientState.block.number
+      ? Number(clientState.block.number)
       : 0
 
     if (blockNumber > 0) {
@@ -44,7 +43,7 @@ function renderGraph(state, actions) {
 
     const radius = isSelected ? 10 : 5
 
-    const isTracking = networkState.clients[node.id].blockTrackerEnabled
+    const isTracking = clientState.blockTrackerEnabled
     return (
 
       s('circle', Object.assign({
@@ -66,15 +65,13 @@ function renderGraph(state, actions) {
   function renderLink(link, state, actions) {
     const { source, target } = link
 
-    if (!state.networkState.clients[source.id]
-      || !(state.networkState.clients[source.id]
-        && state.networkState.clients[source.id].block)) {
+    const sourceState = state.networkState.clients[source.id]
+    if (!(sourceState && sourceState.block)) {
       return
     }
 
-    if (!state.networkState.clients[target.id]
-      || !(state.networkState.clients[target.id]
-        && state.networkState.clients[target.id].block)) {
+    const targetState = state.networkState.clients[target.id]
+    if (!(targetState && targetState.block)) {
       return
     }
 

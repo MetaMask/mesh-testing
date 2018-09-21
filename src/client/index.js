@@ -42,14 +42,17 @@ const discoveredPeers = []
 global.discoveredPeers = discoveredPeers
 
 const clientState = {
-  stats: {},
+  // kitsunet peers
   peers: {},
+  // libp2p stats
+  stats: {},
+  // various protocol stats/state
   pubsub: [],
   multicast: [],
   ebt: [],
   ebtState: {},
   block: {},
-  blockTrackerEnabled: false
+  blockTrackerEnabled: false,
 }
 
 global.clientState = clientState

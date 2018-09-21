@@ -18,7 +18,7 @@ function setupSimulationForces (simulation, state) {
   simulation
     .nodes(nodes)
     // pull nodes along links
-    .force('link', d3.forceLink().id(d => d.id).links(links))
+    .force('link', d3.forceLink().id(d => d.id).links(links).distance(d => d.distance))
     // push nodes away from each other
     .force('charge', d3.forceManyBody().strength(-30))
     // translate nodes around the center
