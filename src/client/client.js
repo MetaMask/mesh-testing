@@ -6,7 +6,7 @@ const { sec } = require('../util/time')
 const timeout = require('../util/timeout')
 
 const clientStateSubmitInterval = 15 * sec
-
+const noop = () => {}
 module.exports = function (clientState, node, stats) {
   let telemetryRpc = null
 

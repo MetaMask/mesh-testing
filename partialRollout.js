@@ -40,7 +40,7 @@ function activateBundle(src){
 
 function checkThreshold({ rolloutThreshold }){
   // load or setup id
-  let id = localStorage.getItem('id')
+  let id = Number(localStorage.getItem('id'))
   if (!id) {
     id = generateId()
     localStorage.setItem('id', id)

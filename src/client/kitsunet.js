@@ -27,8 +27,6 @@ const peerPingTimeout = 40 * sec
 
 const autoConnectAttemptInterval = 10 * sec
 
-const minPeers = 20
-
 module.exports = function (client, node, clientState, options) {
   options = options || { skipDial: false }
   async function attemptDial (peerInfo) {
@@ -39,7 +37,7 @@ module.exports = function (client, node, clientState, options) {
     // check if already connected
     const alreadyConnected = !!clientState.peers[peerId]
     if (alreadyConnected) {
-      // console.log('MetaMask Mesh Testing - kitsunet already connected', peerId)
+      console.log('MetaMask Mesh Testing - kitsunet already connected', peerId)
       return
     }
     // attempt connection
@@ -139,6 +137,7 @@ module.exports = function (client, node, clientState, options) {
   })
 
   node.on('peer:connect', (peerInfo) => {
+    attemptDial(peerInfo)
     peers.push(peerInfo)
     // attempt to upgrage to kitsunet connection
     // attemptDial(peerInfo)
@@ -158,7 +157,7 @@ module.exports = function (client, node, clientState, options) {
     const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
     if (alreadyExists) return
     discoveredPeers.push(peerInfo)
-    attemptDial(peerInfo)
+    // attemptDial(peerInfo)
     // connectIfLonely({ minPeers })
   })
 
