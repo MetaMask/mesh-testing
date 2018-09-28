@@ -50,7 +50,7 @@ async function createNode (id, addrs, callback) {
       // peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ipfs/${peerIdStr}`)
       // peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ws/ipfs/${peerIdStr}`)
       // if (isNode) peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ipfs/${peerIdStr}`)
-      peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ws/p2p-webrtc-circuit/ipfs/${peerIdStr}`)
+      // peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ws/p2p-webrtc-circuit/ipfs/${peerIdStr}`)
     }
 
     const node = new Node(peerInfo, {
