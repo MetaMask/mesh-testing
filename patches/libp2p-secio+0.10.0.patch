@@ -1,0 +1,44 @@
+patch-package
+--- a/node_modules/libp2p-secio/src/handshake/crypto.js
++++ b/node_modules/libp2p-secio/src/handshake/crypto.js
+@@ -64,10 +64,19 @@ exports.identify = (state, msg, callback) => {
+   log('1.1 identify')
+ 
+   state.proposalEncoded.in = msg
+-  state.proposal.in = pbm.Propose.decode(msg)
++  try {
++    state.proposal.in = pbm.Propose.decode(msg)
++  } catch (err) {
++    return callback(err)
++  }
++
+   const pubkey = state.proposal.in.pubkey
+ 
+-  state.key.remote = crypto.keys.unmarshalPublicKey(pubkey)
++  try {
++    state.key.remote = crypto.keys.unmarshalPublicKey(pubkey)
++  } catch(err) {
++    return callback(err)
++  }
+ 
+   PeerId.createFromPubKey(pubkey.toString('base64'), (err, remoteId) => {
+     if (err) {
+@@ -133,8 +142,17 @@ exports.selectProtocols = (state, callback) => {
+ exports.verify = (state, msg, callback) => {
+   log('2.1. verify')
+ 
+-  state.exchange.in = pbm.Exchange.decode(msg)
++  try {
++    state.exchange.in = pbm.Exchange.decode(msg)
++  } catch (err) {
++    return callback(err)
++  }
++
+   state.ephemeralKey.remote = state.exchange.in.epubkey
++  if (!state.ephemeralKey.remote) {
++    return callback(new Error('remote key required!'))
++  }
++
+ 
+   const selectionIn = Buffer.concat([
+     state.proposalEncoded.in,

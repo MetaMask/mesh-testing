@@ -16,24 +16,33 @@ const removeFromArray = require('../util/remoteFromArray')
 
 const kitsunetPeers = []
 
-const peerPingInterval = 1 * min
-const peerPingTimeout = 20 * sec
+const peers = []
+const maxPeers = 500
 
-module.exports = function (client, node, clientState) {
+const discoveredPeers = []
+const maxDiscovered = 100
+
+const peerPingInterval = 1 * min
+const peerPingTimeout = 40 * sec
+
+const autoConnectAttemptInterval = 10 * sec
+
+module.exports = function (client, node, clientState, options) {
+  options = options || { skipDial: false }
   async function attemptDial (peerInfo) {
     // allow "skipDial" option from url (for debugging)
-    if (global.location.search.includes('skipDial')) return
+    if (options['skipDial']) return
     const peerId = peerInfo.id.toB58String()
-    client.checkAndHandgup(peerInfo)
+    checkAndHandgup(peerInfo)
     // check if already connected
     const alreadyConnected = !!clientState.peers[peerId]
     if (alreadyConnected) {
-      // console.log('MetaMask Mesh Testing - kitsunet already connected', peerId)
+      console.log('MetaMask Mesh Testing - kitsunet already connected', peerId)
       return
     }
     // attempt connection
     try {
-      // console.log('MetaMask Mesh Testing - kitsunet dial', peerId)
+      console.log('MetaMask Mesh Testing - kitsunet dial', peerId)
       const conn = await pify(node.dialProtocol).call(node, peerInfo, '/kitsunet/test/0.0.1')
       console.log('MetaMask Mesh Testing - kitsunet dial success', peerId)
       await connectKitsunet(peerInfo, conn)
@@ -128,18 +137,57 @@ module.exports = function (client, node, clientState) {
   })
 
   node.on('peer:connect', (peerInfo) => {
-    // attempt to upgrage to kitsunet connection
     attemptDial(peerInfo)
+    peers.push(peerInfo)
+    // attempt to upgrage to kitsunet connection
+    // attemptDial(peerInfo)
   })
 
   node.on('peer:disconnect', (peerInfo) => {
     const peerId = peerInfo.id.toB58String()
+    removeFromArray(peerInfo, peers)
     disconnectKitsunetPeer(peerId)
   })
+
+  node.on('peer:discovery', (peerInfo) => {
+    const peerId = peerInfo.id.toB58String()
+    console.log('MetaMask Mesh - node/peer:discovery', peerInfo.id.toB58String())
+    // add to discovered peers list
+    if (discoveredPeers.length >= maxDiscovered) return
+    const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
+    if (alreadyExists) return
+    discoveredPeers.push(peerInfo)
+    // attemptDial(peerInfo)
+    // connectIfLonely({ minPeers })
+  })
+
+  function connectIfLonely ({ minPeers }) {
+    // if (peers.length >= minPeers) return
+    const peerInfo = discoveredPeers.shift()
+    if (!peerInfo) return
+    const peerId = peerInfo.id.toB58String()
+    console.log('MetaMask Mesh Testing - kitsunet random dial:', peerId)
+    attemptDial(peerInfo)
+  }
+
+  function autoConnectWhenLonely () {
+    setInterval(() => {
+      connectIfLonely({ minPeers: 20 })
+    }, autoConnectAttemptInterval)
+  }
+
+  function checkAndHandgup (peerInfo) {
+    // too many peers
+    if (peers.length > maxPeers) {
+      client.hangupPeer(peerInfo)
+    }
+  }
 
   return {
     attemptDial,
     disconnectKitsunetPeer,
-    connectKitsunet
+    connectKitsunet,
+    autoConnectWhenLonely,
+    checkAndHandgup
   }
 }

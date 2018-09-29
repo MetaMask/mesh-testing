@@ -1,13 +1,19 @@
 'use strict'
 
+const isNode = require('detect-node')
+
 // setup error reporting before anything else
 const buildVersion = String(process.env.BUILD_VERSION || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
-global.Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549',
-  { release: buildVersion })
-  .install()
+if (!isNode) {
+  global.Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549',
+    { release: buildVersion })
+    .install()
+}
 
 require('events').EventEmitter.defaultMaxListeners = 20
+
+process.on('error', (err) => console.log(err))
 
 const qs = require('qs')
 const pify = require('pify')
@@ -32,7 +38,7 @@ const createBlockTracker = require('./block-tracker')
 const createEbt = require('./ebt')
 const createStats = require('./stats')
 
-const telemetryPingTimeout = sec * 80
+const telemetryPingTimeout = sec * 10
 const heartBeatInterval = telemetryPingTimeout * 2
 
 const peers = []
@@ -52,7 +58,7 @@ const clientState = {
   ebt: [],
   ebtState: {},
   block: {},
-  blockTrackerEnabled: false,
+  blockTrackerEnabled: false
 }
 
 global.clientState = clientState
@@ -65,15 +71,26 @@ function randomFromRange (min, max) {
 
 async function setupClient () {
   // connect to telemetry server
-  const opts = qs.parse(window.location.search, { ignoreQueryPrefix: true })
-  const devMode = (!opts.prod && global.location.hostname === 'localhost')
+  const opts = isNode ? process.argv
+    .slice(2)
+    .map(arg => arg.split('='))
+    .reduce((args, [value, key]) => {
+      args[value] = key
+      return args
+    }, {}) : qs.parse(self.location.search, { ignoreQueryPrefix: true })
+  const devMode = isNode ? opts['devMode'] || true : (!opts.prod && global.location.hostname === 'localhost')
+  const connectTo = opts['dial'] ? opts['dial'].split(',') : []
+  const addrs = opts['addrs'] ? opts['addrs'].split(',') : null
+  const id = opts['id']
+  const privKey = opts['privKey']
+  const pubKey = opts['pubKey']
 
-  const node = await pify(createLibp2pNode)()
+  const node = await pify(createLibp2pNode)({ id: { id, privKey, pubKey }, addrs, devMode })
   // configure libp2p client
   const peerId = node.idStr
 
   const stats = createStats(node, clientState)
-  const client = createClient(clientState, node, stats)
+  const client = createClient(clientState, node, stats, opts)
 
   // start libp2p node
   await pify(client.startLibp2pNode)()
@@ -104,6 +121,15 @@ async function setupClient () {
   // schedule refresh every hour so everyone stays hot and fresh
   client.restartWithDelay(randomFromRange(1 * hour, 1.5 * hour))
 
+  setInterval(() => {
+    connectTo.forEach(async (a) => {
+      node.dial(a, (err) => {
+        if (err) return console.log(err)
+        console.log(`dialed ${a.toString()}`)
+      })
+    })
+  }, 10 * 1000)
+
   // reconect on timeout
   while (true) {
     try {
@@ -127,11 +153,13 @@ function setupRpc ({ client, multicast, pubsub, ebt, blockTracker, serverConn })
 }
 
 function setupComponents (client, node, clientState) {
-  createKitsunet(client, node, clientState)
+  const kitsunet = createKitsunet(client, node, clientState)
   const pubsub = createPubsub(client, node, clientState)
   const multicast = createMulticast(client, node, clientState)
   const blockTracker = createBlockTracker(node, clientState)
   const ebt = createEbt(client, node, clientState)
+
+  kitsunet.autoConnectWhenLonely(node, { minPeers: 20 })
 
   return { pubsub, multicast, blockTracker, ebt }
 }
