@@ -42,6 +42,8 @@ function activateBundle (src) {
 }
 
 function checkThreshold ({ rolloutThreshold }) {
+  if (localStorage.getItem('forceTest') === 'true') return true
+
   // load or setup id
   let id = Number(localStorage.getItem('id'))
   if (!id) {
