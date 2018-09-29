@@ -2,10 +2,11 @@
 const ROLLOUT_THRESHOLD = 1000
 let matchesThreshold
 
+const isAdmin = document.location.search.includes('admin')
+
 start()
 
-function start() {
-
+function start () {
   try {
     matchesThreshold = checkThreshold({ rolloutThreshold: ROLLOUT_THRESHOLD })
   } catch (err) {
@@ -14,7 +15,10 @@ function start() {
     return
   }
 
-  if (matchesThreshold) {
+  if (isAdmin) {
+    console.log('MetaMask Mesh Testing - loading admin panel')
+    activate()
+  } if (matchesThreshold) {
     console.log('MetaMask Mesh Testing - threshold matched -- activating test')
     activate()
   } else if (location.hostname === 'localhost') {
@@ -25,20 +29,19 @@ function start() {
   }
 }
 
-function activate(){
-  const isAdmin = document.location.search.includes('admin')
+function activate () {
   const src = isAdmin ? './admin-bundle.js' : './client-bundle.js'
   activateBundle(src)
 }
 
-function activateBundle(src){
+function activateBundle (src) {
   const script = document.createElement('script')
   script.src = src
   script.type = 'text/javascript'
   document.body.appendChild(script)
 }
 
-function checkThreshold({ rolloutThreshold }){
+function checkThreshold ({ rolloutThreshold }) {
   // load or setup id
   let id = Number(localStorage.getItem('id'))
   if (!id) {
@@ -51,6 +54,6 @@ function checkThreshold({ rolloutThreshold }){
   return matchesThreshold
 }
 
-function generateId() {
+function generateId () {
   return Math.floor(Math.random() * 1e9)
 }
