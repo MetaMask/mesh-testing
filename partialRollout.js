@@ -18,7 +18,7 @@ function start () {
   if (isAdmin) {
     console.log('MetaMask Mesh Testing - loading admin panel')
     activate()
-  } if (matchesThreshold) {
+  } else if (matchesThreshold) {
     console.log('MetaMask Mesh Testing - threshold matched -- activating test')
     activate()
   } else if (location.hostname === 'localhost') {
