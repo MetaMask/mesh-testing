@@ -52,12 +52,12 @@ class Node extends Libp2p {
       config: {
         peerDiscovery: {
           bootstrap: {
-            interval: 2 * 1000,
+            interval: 40 * 1000,
             enabled: true,
             list: bootstrapers
           },
           mdns: { // mdns options
-            interval: 30 * 1000, // ms
+            interval: 40 * 1000, // ms
             enabled: true
           }
         },

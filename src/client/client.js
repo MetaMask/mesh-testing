@@ -6,7 +6,6 @@ const { sec } = require('../util/time')
 const timeout = require('../util/timeout')
 
 const clientStateSubmitInterval = 15 * sec
-const noop = () => {}
 module.exports = function (clientState, node, stats) {
   let telemetryRpc = null
 
@@ -60,7 +59,7 @@ module.exports = function (clientState, node, stats) {
 
       const doRndvz = () => {
         node.rndvzDiscovery.unregister('/kitsunet/rndvz/1.0.0')
-        node.rndvzDiscovery.register('/kitsunet/rndvz/1.0.0', 9)
+        node.rndvzDiscovery.register('/kitsunet/rndvz/1.0.0', 40)
       }
 
       doRndvz()
