@@ -151,7 +151,7 @@ module.exports = function (client, node, clientState, options) {
 
   node.on('peer:discovery', (peerInfo) => {
     const peerId = peerInfo.id.toB58String()
-    console.log('MetaMask Mesh - node/peer:discovery', peerInfo.id.toB58String())
+    // console.log('MetaMask Mesh - node/peer:discovery', peerInfo.id.toB58String())
     // add to discovered peers list
     if (discoveredPeers.length >= maxDiscovered) return
     const alreadyExists = discoveredPeers.find(peerInfo => peerInfo.id.toB58String() === peerId)
