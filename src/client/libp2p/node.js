@@ -9,6 +9,7 @@ const Libp2p = require('libp2p')
 const defaultsDeep = require('@nodeutils/defaults-deep')
 const WStar = require('libp2p-webrtc-star')
 // const MDNS = require('libp2p-mdns')
+const DHT = require('libp2p-kad-dht')
 
 const isNode = require('detect-node')
 
@@ -47,7 +48,8 @@ class Node extends Libp2p {
           Bootstrap,
           wstar.discovery
           // MDNS
-        ]
+        ],
+        dht: DHT,
       },
       config: {
         peerDiscovery: {
@@ -67,6 +69,10 @@ class Node extends Libp2p {
             enabled: false,
             active: false
           }
+        },
+        dht: {},
+        EXPERIMENTAL: {
+          dht: true,
         }
       },
       connectionManager: {
