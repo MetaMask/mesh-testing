@@ -85,12 +85,16 @@ async function setupClient () {
   const privKey = opts['privKey']
   const pubKey = opts['pubKey']
 
-  const node = await pify(createLibp2pNode)({ id: { id, privKey, pubKey }, addrs, devMode })
   // configure libp2p client
-  const peerId = node.idStr
-
+  const node = await pify(createLibp2pNode)({ id: { id, privKey, pubKey }, addrs, devMode })
   const stats = createStats(node, clientState)
   const client = createClient(clientState, node, stats, opts)
+  const peerId = node.idStr
+
+  // for debugging
+  global.node = node
+  global.client = client
+  global.Buffer = Buffer
 
   // start libp2p node
   await pify(client.startLibp2pNode)()
