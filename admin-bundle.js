@@ -41467,9 +41467,9 @@ function setupDom({ container }) {
 }
 
 },{"raf-throttle":"/home/user/Development/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/home/user/Development/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/home/user/Development/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/home/user/Development/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/home/user/Development/mesh-testing/node_modules/virtual-dom/patch.js"}],"/home/user/Development/mesh-testing/src/admin/index.js":[function(require,module,exports){
-(function (global){
+(function (global,Buffer){
 // setup error reporting before anything else
-const buildVersion = String(1542872033 || 'development')
+const buildVersion = String(1542874574 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -41491,6 +41491,9 @@ const { createJsonParseStream } = require('../util/jsonSerializeStream')
 const rpc = require('../rpc/rpc')
 const baseRpcHandler = require('../rpc/base')
 const serverAdminRpcHandler = require('../rpc/serverAdmin')
+
+// useful for debugging
+global.Buffer = Buffer
 
 setupAdmin().catch(console.error)
 
@@ -41533,9 +41536,9 @@ async function setupAdmin () {
   // in admin mode, we dont boot libp2p node
 }
 
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
 
-},{"../network/telemetry":"/home/user/Development/mesh-testing/src/network/telemetry.js","../rpc/base":"/home/user/Development/mesh-testing/src/rpc/base.js","../rpc/rpc":"/home/user/Development/mesh-testing/src/rpc/rpc.js","../rpc/serverAdmin":"/home/user/Development/mesh-testing/src/rpc/serverAdmin.js","../util/jsonPatchStream":"/home/user/Development/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/home/user/Development/mesh-testing/src/util/jsonSerializeStream.js","./app":"/home/user/Development/mesh-testing/src/admin/app.js","end-of-stream":"/home/user/Development/mesh-testing/node_modules/end-of-stream/index.js","events":"/home/user/Development/mesh-testing/node_modules/browserify/node_modules/events/events.js","obs-store":"/home/user/Development/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/home/user/Development/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/home/user/Development/mesh-testing/node_modules/pump/index.js","qs":"/home/user/Development/mesh-testing/node_modules/qs/lib/index.js"}],"/home/user/Development/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
+},{"../network/telemetry":"/home/user/Development/mesh-testing/src/network/telemetry.js","../rpc/base":"/home/user/Development/mesh-testing/src/rpc/base.js","../rpc/rpc":"/home/user/Development/mesh-testing/src/rpc/rpc.js","../rpc/serverAdmin":"/home/user/Development/mesh-testing/src/rpc/serverAdmin.js","../util/jsonPatchStream":"/home/user/Development/mesh-testing/src/util/jsonPatchStream.js","../util/jsonSerializeStream":"/home/user/Development/mesh-testing/src/util/jsonSerializeStream.js","./app":"/home/user/Development/mesh-testing/src/admin/app.js","buffer":"/home/user/Development/mesh-testing/node_modules/buffer/index.js","end-of-stream":"/home/user/Development/mesh-testing/node_modules/end-of-stream/index.js","events":"/home/user/Development/mesh-testing/node_modules/browserify/node_modules/events/events.js","obs-store":"/home/user/Development/mesh-testing/node_modules/obs-store/index.js","obs-store/lib/asStream":"/home/user/Development/mesh-testing/node_modules/obs-store/lib/asStream.js","pump":"/home/user/Development/mesh-testing/node_modules/pump/index.js","qs":"/home/user/Development/mesh-testing/node_modules/qs/lib/index.js"}],"/home/user/Development/mesh-testing/src/admin/simulation.js":[function(require,module,exports){
 const d3 = require('d3')
 
 const graphWidth = 960
