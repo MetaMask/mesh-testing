@@ -12,7 +12,9 @@ function createDht (client, node, clientState) {
 
     clientState.dht = {
       data: node._dht.datastore.data,
-      routingTable: node._dht.routingTable.kb.toArray().map(contact => ({ id: contact.id })),
+      routingTable: node._dht.routingTable.kb.toArray().map(contact => {
+        return { id: contact.peer.toB58String() }
+      }),
     }
   }, 1000)
 
