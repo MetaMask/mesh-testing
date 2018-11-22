@@ -37,6 +37,7 @@ const createMulticast = require('./multicast')
 const createBlockTracker = require('./block-tracker')
 const createEbt = require('./ebt')
 const createStats = require('./stats')
+const createDht = require('./dht')
 
 const telemetryPingTimeout = sec * 10
 const heartBeatInterval = telemetryPingTimeout * 2
@@ -162,8 +163,9 @@ function setupComponents (client, node, clientState) {
   const multicast = createMulticast(client, node, clientState)
   const blockTracker = createBlockTracker(node, clientState)
   const ebt = createEbt(client, node, clientState)
+  const dht = createDht(client, node, clientState)
 
   kitsunet.autoConnectWhenLonely(node, { minPeers: 20 })
 
-  return { pubsub, multicast, blockTracker, ebt }
+  return { pubsub, multicast, blockTracker, ebt, dht }
 }
