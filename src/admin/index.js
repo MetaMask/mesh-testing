@@ -22,6 +22,9 @@ const rpc = require('../rpc/rpc')
 const baseRpcHandler = require('../rpc/base')
 const serverAdminRpcHandler = require('../rpc/serverAdmin')
 
+// useful for debugging
+global.Buffer = Buffer
+
 setupAdmin().catch(console.error)
 
 async function setupAdmin () {
