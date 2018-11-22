@@ -40723,6 +40723,7 @@ function startApp (opts = {}) {
     'pubsub',
     'multicast',
     'ebt',
+    'dht',
     'pie(tx)',
     'pie(rx)',
     'mesh',
@@ -40825,7 +40826,12 @@ function startApp (opts = {}) {
         break
     }
     const latencyMode = (viewMode === 'ping')
-    const newGraph = buildGraph(clientData, networkFilter, latencyMode)
+    let newGraph
+    if (viewMode === 'dht') {
+      newGraph = buildGraphForDht(clientData, networkFilter, latencyMode)
+    } else {
+      newGraph = buildGraphForProtocol(clientData, networkFilter, latencyMode)
+    }
     currentGraph = mergeGraph(currentGraph, newGraph)
     // reset simulation
     setupSimulationForces(simulation, currentGraph)
@@ -40918,9 +40924,6 @@ function renderNodeSelect (state, actions) {
 function renderGraph (state, actions) {
   const { viewMode } = state
   switch (viewMode) {
-    case 'normal': return renderGraphNormal(state, actions)
-    case 'kitsunet': return renderGraphNormal(state, actions)
-    case 'ping': return renderGraphNormal(state, actions)
     case 'pie(tx)': return renderGraphPieTransportTx(state, actions)
     case 'pie(rx)': return renderGraphPieTransportRx(state, actions)
     case 'mesh': return renderGraphMesh(state, actions)
@@ -40928,6 +40931,7 @@ function renderGraph (state, actions) {
     case 'multicast': return renderGraphPubsub('multicast', state, actions)
     case 'ebt': return renderGraphEbt('ebt', state, actions)
     case 'block': return renderGraphBlocks(state, actions)
+    default: return renderGraphNormal(state, actions)
   }
 }
 
@@ -41375,9 +41379,25 @@ StatsObj shape
 }
 */
 
-function buildGraph (networkState, networkFilter, latencyMode) {
+function buildGraphForDht (networkState) {
   const graph = { nodes: [], links: [] }
 
+  buildGraphBasicNodes(networkState, graph)
+  buildGraphDhtLinks(networkState, graph)
+
+  return graph
+}
+
+function buildGraphForProtocol (networkState, networkFilter, latencyMode) {
+  const graph = { nodes: [], links: [] }
+
+  buildGraphBasicNodes(networkState, graph)
+  buildGraphStatsLinks(networkState, graph, networkFilter, latencyMode)
+
+  return graph
+}
+
+function buildGraphBasicNodes (networkState, graph) {
   // first add kitsunet nodes
   Object.keys(networkState).forEach((clientId) => {
     // const peerData = networkState[clientId].peers
@@ -41385,41 +41405,80 @@ function buildGraph (networkState, networkFilter, latencyMode) {
     const newNode = { id: clientId, type: 'good' }
     graph.nodes.push(newNode)
   })
+}
 
-  // then links
+function buildGraphDhtLinks (networkState, graph) {
+  // build links from stats
+  Object.entries(networkState).forEach(([clientId, clientData]) => {
+    const dhtData = clientData.dht || {}
+    const peers = dhtData.routingTable
+    if (!peers) return
+
+    const links = peers.map(({ id: peerId }) => {
+      const source = clientId
+      const target = peerId
+      return {
+        id: `${source}-${target}`,
+        source,
+        target,
+        distance: 30,
+        value: 2,
+      }
+    })
+
+    graph.links = graph.links.concat(links)
+  })
+
+  buildGraphAddMissingNodes(networkState, graph)
+}
+
+function buildGraphStatsLinks (networkState, graph, networkFilter, latencyMode) {
+  // build links from stats
   Object.entries(networkState).forEach(([clientId, clientData]) => {
     const clientStats = clientData.stats || {}
     const peers = clientStats.peers
     if (!peers) return
 
-    Object.entries(peers).forEach(([peerId, peerStats]) => {
-      // if connected to a missing node, create missing node
-      const alreadyExists = !!graph.nodes.find(item => item.id === peerId)
-      if (!alreadyExists) {
-        const newNode = { id: peerId, type: 'missing' }
-        graph.nodes.push(newNode)
-      }
-      const protocolNames = Object.keys(peerStats.protocols)
-      // abort if network filter miss
-      if (networkFilter && !protocolNames.some(name => name.includes(networkFilter))) return
+    let links = Object.entries(peers).map(([peerId, peerStats]) => {
+      const source = clientId
+      const target = peerId
       const peerData = clientData.peers[peerId]
       const ping = peerData ? peerData.ping : null
       const pingDistance = 60 * Math.log(ping || 1000)
       const distance = latencyMode ? pingDistance : 30
-      const linkValue = 2
-      const linkId = `${clientId}-${peerId}`
-      const newLink = {
-        id: linkId,
-        source: clientId,
-        target: peerId,
-        value: linkValue,
+      return {
+        id: `${source}-${target}`,
+        source,
+        target,
         distance,
+        value: 2,
       }
-      graph.links.push(newLink)
     })
+    // filter by protocol name
+    if (networkFilter) {
+      links = links.filter(({ target }) => {
+        const peerStats = peers[target]
+        const protocolNames = Object.keys(peerStats.protocols)
+        return protocolNames.some(name => name.includes(networkFilter))
+      })
+    }
+
+    graph.links = graph.links.concat(links)
   })
 
-  return graph
+  buildGraphAddMissingNodes(networkState, graph)
+}
+
+function buildGraphAddMissingNodes (networkState, graph) {
+  graph.links.forEach((link) => {
+    const { target } = link
+    // if connected to a missing node, create missing node
+    const alreadyExists = !!graph.nodes.find(item => item.id === target)
+    if (!alreadyExists) {
+      const newNode = { id: target, type: 'missing' }
+      graph.nodes.push(newNode)
+    }
+  })
 }
 
 function formatBytes (bytes) {
@@ -41469,7 +41528,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/home/user/Development/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/home/user/Development/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/home/user/Development/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/home/user/Development/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/home/user/Development/mesh-testing/node_modules/virtual-dom/patch.js"}],"/home/user/Development/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global,Buffer){
 // setup error reporting before anything else
-const buildVersion = String(1542875478 || 'development')
+const buildVersion = String(1542897891 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
