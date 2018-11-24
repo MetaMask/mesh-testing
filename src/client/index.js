@@ -29,7 +29,7 @@ async function start() {
   const id = await pify(PeerId.create)()
   const peerInfo = await pify(PeerInfo.create)(id)
   const peerIdStr = peerInfo.id.toB58String()
-  const identity = peerInfo
+  const identity = id.toJSON()
   const addrs = [`/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`]
 
   console.log('kitsunet booting')
