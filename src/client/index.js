@@ -38,7 +38,7 @@ async function start() {
   console.log('kitsunet created')
 
   // manually configure telemetry
-  const devMode = false
+  const devMode = window.location.hostname === 'localhost'
   const { telemetry } = await createTelemetry({
     node: kitsunet._node,
     kitsunetPeer: kitsunet._kitsunetPeer,
