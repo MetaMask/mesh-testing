@@ -9,9 +9,7 @@ start().catch(console.error)
 async function start() {
 
   const options = {
-    libp2pBootstrap: [
-      `/dns4/monkey.musteka.la/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC`
-    ],
+    libp2pBootstrap: [],
     // rpcUrl,
     // rpcEnableTracker,
     ethAddrs: [
@@ -40,7 +38,7 @@ async function start() {
   console.log('kitsunet created')
 
   // manually configure telemetry
-  const devMode = window.location.hostname === 'localhost'
+  const devMode = window.location.hostname === 'localhost' && !window.location.search.includes('prod')
   const { telemetry } = await createTelemetry({
     node: kitsunet._node,
     kitsunetPeer: kitsunet._kitsunetPeer,
