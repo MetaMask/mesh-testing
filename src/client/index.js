@@ -9,7 +9,9 @@ start().catch(console.error)
 async function start() {
 
   const options = {
-    libp2pBootstrap: [],
+    libp2pBootstrap: [
+      `/dns4/monkey.musteka.la/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC`
+    ],
     // rpcUrl,
     // rpcEnableTracker,
     ethAddrs: [
