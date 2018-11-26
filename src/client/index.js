@@ -78,7 +78,7 @@ async function start() {
   console.log('kitsunet started')
 
   // restart client after random time
-  const timeUntilRestart = randomFromRange(1, 2) * hour
+  const timeUntilRestart = randomFromRange(12, 24) * hour
   await timeout(timeUntilRestart)
   window.location.reload()
 
