@@ -8,6 +8,8 @@ const { hour } = require('../util/time')
 const timeout = require('../util/timeout')
 const randomFromRange = require('../util/randomFromRange')
 
+const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
+
 start().catch(console.error)
 
 async function start() {
@@ -51,6 +53,7 @@ async function start() {
     devMode,
     // submitInterval: 1e3,
     getState: () => ({
+      version: BUILD_VERSION,
       libp2p: libp2pStats.getState(),
       kitsunet: kitsunet.getState(),
     }),
