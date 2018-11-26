@@ -51,7 +51,6 @@ async function setupAdmin () {
   global.adminRpc = adminRpc
   console.log('MetaMask Mesh Testing - connected!')
 
-  console.log(serverConnection)
   const updateStream = await serverRpc.createNetworkUpdateStream()
   pump(
     updateStream,
