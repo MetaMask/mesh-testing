@@ -741,15 +741,16 @@ function buildGraphDhtLinks (networkState, graph) {
 function buildGraphStatsLinks (networkState, graph, networkFilter, latencyMode) {
   // build links from stats
   Object.entries(networkState).forEach(([clientId, clientData]) => {
-    const clientStats = clientData.stats || {}
-    const peers = clientStats.peers
+    const libp2pStats = clientData.libp2p || {}
+    const clientTrafficStats = libp2pStats.traffic || {}
+    const peers = clientTrafficStats.peers
     if (!peers) return
 
     let links = Object.entries(peers).map(([peerId, peerStats]) => {
       const source = clientId
       const target = peerId
-      const peerData = clientData.peers[peerId]
-      const ping = peerData ? peerData.ping : null
+      const kitsunetPeerData = clientData.kitsunet.peers[peerId]
+      const ping = kitsunetPeerData ? kitsunetPeerData.ping : null
       const pingDistance = 60 * Math.log(ping || 1000)
       const distance = latencyMode ? pingDistance : 30
       return {
