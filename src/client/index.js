@@ -4,6 +4,9 @@ const Libp2pStats = require('../util/stats')
 const pify = require('pify')
 const PeerId = require('peer-id')
 const PeerInfo = require('peer-info')
+const { hour } = require('../util/time')
+const timeout = require('../util/timeout')
+const randomFromRange = require('../util/randomFromRange')
 
 start().catch(console.error)
 
@@ -52,6 +55,7 @@ async function start() {
     }),
   })
 
+  // start stats reporting services
   libp2pStats.start()
   telemetry.start()
 
@@ -61,6 +65,7 @@ async function start() {
   global.kitsunet = kitsunet
   global.telemetry = telemetry
 
+  // log latest tracker datas
   blockTracker.on('latest', (block) => {
     console.log('blockTracker', block)
   })
@@ -69,8 +74,12 @@ async function start() {
   })
 
   // start it up
-
   await kitsunet.start()
   console.log('kitsunet started')
+
+  // restart client after random time
+  const timeUntilRestart = randomFromRange(1, 2) * hour
+  await timeout(timeUntilRestart)
+  window.location.reload()
 
 }
