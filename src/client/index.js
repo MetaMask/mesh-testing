@@ -1,5 +1,6 @@
 const kitsunetFactory = require('kitsunet')
-const createTelemetry = require('kitsunet/src/telemetry')
+const TelemetryClient = require('../telemetry')
+const Libp2pStats = require('../util/stats')
 const pify = require('pify')
 const PeerId = require('peer-id')
 const PeerInfo = require('peer-info')
@@ -7,6 +8,8 @@ const PeerInfo = require('peer-info')
 start().catch(console.error)
 
 async function start() {
+
+  const devMode = window.location.hostname === 'localhost' && !window.location.search.includes('prod')
 
   const options = {
     libp2pBootstrap: [],
@@ -33,19 +36,24 @@ async function start() {
   const addrs = [`/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`]
 
   console.log('kitsunet booting')
-  const { providerTools, kitsunet } = await kitsunetFactory({ options, identity, addrs })
+  const { providerTools, kitsunet, node } = await kitsunetFactory({ options, identity, addrs })
   const { blockTracker, sliceTracker } = providerTools
   console.log('kitsunet created')
 
-  // manually configure telemetry
-  const devMode = window.location.hostname === 'localhost' && !window.location.search.includes('prod')
-  const { telemetry } = await createTelemetry({
-    node: kitsunet._node,
-    kitsunetPeer: kitsunet._kitsunetPeer,
+  const libp2pStats = new Libp2pStats({ node })
+
+  // configure telemetry
+  const telemetry = new TelemetryClient({
     devMode,
     // submitInterval: 1e3,
+    getState: () => ({
+      libp2p: libp2pStats.getState(),
+      kitsunet: kitsunet.getState(),
+    }),
   })
-  kitsunet._telemetry = telemetry
+
+  libp2pStats.start()
+  telemetry.start()
 
   // for debugging
   global.Buffer = Buffer
