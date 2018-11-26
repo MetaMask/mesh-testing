@@ -1,5 +1,6 @@
 'use strict'
 
+const assert = require('assert')
 const { createRpc } = require('./rpc')
 const createClientInterface = require('./interfaces/client')
 const createServerInterface = require('./interfaces/server')
@@ -15,6 +16,8 @@ class TelemetryClient {
     this.getState = getState
     this.clientId = clientId
     this.submitInterval = submitInterval || DEFAULT_SUBMIT_INTERVAL
+
+    assert(clientId, 'must provide clientId')
 
     const connection = connectViaPost({ devMode })
     this.telemetryRpc = createRpc({

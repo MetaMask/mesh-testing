@@ -34,9 +34,9 @@ async function start() {
 
   const id = await pify(PeerId.create)()
   const peerInfo = await pify(PeerInfo.create)(id)
-  const peerIdStr = peerInfo.id.toB58String()
+  const clientId = peerInfo.id.toB58String()
   const identity = id.toJSON()
-  const addrs = [`/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`]
+  const addrs = [`/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${clientId}`]
 
   console.log('kitsunet booting')
   const { providerTools, kitsunet, node } = await kitsunetFactory({ options, identity, addrs })
@@ -47,6 +47,7 @@ async function start() {
 
   // configure telemetry
   const telemetry = new TelemetryClient({
+    clientId,
     devMode,
     // submitInterval: 1e3,
     getState: () => ({
