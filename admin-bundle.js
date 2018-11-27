@@ -41435,15 +41435,16 @@ function buildGraphDhtLinks (networkState, graph) {
 function buildGraphStatsLinks (networkState, graph, networkFilter, latencyMode) {
   // build links from stats
   Object.entries(networkState).forEach(([clientId, clientData]) => {
-    const clientStats = clientData.stats || {}
-    const peers = clientStats.peers
+    const libp2pStats = clientData.libp2p || {}
+    const clientTrafficStats = libp2pStats.traffic || {}
+    const peers = clientTrafficStats.peers
     if (!peers) return
 
     let links = Object.entries(peers).map(([peerId, peerStats]) => {
       const source = clientId
       const target = peerId
-      const peerData = clientData.peers[peerId]
-      const ping = peerData ? peerData.ping : null
+      const kitsunetPeerData = clientData.kitsunet.peers[peerId]
+      const ping = kitsunetPeerData ? kitsunetPeerData.ping : null
       const pingDistance = 60 * Math.log(ping || 1000)
       const distance = latencyMode ? pingDistance : 30
       return {
@@ -41528,7 +41529,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/home/user/Development/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/home/user/Development/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/home/user/Development/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/home/user/Development/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/home/user/Development/mesh-testing/node_modules/virtual-dom/patch.js"}],"/home/user/Development/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global,Buffer){
 // setup error reporting before anything else
-const buildVersion = String(1543235215 || 'development')
+const buildVersion = String(1543283152 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -41580,7 +41581,6 @@ async function setupAdmin () {
   global.adminRpc = adminRpc
   console.log('MetaMask Mesh Testing - connected!')
 
-  console.log(serverConnection)
   const updateStream = await serverRpc.createNetworkUpdateStream()
   pump(
     updateStream,
