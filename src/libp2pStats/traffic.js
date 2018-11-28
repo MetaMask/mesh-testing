@@ -7,7 +7,6 @@ const log = require('debug')('kitsunet:telemetry:stats')
 class Libp2pTrafficStats {
 
   constructor ({ node }) {
-    super()
     assert(node, 'node is required')
     this._node = node
     this._peerStats = {}
