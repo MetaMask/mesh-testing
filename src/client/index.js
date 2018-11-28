@@ -1,6 +1,6 @@
 const kitsunetFactory = require('kitsunet')
 const TelemetryClient = require('../telemetry')
-const Libp2pStats = require('../stats/index')
+const Libp2pStats = require('../libp2pStats/index')
 const pify = require('pify')
 const PeerId = require('peer-id')
 const PeerInfo = require('peer-info')
