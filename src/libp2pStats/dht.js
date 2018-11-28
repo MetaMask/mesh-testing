@@ -5,15 +5,18 @@ class Libp2pDhtStats {
   }
 
   start () {}
-  
+
   stop () {}
 
   getState () {
     const node = this._node
-    if (!node._dht) return
+    const dht = node._dht
+    if (!dht) return
+    const kBucket = dht.routingTable.kb
+    if (!kBucket) return
     return {
-      data: node._dht.datastore.data,
-      routingTable: node._dht.routingTable.kb.toArray().map(contact => {
+      data: dht.datastore.data,
+      routingTable: kBucket.toArray().map(contact => {
         return { id: contact.peer.toB58String() }
       }),
     }
