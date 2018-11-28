@@ -716,7 +716,8 @@ function buildGraphBasicNodes (networkState, graph) {
 function buildGraphDhtLinks (networkState, graph) {
   // build links from stats
   Object.entries(networkState).forEach(([clientId, clientData]) => {
-    const dhtData = clientData.dht || {}
+    const libp2pData = clientData.libp2p || {}
+    const dhtData = libp2pData.dht || {}
     const peers = dhtData.routingTable
     if (!peers) return
 
