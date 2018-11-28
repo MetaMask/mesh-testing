@@ -1,13 +1,10 @@
 'use strict'
 
 const assert = require('assert')
-const SafeEventEmitter = require('safe-event-emitter')
-
 const Stat = require('libp2p-switch/src/stats/stat')
-
 const log = require('debug')('kitsunet:telemetry:stats')
 
-class Libp2pStats extends SafeEventEmitter {
+class Libp2pTrafficStats {
 
   constructor ({ node }) {
     super()
@@ -35,9 +32,7 @@ class Libp2pStats extends SafeEventEmitter {
   }
 
   getState () {
-    return {
-      traffic: libp2pStatsToJson(this._peerStats)
-    }
+    return libp2pStatsToJson(this._peerStats)
   }
 
   _addPeer (peerInfo) {
@@ -60,7 +55,7 @@ class Libp2pStats extends SafeEventEmitter {
 
 }
 
-module.exports = Libp2pStats
+module.exports = Libp2pTrafficStats
 
 
 const statDirectionToEvent = {
