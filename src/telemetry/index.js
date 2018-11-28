@@ -1,6 +1,7 @@
 'use strict'
 
 const assert = require('assert')
+const isNode = require('detect-node')
 const { createRpc } = require('./rpc')
 const createClientInterface = require('./interfaces/client')
 const createServerInterface = require('./interfaces/server')
@@ -20,11 +21,21 @@ class TelemetryClient {
     assert(clientId, 'must provide clientId')
 
     const connection = connectViaPost({ devMode })
-    this.telemetryRpc = createRpc({
-      clientInterface: createClientInterface(),
+    const telemetryRpc = createRpc({
+      clientInterface: createClientInterface({ restart }),
       serverInterface: createServerInterface(),
       connection,
     })
+    this.telemetryRpc = telemetryRpc
+
+    async function restart () {
+      if (isNode) {
+        console.warn('restart requested from telemetry server...')
+        return
+      }
+      await telemetryRpc.disconnect(clientId)
+      window.location.reload()
+    }
   }
 
   start () {
