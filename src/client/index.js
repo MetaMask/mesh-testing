@@ -82,6 +82,11 @@ async function start() {
   await kitsunet.start()
   console.log('kitsunet started')
 
+  // insert random stuff into dht
+  node.dht.put(Buffer.from('hello'), Buffer.from(clientId), (err, result) => console.log('dht put (hello)', err || result))
+  node.dht.put(Buffer.from(clientId), Buffer.from('it me'), (err, result) => console.log('dht put (clientId)', err || result))
+  node.dht.put(Buffer.from(Math.random().toString()), Buffer.from('correct'), (err, result) => console.log('dht put (random)', err || result))
+
   // restart client after random time
   const timeUntilRestart = randomFromRange(1, 2) * hour
   await timeout(timeUntilRestart)
