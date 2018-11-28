@@ -2,7 +2,7 @@ const Libp2pTrafficStats = require('./traffic')
 const Libp2pDhtStats = require('./dht')
 
 class Libp2pStats {
-  
+
   constructor ({ node }) {
     this.traffic = new Libp2pTrafficStats({ node })
     this.dht = new Libp2pDhtStats({ node })
@@ -24,6 +24,7 @@ class Libp2pStats {
       dht: this.dht.getState(),
     }
   }
+  
 }
 
 module.exports = Libp2pStats
