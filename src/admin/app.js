@@ -12,6 +12,7 @@ const renderGraphPubsub = require('./viz/graph/pubsub')
 const renderGraphEbt = require('./viz/graph/ebt')
 const renderPieChart = require('./viz/pie')
 const { setupSimulation, setupSimulationForces } = require('./simulation')
+const copyToClipboard = require('../util/copyToClipboard')
 
 const graphWidth = 960
 const graphHeight = 600
@@ -297,6 +298,10 @@ function renderSelectedNodePanel (state, actions) {
       h('.app-selected-node', [
         `id: ${shortId}`
       ]),
+
+      h('button', {
+        onclick: () => copyToClipboard(selectedNode)
+      }, 'copy id'),
 
       h('button', {
         onclick: () => actions.pingNode(selectedNode)
