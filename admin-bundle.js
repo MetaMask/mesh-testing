@@ -40706,9 +40706,16 @@ const renderGraphPubsub = require('./viz/graph/pubsub')
 const renderGraphEbt = require('./viz/graph/ebt')
 const renderPieChart = require('./viz/pie')
 const { setupSimulation, setupSimulationForces } = require('./simulation')
+const copyToClipboard = require('../util/copyToClipboard')
 
 const graphWidth = 960
 const graphHeight = 600
+
+const colors = {
+  blue: '#1f77b4',
+  orange: '#ff7f0e',
+  green: 'green',
+}
 
 module.exports = startApp
 
@@ -40752,7 +40759,7 @@ function startApp (opts = {}) {
     selectNode: (nodeId) => {
       if (!currentGraph.nodes.find(node => node.id === nodeId)) return
       selectedNode = nodeId
-      rerender()
+      rebuildGraph()
     },
     // network state
     // single node
@@ -40810,7 +40817,8 @@ function startApp (opts = {}) {
   store.subscribe((state) => rebuildGraph())
 
   function rebuildGraph () {
-    const networkState = store.getState()
+    const appState = getState()
+    const { networkState } = appState
     // merge state
     const clientData = networkState.clients
     let networkFilter
@@ -40828,7 +40836,7 @@ function startApp (opts = {}) {
     const latencyMode = (viewMode === 'ping')
     let newGraph
     if (viewMode === 'dht') {
-      newGraph = buildGraphForDht(clientData, networkFilter, latencyMode)
+      newGraph = buildGraphForDht(appState)
     } else {
       newGraph = buildGraphForProtocol(clientData, networkFilter, latencyMode)
     }
@@ -40964,7 +40972,6 @@ function renderSelectedNodePanel (state, actions) {
   const { selectedNode, networkState } = state
   const selectedNodeData = networkState.clients[selectedNode] || { ebtState: {} }
   const selectedNodePeers = selectedNodeData.peers
-  const selectedNodeStats = selectedNodeData.stats
   const shortId = peerIdToShortId(selectedNode)
   return (
 
@@ -40984,6 +40991,10 @@ function renderSelectedNodePanel (state, actions) {
       h('.app-selected-node', [
         `id: ${shortId}`
       ]),
+
+      h('button', {
+        onclick: () => copyToClipboard(selectedNode)
+      }, 'copy id'),
 
       h('button', {
         onclick: () => actions.pingNode(selectedNode)
@@ -41015,7 +41026,7 @@ function renderSelectedNodePanel (state, actions) {
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 
-      selectedNodeStats && renderSelectedNodeStats(selectedNodeStats, state, actions)
+      renderSelectedNodeStats(selectedNode, state, actions)
 
     ])
 
@@ -41063,23 +41074,29 @@ function renderSelectedNodePanel (state, actions) {
 //   }
 // }
 
-function renderSelectedNodeStats (nodeStats, state, actions) {
+function renderSelectedNodeStats (selectedNode, state, actions) {
+  const networkState = state.networkState || {}
+  const clientsData = networkState.clients || {}
+  const selectedNodeData = clientsData[selectedNode] || {}
+  const trafficStats = (selectedNodeData.libp2p || {}).traffic
+  if (!trafficStats) return
+
   return h('div', [
-    renderSelectedNodeGlobalStats(nodeStats, state, actions),
+    renderSelectedNodeGlobalStats(trafficStats, state, actions),
     h('div', [
       h('h4', 'peers'),
-      renderSelectedNodePeerStats(nodeStats, state, actions)
+      renderSelectedNodePeerStats(trafficStats, state, actions)
     ])
     // renderSelectedNodeTransportStats(nodeStats),
     // renderSelectedNodeProtocolStats(nodeStats),
   ])
 }
 
-function renderSelectedNodeGlobalStats (nodeStats, state, actions) {
+function renderSelectedNodeGlobalStats (trafficStats, state, actions) {
   // global stats
-  if (nodeStats.global) {
-    const transports = Object.entries(nodeStats.global.transports)
-    const protocols = Object.entries(nodeStats.global.protocols)
+  if (trafficStats.global) {
+    const transports = Object.entries(trafficStats.global.transports)
+    const protocols = Object.entries(trafficStats.global.protocols)
     return (
       h('div', [
         renderNodePeerTransportStats(transports),
@@ -41093,9 +41110,9 @@ function renderSelectedNodeGlobalStats (nodeStats, state, actions) {
   }
 }
 
-function renderSelectedNodePeerStats (nodeStats, state, actions) {
+function renderSelectedNodePeerStats (trafficStats, state, actions) {
   // peer stats
-  const peers = Object.entries(nodeStats.peers || {})
+  const peers = Object.entries(trafficStats.peers || {})
   return peers.map(([peerId, peerData]) => {
     const transports = Object.entries(peerData.transports)
     const protocols = Object.entries(peerData.protocols)
@@ -41379,13 +41396,41 @@ StatsObj shape
 }
 */
 
-function buildGraphForDht (networkState) {
+function buildGraphForDht (appState) {
   const graph = { nodes: [], links: [] }
 
-  buildGraphBasicNodes(networkState, graph)
-  buildGraphDhtLinks(networkState, graph)
+  const { networkState, selectedNode } = appState
+  const clientsData = networkState.clients
+  if (!clientsData) return graph
+
+  buildGraphBasicNodes(clientsData, graph)
+  buildGraphDhtLinks(clientsData, graph)
+
+  // recolor nodes in dht experiment "hello"
+  // color green if they were part of the getMany response
+  recolorNodesForDhtHello(appState, graph)
 
   return graph
+}
+
+function recolorNodesForDhtHello (appState, graph) {
+  const { networkState, selectedNode } = appState
+  const clientsData = networkState.clients
+  // if no selectedNode, we're done
+  if (!selectedNode) return
+  const selectedNodeState = clientsData[selectedNode]
+
+  // abort if data is missing
+  if (!selectedNodeState) return
+  if (!selectedNodeState.dht) return
+
+  // color matching nodes
+  const dhtQueriedNodes = selectedNodeState.dht.hello.map(entry => entry.from)
+  graph.nodes.forEach((node) => {
+    if (dhtQueriedNodes.includes(node.id)) {
+      node.color = colors.green
+    }
+  })
 }
 
 function buildGraphForProtocol (networkState, networkFilter, latencyMode) {
@@ -41402,7 +41447,7 @@ function buildGraphBasicNodes (networkState, graph) {
   Object.keys(networkState).forEach((clientId) => {
     // const peerData = networkState[clientId].peers
     // const badResponse = (typeof peerData !== 'object')
-    const newNode = { id: clientId, type: 'good' }
+    const newNode = { id: clientId, color: colors.blue }
     graph.nodes.push(newNode)
   })
 }
@@ -41477,7 +41522,7 @@ function buildGraphAddMissingNodes (networkState, graph) {
     // if connected to a missing node, create missing node
     const alreadyExists = !!graph.nodes.find(item => item.id === target)
     if (!alreadyExists) {
-      const newNode = { id: target, type: 'missing' }
+      const newNode = { id: target, color: colors.orange }
       graph.nodes.push(newNode)
     }
   })
@@ -41503,7 +41548,7 @@ function peerIdToShortId (peerId) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./engine":"/home/user/Development/mesh-testing/src/admin/engine.js","./simulation":"/home/user/Development/mesh-testing/src/admin/simulation.js","./viz/graph/blocks":"/home/user/Development/mesh-testing/src/admin/viz/graph/blocks.js","./viz/graph/ebt":"/home/user/Development/mesh-testing/src/admin/viz/graph/ebt.js","./viz/graph/mesh":"/home/user/Development/mesh-testing/src/admin/viz/graph/mesh.js","./viz/graph/normal":"/home/user/Development/mesh-testing/src/admin/viz/graph/normal.js","./viz/graph/pie-transport-rx":"/home/user/Development/mesh-testing/src/admin/viz/graph/pie-transport-rx.js","./viz/graph/pie-transport-tx":"/home/user/Development/mesh-testing/src/admin/viz/graph/pie-transport-tx.js","./viz/graph/pubsub":"/home/user/Development/mesh-testing/src/admin/viz/graph/pubsub.js","./viz/pie":"/home/user/Development/mesh-testing/src/admin/viz/pie.js","virtual-dom/h":"/home/user/Development/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/virtual-hyperscript/svg":"/home/user/Development/mesh-testing/node_modules/virtual-dom/virtual-hyperscript/svg.js"}],"/home/user/Development/mesh-testing/src/admin/engine.js":[function(require,module,exports){
+},{"../util/copyToClipboard":"/home/user/Development/mesh-testing/src/util/copyToClipboard.js","./engine":"/home/user/Development/mesh-testing/src/admin/engine.js","./simulation":"/home/user/Development/mesh-testing/src/admin/simulation.js","./viz/graph/blocks":"/home/user/Development/mesh-testing/src/admin/viz/graph/blocks.js","./viz/graph/ebt":"/home/user/Development/mesh-testing/src/admin/viz/graph/ebt.js","./viz/graph/mesh":"/home/user/Development/mesh-testing/src/admin/viz/graph/mesh.js","./viz/graph/normal":"/home/user/Development/mesh-testing/src/admin/viz/graph/normal.js","./viz/graph/pie-transport-rx":"/home/user/Development/mesh-testing/src/admin/viz/graph/pie-transport-rx.js","./viz/graph/pie-transport-tx":"/home/user/Development/mesh-testing/src/admin/viz/graph/pie-transport-tx.js","./viz/graph/pubsub":"/home/user/Development/mesh-testing/src/admin/viz/graph/pubsub.js","./viz/pie":"/home/user/Development/mesh-testing/src/admin/viz/pie.js","virtual-dom/h":"/home/user/Development/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/virtual-hyperscript/svg":"/home/user/Development/mesh-testing/node_modules/virtual-dom/virtual-hyperscript/svg.js"}],"/home/user/Development/mesh-testing/src/admin/engine.js":[function(require,module,exports){
 const h = require('virtual-dom/h')
 const diff = require('virtual-dom/diff')
 const patch = require('virtual-dom/patch')
@@ -41530,7 +41575,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/home/user/Development/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/home/user/Development/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/home/user/Development/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/home/user/Development/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/home/user/Development/mesh-testing/node_modules/virtual-dom/patch.js"}],"/home/user/Development/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global,Buffer){
 // setup error reporting before anything else
-const buildVersion = String(1543386594 || 'development')
+const buildVersion = String(1543394988 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -41854,20 +41899,13 @@ function renderGraph(state, actions) {
     const { selectedNode, networkState } = state
     const isSelected = selectedNode === node.id
 
-    const colors = {
-      good: '#1f77b4',
-      bad: '#aec7e8',
-      missing: '#ff7f0e',
-    }
-
-    const color = colors[node.type]
     const radius = isSelected ? 10 : 5
 
     return (
 
       s('circle', {
         r: radius,
-        fill: color,
+        fill: node.color,
         cx: node.x,
         cy: node.y,
         onclick: () => actions.selectNode(node.id)
@@ -42489,7 +42527,30 @@ function cbify (fn, context) {
   }
 }
 
-},{"promise-to-callback":"/home/user/Development/mesh-testing/node_modules/promise-to-callback/index.js"}],"/home/user/Development/mesh-testing/src/util/jsonPatchStream.js":[function(require,module,exports){
+},{"promise-to-callback":"/home/user/Development/mesh-testing/node_modules/promise-to-callback/index.js"}],"/home/user/Development/mesh-testing/src/util/copyToClipboard.js":[function(require,module,exports){
+module.exports = copyToClipboard
+
+function copyToClipboard (str) {
+  const el = document.createElement('textarea');  // Create a <textarea> element
+  el.value = str;                                 // Set its value to the string that you want copied
+  el.setAttribute('readonly', '');                // Make it readonly to be tamper-proof
+  el.style.position = 'absolute';
+  el.style.left = '-9999px';                      // Move outside the screen to make it invisible
+  document.body.appendChild(el);                  // Append the <textarea> element to the HTML document
+  const selected =
+    document.getSelection().rangeCount > 0        // Check if there is any content selected previously
+      ? document.getSelection().getRangeAt(0)     // Store selection if found
+      : false;                                    // Mark as false to know no selection existed before
+  el.select();                                    // Select the <textarea> content
+  document.execCommand('copy');                   // Copy - only works as a result of a user action (e.g. click events)
+  document.body.removeChild(el);                  // Remove the <textarea> element
+  if (selected) {                                 // If a selection existed before copying
+    document.getSelection().removeAllRanges();    // Unselect everything on the HTML document
+    document.getSelection().addRange(selected);   // Restore the original selection
+  }
+}
+
+},{}],"/home/user/Development/mesh-testing/src/util/jsonPatchStream.js":[function(require,module,exports){
 const { compare, applyPatch, deepClone } = require('fast-json-patch')
 const through = require('through2').obj
 
