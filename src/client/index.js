@@ -65,9 +65,10 @@ async function start() {
 
   // for debugging
   global.Buffer = Buffer
-  global.providerTools = providerTools
-  global.kitsunet = kitsunet
+  global.node = node
   global.telemetry = telemetry
+  global.kitsunet = kitsunet
+  global.providerTools = providerTools
 
   // log latest tracker datas
   blockTracker.on('latest', (block) => {
