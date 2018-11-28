@@ -278,7 +278,6 @@ function renderSelectedNodePanel (state, actions) {
   const { selectedNode, networkState } = state
   const selectedNodeData = networkState.clients[selectedNode] || { ebtState: {} }
   const selectedNodePeers = selectedNodeData.peers
-  const selectedNodeStats = selectedNodeData.stats
   const shortId = peerIdToShortId(selectedNode)
   return (
 
@@ -333,7 +332,7 @@ function renderSelectedNodePanel (state, actions) {
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 
-      selectedNodeStats && renderSelectedNodeStats(selectedNodeStats, state, actions)
+      renderSelectedNodeStats(selectedNode, state, actions)
 
     ])
 
@@ -381,23 +380,29 @@ function renderSelectedNodePanel (state, actions) {
 //   }
 // }
 
-function renderSelectedNodeStats (nodeStats, state, actions) {
+function renderSelectedNodeStats (selectedNode, state, actions) {
+  const networkState = state.networkState || {}
+  const clientsData = networkState.clients || {}
+  const selectedNodeData = clientsData[selectedNode] || {}
+  const trafficStats = (selectedNodeData.libp2p || {}).traffic
+  if (!trafficStats) return
+
   return h('div', [
-    renderSelectedNodeGlobalStats(nodeStats, state, actions),
+    renderSelectedNodeGlobalStats(trafficStats, state, actions),
     h('div', [
       h('h4', 'peers'),
-      renderSelectedNodePeerStats(nodeStats, state, actions)
+      renderSelectedNodePeerStats(trafficStats, state, actions)
     ])
     // renderSelectedNodeTransportStats(nodeStats),
     // renderSelectedNodeProtocolStats(nodeStats),
   ])
 }
 
-function renderSelectedNodeGlobalStats (nodeStats, state, actions) {
+function renderSelectedNodeGlobalStats (trafficStats, state, actions) {
   // global stats
-  if (nodeStats.global) {
-    const transports = Object.entries(nodeStats.global.transports)
-    const protocols = Object.entries(nodeStats.global.protocols)
+  if (trafficStats.global) {
+    const transports = Object.entries(trafficStats.global.transports)
+    const protocols = Object.entries(trafficStats.global.protocols)
     return (
       h('div', [
         renderNodePeerTransportStats(transports),
@@ -411,9 +416,9 @@ function renderSelectedNodeGlobalStats (nodeStats, state, actions) {
   }
 }
 
-function renderSelectedNodePeerStats (nodeStats, state, actions) {
+function renderSelectedNodePeerStats (trafficStats, state, actions) {
   // peer stats
-  const peers = Object.entries(nodeStats.peers || {})
+  const peers = Object.entries(trafficStats.peers || {})
   return peers.map(([peerId, peerData]) => {
     const transports = Object.entries(peerData.transports)
     const protocols = Object.entries(peerData.protocols)
