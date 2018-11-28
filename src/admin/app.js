@@ -16,6 +16,12 @@ const { setupSimulation, setupSimulationForces } = require('./simulation')
 const graphWidth = 960
 const graphHeight = 600
 
+const colors = {
+  blue: '#1f77b4',
+  orange: '#ff7f0e',
+  green: 'green',
+}
+
 module.exports = startApp
 
 function startApp (opts = {}) {
@@ -58,7 +64,7 @@ function startApp (opts = {}) {
     selectNode: (nodeId) => {
       if (!currentGraph.nodes.find(node => node.id === nodeId)) return
       selectedNode = nodeId
-      rerender()
+      rebuildGraph()
     },
     // network state
     // single node
@@ -116,7 +122,8 @@ function startApp (opts = {}) {
   store.subscribe((state) => rebuildGraph())
 
   function rebuildGraph () {
-    const networkState = store.getState()
+    const appState = getState()
+    const { networkState } = appState
     // merge state
     const clientData = networkState.clients
     let networkFilter
@@ -134,7 +141,7 @@ function startApp (opts = {}) {
     const latencyMode = (viewMode === 'ping')
     let newGraph
     if (viewMode === 'dht') {
-      newGraph = buildGraphForDht(clientData, networkFilter, latencyMode)
+      newGraph = buildGraphForDht(appState)
     } else {
       newGraph = buildGraphForProtocol(clientData, networkFilter, latencyMode)
     }
@@ -685,13 +692,41 @@ StatsObj shape
 }
 */
 
-function buildGraphForDht (networkState) {
+function buildGraphForDht (appState) {
   const graph = { nodes: [], links: [] }
 
-  buildGraphBasicNodes(networkState, graph)
-  buildGraphDhtLinks(networkState, graph)
+  const { networkState, selectedNode } = appState
+  const clientsData = networkState.clients
+  if (!clientsData) return graph
+
+  buildGraphBasicNodes(clientsData, graph)
+  buildGraphDhtLinks(clientsData, graph)
+
+  // recolor nodes in dht experiment "hello"
+  // color green if they were part of the getMany response
+  recolorNodesForDhtHello(appState, graph)
 
   return graph
+}
+
+function recolorNodesForDhtHello (appState, graph) {
+  const { networkState, selectedNode } = appState
+  const clientsData = networkState.clients
+  // if no selectedNode, we're done
+  if (!selectedNode) return
+  const selectedNodeState = clientsData[selectedNode]
+
+  // abort if data is missing
+  if (!selectedNodeState) return
+  if (!selectedNodeState.dht) return
+
+  // color matching nodes
+  const dhtQueriedNodes = selectedNodeState.dht.hello.map(entry => entry.from)
+  graph.nodes.forEach((node) => {
+    if (dhtQueriedNodes.includes(node.id)) {
+      node.color = colors.green
+    }
+  })
 }
 
 function buildGraphForProtocol (networkState, networkFilter, latencyMode) {
@@ -708,7 +743,7 @@ function buildGraphBasicNodes (networkState, graph) {
   Object.keys(networkState).forEach((clientId) => {
     // const peerData = networkState[clientId].peers
     // const badResponse = (typeof peerData !== 'object')
-    const newNode = { id: clientId, type: 'good' }
+    const newNode = { id: clientId, color: colors.blue }
     graph.nodes.push(newNode)
   })
 }
@@ -783,7 +818,7 @@ function buildGraphAddMissingNodes (networkState, graph) {
     // if connected to a missing node, create missing node
     const alreadyExists = !!graph.nodes.find(item => item.id === target)
     if (!alreadyExists) {
-      const newNode = { id: target, type: 'missing' }
+      const newNode = { id: target, color: colors.orange }
       graph.nodes.push(newNode)
     }
   })

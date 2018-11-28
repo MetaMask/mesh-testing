@@ -7,6 +7,7 @@ const PeerInfo = require('peer-info')
 const { hour } = require('../util/time')
 const timeout = require('../util/timeout')
 const randomFromRange = require('../util/randomFromRange')
+const DhtExperiment = require('./dhtExperiment')
 
 const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
 
@@ -46,6 +47,7 @@ async function start() {
   console.log('kitsunet created')
 
   const libp2pStats = new Libp2pStats({ node })
+  const dhtExperiment = new DhtExperiment({ node, clientId })
 
   // configure telemetry
   const telemetry = new TelemetryClient({
@@ -56,6 +58,7 @@ async function start() {
       version: BUILD_VERSION,
       libp2p: libp2pStats.getState(),
       kitsunet: kitsunet.getState(),
+      dht: dhtExperiment.getState(),
     }),
   })
 
@@ -81,11 +84,6 @@ async function start() {
   // start it up
   await kitsunet.start()
   console.log('kitsunet started')
-
-  // insert random stuff into dht
-  node.dht.put(Buffer.from('hello'), Buffer.from(clientId), (err, result) => console.log('dht put (hello)', err || result))
-  node.dht.put(Buffer.from(clientId), Buffer.from('it me'), (err, result) => console.log('dht put (clientId)', err || result))
-  node.dht.put(Buffer.from(Math.random().toString()), Buffer.from('correct'), (err, result) => console.log('dht put (random)', err || result))
 
   // restart client after random time
   const timeUntilRestart = randomFromRange(1, 2) * hour
