@@ -13,12 +13,13 @@ const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
 
 start().catch(console.error)
 
-async function start() {
-
+async function start () {
   const devMode = window.location.hostname === 'localhost' && !window.location.search.includes('prod')
-
   const options = {
-    libp2pBootstrap: [],
+    libp2pBootstrap: [
+      // `/dns4/monkey.musteka.la/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC`
+      '/ip4/127.0.0.1/tcp/30334/ws/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
+    ],
     // rpcUrl,
     // rpcEnableTracker,
     ethAddrs: [
@@ -27,10 +28,16 @@ async function start() {
       // Gnosis GNO
       '0x6810e776880c02933d47db1b9fc05908e5386b96',
       // Gnosis GNO whale
-      '0x1d805bc00b8fa3c96ae6c8fa97b2fd24b19a9801',
+      '0x1d805bc00b8fa3c96ae6c8fa97b2fd24b19a9801'
     ],
-    // slicePath,
-    sliceDepth: 10,
+    // slicePath: [
+    //   '8e99',
+    //   '1372',
+    //   '66cc',
+    //   '2711',
+    //   '75b3'
+    // ],
+    sliceDepth: 10
     // sliceFile,
     // sliceBridge,
   }
@@ -39,7 +46,10 @@ async function start() {
   const peerInfo = await pify(PeerInfo.create)(id)
   const clientId = peerInfo.id.toB58String()
   const identity = id.toJSON()
-  const addrs = [`/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${clientId}`]
+  const addrs = [
+    `/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${clientId}`,
+    // `/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${clientId}`
+  ]
 
   console.log('kitsunet booting')
   const { providerTools, kitsunet, node } = await kitsunetFactory({ options, identity, addrs })
@@ -58,8 +68,8 @@ async function start() {
       version: BUILD_VERSION,
       libp2p: libp2pStats.getState(),
       kitsunet: kitsunet.getState(),
-      dht: dhtExperiment.getState(),
-    }),
+      dht: dhtExperiment.getState()
+    })
   })
 
   // start stats reporting services
@@ -73,21 +83,11 @@ async function start() {
   global.kitsunet = kitsunet
   global.providerTools = providerTools
 
-  // log latest tracker datas
-  blockTracker.on('latest', (block) => {
-    console.log('blockTracker', block)
-  })
-  sliceTracker.on('latest', (slice) => {
-    console.log('sliceTracker', slice)
-  })
-
   // start it up
   await kitsunet.start()
   console.log('kitsunet started')
-
   // restart client after random time
   const timeUntilRestart = randomFromRange(1, 2) * hour
   await timeout(timeUntilRestart)
   window.location.reload()
-
 }
