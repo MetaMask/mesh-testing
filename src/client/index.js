@@ -83,14 +83,6 @@ async function start () {
   global.kitsunet = kitsunet
   global.providerTools = providerTools
 
-  // log latest tracker datas
-  blockTracker.on('latest', (block) => {
-    console.log('blockTracker', block)
-  })
-  sliceTracker.on('latest', (slice) => {
-    console.log('sliceTracker', slice)
-  })
-
   // start it up
   await kitsunet.start()
   console.log('kitsunet started')
