@@ -41575,7 +41575,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/home/user/Development/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/home/user/Development/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/home/user/Development/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/home/user/Development/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/home/user/Development/mesh-testing/node_modules/virtual-dom/patch.js"}],"/home/user/Development/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global,Buffer){
 // setup error reporting before anything else
-const buildVersion = String(1543394988 || 'development')
+const buildVersion = String(1543556239 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
