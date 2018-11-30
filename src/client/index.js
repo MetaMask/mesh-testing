@@ -47,8 +47,8 @@ async function start () {
   const clientId = peerInfo.id.toB58String()
   const identity = id.toJSON()
   const addrs = [
-    // `/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${clientId}`,
-    `/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${clientId}`
+    `/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${clientId}`,
+    // `/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${clientId}`
   ]
 
   console.log('kitsunet booting')
