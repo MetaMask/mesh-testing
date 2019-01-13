@@ -38,7 +38,7 @@
     "libp2p-secio": "~0.10.0",
     "libp2p-switch": "~0.40.7",
     "libp2p-tcp": "^0.13.0",
-    "libp2p-webrtc-star": "~0.15.4",
+    "libp2p-webrtc-star": "dryajov/js-libp2p-webrtc-star#master",
     "libp2p-websocket-star": "~0.8.1",
     "libp2p-websockets": "~0.12.0",
     "lodash.toplainobject": "^4.2.0",

@@ -189,8 +189,10 @@ function startApp (opts = {}) {
   }
 
   function rerender () {
-    const state = getState()
-    updateDom(render(state, actions))
+    global.requestAnimationFrame(() => {
+      const state = getState()
+      updateDom(render(state, actions))
+    })
   }
 }
 
@@ -774,7 +776,7 @@ function buildGraphDhtLinks (networkState, graph) {
         source,
         target,
         distance: 30,
-        value: 2,
+        value: 2
       }
     })
 
@@ -804,7 +806,7 @@ function buildGraphStatsLinks (networkState, graph, networkFilter, latencyMode) 
         source,
         target,
         distance,
-        value: 2,
+        value: 2
       }
     })
     // filter by protocol name

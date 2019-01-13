@@ -40982,8 +40982,10 @@ function startApp (opts = {}) {
   }
 
   function rerender () {
-    const state = getState()
-    updateDom(render(state, actions))
+    global.requestAnimationFrame(() => {
+      const state = getState()
+      updateDom(render(state, actions))
+    })
   }
 }
 
@@ -41567,7 +41569,7 @@ function buildGraphDhtLinks (networkState, graph) {
         source,
         target,
         distance: 30,
-        value: 2,
+        value: 2
       }
     })
 
@@ -41597,7 +41599,7 @@ function buildGraphStatsLinks (networkState, graph, networkFilter, latencyMode) 
         source,
         target,
         distance,
-        value: 2,
+        value: 2
       }
     })
     // filter by protocol name
@@ -41674,7 +41676,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global,Buffer){
 // setup error reporting before anything else
-const buildVersion = String(1543605678 || 'development')
+const buildVersion = String(1547343594 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
