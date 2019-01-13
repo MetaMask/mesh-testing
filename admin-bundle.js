@@ -28651,101 +28651,7 @@ module.exports = Multiplex
 
 }).call(this,require("buffer").Buffer)
 
-},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","duplexify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexify/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","varint":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/index.js","xtend":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/xtend/immutable.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/decode.js":[function(require,module,exports){
-module.exports = read
-
-var MSB = 0x80
-  , REST = 0x7F
-
-function read(buf, offset) {
-  var res    = 0
-    , offset = offset || 0
-    , shift  = 0
-    , counter = offset
-    , b
-    , l = buf.length
-
-  do {
-    if(counter >= l) {
-      read.bytes = 0
-      read.bytesRead = 0 // DEPRECATED
-      return undefined
-    }
-    b = buf[counter++]
-    res += shift < 28
-      ? (b & REST) << shift
-      : (b & REST) * Math.pow(2, shift)
-    shift += 7
-  } while (b >= MSB)
-
-  read.bytes = counter - offset
-
-  return res
-}
-
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/encode.js":[function(require,module,exports){
-module.exports = encode
-
-var MSB = 0x80
-  , REST = 0x7F
-  , MSBALL = ~REST
-  , INT = Math.pow(2, 31)
-
-function encode(num, out, offset) {
-  out = out || []
-  offset = offset || 0
-  var oldOffset = offset
-
-  while(num >= INT) {
-    out[offset++] = (num & 0xFF) | MSB
-    num /= 128
-  }
-  while(num & MSBALL) {
-    out[offset++] = (num & 0xFF) | MSB
-    num >>>= 7
-  }
-  out[offset] = num | 0
-  
-  encode.bytes = offset - oldOffset + 1
-  
-  return out
-}
-
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/index.js":[function(require,module,exports){
-module.exports = {
-    encode: require('./encode.js')
-  , decode: require('./decode.js')
-  , encodingLength: require('./length.js')
-}
-
-},{"./decode.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/decode.js","./encode.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/encode.js","./length.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/length.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/multiplex/node_modules/varint/length.js":[function(require,module,exports){
-
-var N1 = Math.pow(2,  7)
-var N2 = Math.pow(2, 14)
-var N3 = Math.pow(2, 21)
-var N4 = Math.pow(2, 28)
-var N5 = Math.pow(2, 35)
-var N6 = Math.pow(2, 42)
-var N7 = Math.pow(2, 49)
-var N8 = Math.pow(2, 56)
-var N9 = Math.pow(2, 63)
-
-module.exports = function (value) {
-  return (
-    value < N1 ? 1
-  : value < N2 ? 2
-  : value < N3 ? 3
-  : value < N4 ? 4
-  : value < N5 ? 5
-  : value < N6 ? 6
-  : value < N7 ? 7
-  : value < N8 ? 8
-  : value < N9 ? 9
-  :              10
-  )
-}
-
-},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js":[function(require,module,exports){
+},{"buffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/buffer/index.js","duplexify":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/duplexify/index.js","events":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/events/events.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js","readable-stream":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/readable-stream/readable-browser.js","varint":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/varint/index.js","xtend":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/xtend/immutable.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/obs-store/index.js":[function(require,module,exports){
 'use strict';
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
@@ -37462,6 +37368,8 @@ function config (name) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/util/node_modules/inherits/inherits_browser.js":[function(require,module,exports){
+arguments[4]["/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js"][0].apply(exports,arguments)
 },{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/util/support/isBufferBrowser.js":[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
@@ -38060,7 +37968,101 @@ function hasOwnProperty(obj, prop) {
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./support/isBuffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/util/support/isBufferBrowser.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/inherits/inherits_browser.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js":[function(require,module,exports){
+},{"./support/isBuffer":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/util/support/isBufferBrowser.js","_process":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/browserify/node_modules/process/browser.js","inherits":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/util/node_modules/inherits/inherits_browser.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/varint/decode.js":[function(require,module,exports){
+module.exports = read
+
+var MSB = 0x80
+  , REST = 0x7F
+
+function read(buf, offset) {
+  var res    = 0
+    , offset = offset || 0
+    , shift  = 0
+    , counter = offset
+    , b
+    , l = buf.length
+
+  do {
+    if(counter >= l) {
+      read.bytes = 0
+      read.bytesRead = 0 // DEPRECATED
+      return undefined
+    }
+    b = buf[counter++]
+    res += shift < 28
+      ? (b & REST) << shift
+      : (b & REST) * Math.pow(2, shift)
+    shift += 7
+  } while (b >= MSB)
+
+  read.bytes = counter - offset
+
+  return res
+}
+
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/varint/encode.js":[function(require,module,exports){
+module.exports = encode
+
+var MSB = 0x80
+  , REST = 0x7F
+  , MSBALL = ~REST
+  , INT = Math.pow(2, 31)
+
+function encode(num, out, offset) {
+  out = out || []
+  offset = offset || 0
+  var oldOffset = offset
+
+  while(num >= INT) {
+    out[offset++] = (num & 0xFF) | MSB
+    num /= 128
+  }
+  while(num & MSBALL) {
+    out[offset++] = (num & 0xFF) | MSB
+    num >>>= 7
+  }
+  out[offset] = num | 0
+  
+  encode.bytes = offset - oldOffset + 1
+  
+  return out
+}
+
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/varint/index.js":[function(require,module,exports){
+module.exports = {
+    encode: require('./encode.js')
+  , decode: require('./decode.js')
+  , encodingLength: require('./length.js')
+}
+
+},{"./decode.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/varint/decode.js","./encode.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/varint/encode.js","./length.js":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/varint/length.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/varint/length.js":[function(require,module,exports){
+
+var N1 = Math.pow(2,  7)
+var N2 = Math.pow(2, 14)
+var N3 = Math.pow(2, 21)
+var N4 = Math.pow(2, 28)
+var N5 = Math.pow(2, 35)
+var N6 = Math.pow(2, 42)
+var N7 = Math.pow(2, 49)
+var N8 = Math.pow(2, 56)
+var N9 = Math.pow(2, 63)
+
+module.exports = function (value) {
+  return (
+    value < N1 ? 1
+  : value < N2 ? 2
+  : value < N3 ? 3
+  : value < N4 ? 4
+  : value < N5 ? 5
+  : value < N6 ? 6
+  : value < N7 ? 7
+  : value < N8 ? 8
+  : value < N9 ? 9
+  :              10
+  )
+}
+
+},{}],"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js":[function(require,module,exports){
 var createElement = require("./vdom/create-element.js")
 
 module.exports = createElement
@@ -41676,7 +41678,7 @@ function setupDom({ container }) {
 },{"raf-throttle":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/raf-throttle/lib/rafThrottle.js","virtual-dom/create-element":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/create-element.js","virtual-dom/diff":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/diff.js","virtual-dom/h":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/h.js","virtual-dom/patch":"/Users/dryajov/personal/projects/metamask/mesh-testing/node_modules/virtual-dom/patch.js"}],"/Users/dryajov/personal/projects/metamask/mesh-testing/src/admin/index.js":[function(require,module,exports){
 (function (global,Buffer){
 // setup error reporting before anything else
-const buildVersion = String(1547343971 || 'development')
+const buildVersion = String(1547344545 || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
