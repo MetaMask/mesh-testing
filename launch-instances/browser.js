@@ -23,7 +23,7 @@ const puppeteer = require('puppeteer');
     page.on('console', (msg) => {
       console.log(`INSTANCE ${inst}:`, msg.text())
     })
-    await page.goto('http://localhost:9966')
+    await page.goto('http://localhost:9967')
     console.log(`${instances} remaining to start`)
   }
   console.log(`all done...`)
