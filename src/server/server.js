@@ -9,16 +9,31 @@ const websocketStream = require('websocket-stream/stream')
 const endOfStream = require('end-of-stream')
 const hat = require('hat')
 const ObservableStore = require('obs-store')
-const timeout = require('../util/timeout')
 const { createHttpClientHandler } = require('http-poll-stream')
-const { pingAllClientsOnInterval } = require('../network/clientTimeout')
 
-const rpc = require('../rpc/rpc')
-const kitsunetRpcHandler = require('../rpc/clientKitsunet')
-const serverKitsunetRpcHandler = require('../rpc/serverKitsunet')
-const serverAdminRpcHandler = require('../rpc/serverAdmin')
-const baseRpcHandler = require('../rpc/base')
-const { sec, min } = require('../util/time')
+const {
+  utils,
+  network,
+  interfaces,
+  rpc
+} = require('kitsunet-telemetry')
+
+const {
+  timeout,
+  sec,
+  min
+} = utils
+
+const { createRpc } = rpc
+
+const { pingAllClientsOnInterval } = network
+
+const {
+  client: kitsunetRpcHandler,
+  server: serverKitsunetRpcHandler,
+  serverAdmin: serverAdminRpcHandler,
+  base: baseRpcHandler
+} = interfaces
 
 const app = express()
 // enable CORS responses
@@ -28,7 +43,7 @@ expressWebSocket(app, null, {
   perMessageDeflate: false
 })
 
-const heartBeatInterval = 1 * min
+const heartBeatInterval = min
 const remoteCallTimeout = 45 * sec
 
 // network state
@@ -117,34 +132,7 @@ pingAllClientsOnInterval({
   pingTimeout: remoteCallTimeout
 })
 
-// TODO: I commented this out, because I suspect that it is
-// causing raise conditions, this should be taken care of
-// by our ping
-
-// clear disconnect nodes from network state
-// this should happen automatically as part of the disconnect process
-// but i can see that it somehow is not
-// setInterval(() => {
-//   const networkState = networkStore.getState()
-//   Object.keys(networkState.clients).forEach((clientId) => {
-//     const client = clients.find(c => c.peerId === clientId)
-//     if (!client) {
-//       console.log(`orphaned client found, cleaning up: ${clientId}`)
-//       delete networkState.clients[clientId]
-//     }
-//   })
-//   networkStore.putState(networkState)
-// }, 10 * sec)
-
 async function handleClient (stream, req) {
-  // handle disconnect
-  // stream.on('error', (error) => {
-  //   console.log('client disconnected - stream end')
-  //   // Ignore network errors like `ECONNRESET`, `EPIPE`, etc.
-  //   if (error.errno) return
-  //   throw error
-  // })
-
   // attempt connect
   const client = {
     isAlive: true,
@@ -157,11 +145,11 @@ async function handleClient (stream, req) {
     disconnectClient(client)
   })
 
-  const serverRpc = rpc.createRpcServer(serverKitsunetRpcHandler(global, client), stream)
-  const kitsunetRpc = rpc.createRpcClient(kitsunetRpcHandler(), serverRpc)
-
-  client.rpcAsync = kitsunetRpc
-  client.serverRpc = serverRpc
+  client.rpcAsync = createRpc({
+    clientInterface: serverKitsunetRpcHandler(global, client),
+    serverInterface: kitsunetRpcHandler(),
+    connection: stream
+  })
 
   clients.push(client)
   console.log('peer connected')

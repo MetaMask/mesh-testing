@@ -1,13 +1,15 @@
+'use strict'
+
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const renderBaseGraph = require('./base')
 
 module.exports = renderGraph
 
-function renderGraph(messagesKey, state, actions) {
+function renderGraph (messagesKey, state, actions) {
   return renderBaseGraph(state, actions, { renderNode, renderLink })
 
-  function renderNode(node, state, actions) {
+  function renderNode (node, state, actions) {
     const { selectedNode, pubsubTarget, networkState } = state
     const nodeData = state.networkState.clients[node.id] || {}
     const pubsubMessages = nodeData[messagesKey] || []
@@ -35,13 +37,13 @@ function renderGraph(messagesKey, state, actions) {
         cy: node.y,
         onclick: () => actions.selectNode(node.id)
       }, [
-        s('title', `${node.id}`),
+        s('title', `${node.id}`)
       ])
 
     )
   }
 
-  function renderLink(link, state, actions) {
+  function renderLink (link, state, actions) {
     const { source, target } = link
     return (
 
@@ -50,10 +52,9 @@ function renderGraph(messagesKey, state, actions) {
         x1: source.x,
         y1: source.y,
         x2: target.x,
-        y2: target.y,
+        y2: target.y
       })
 
     )
   }
-
 }

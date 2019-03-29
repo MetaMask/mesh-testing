@@ -12,7 +12,7 @@ const renderGraphPubsub = require('./viz/graph/pubsub')
 const renderGraphEbt = require('./viz/graph/ebt')
 const renderPieChart = require('./viz/pie')
 const { setupSimulation, setupSimulationForces } = require('./simulation')
-const copyToClipboard = require('../util/copyToClipboard')
+const copyToClipboard = require('./utils/copy-to-clipboard')
 
 const graphWidth = 960
 const graphHeight = 600
@@ -20,7 +20,7 @@ const graphHeight = 600
 const colors = {
   blue: '#1f77b4',
   orange: '#ff7f0e',
-  green: 'green',
+  green: 'green'
 }
 
 module.exports = startApp
@@ -138,6 +138,8 @@ function startApp (opts = {}) {
       case 'multicast':
         networkFilter = 'multicast'
         break
+      default:
+        networkFilter = 'normal'
     }
     const latencyMode = (viewMode === 'ping')
     let newGraph

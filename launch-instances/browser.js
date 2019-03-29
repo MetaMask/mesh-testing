@@ -7,7 +7,7 @@ const puppeteer = require('puppeteer');
   const exit = async () => {
     console.log('closing browsers before shutdown')
     await browser.close()
-    process.exit(0)
+    // process.exit(0)
   }
   process.on('SIGINT', exit)
   process.on('SIGQUIT', exit)
@@ -23,7 +23,10 @@ const puppeteer = require('puppeteer');
     page.on('console', (msg) => {
       console.log(`INSTANCE ${inst}:`, msg.text())
     })
-    await page.goto('http://localhost:9967')
+    await page.goto('http://localhost:9966')
+    await page.evaluate((PUP_DEBUG) => {
+      window.localStorage.debug = `'${PUP_DEBUG}'`
+    }, process.env['PUP_DEBUG'])
     console.log(`${instances} remaining to start`)
   }
   console.log(`all done...`)

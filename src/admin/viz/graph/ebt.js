@@ -1,13 +1,15 @@
+'use strict'
+
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const renderBaseGraph = require('./base')
 
 module.exports = renderGraph
 
-function renderGraph(messagesKey, state, actions) {
+function renderGraph (messagesKey, state, actions) {
   return renderBaseGraph(state, actions, { renderNode, renderLink })
 
-  function renderNode(node, state, actions) {
+  function renderNode (node, state, actions) {
     const { selectedNode, ebtTarget, networkState } = state
     const nodeData = state.networkState.clients[node.id] || {}
     const ebtMessages = nodeData[messagesKey] || []
@@ -16,7 +18,7 @@ function renderGraph(messagesKey, state, actions) {
 
     const idx = ebtMessages.length - 1 > 0 ? ebtMessages.length - 1 : 0
     const target = ebtMessages.find(m => m === ebtTarget)
-    let color = target ? target : ebtMessages[idx] || '#000000'
+    let color = target || ebtMessages[idx] || '#000000'
     if (node.type !== 'good') color = '#ff7f0e'
     const radius = isSelected ? 10 : 5
 
@@ -29,13 +31,13 @@ function renderGraph(messagesKey, state, actions) {
         cy: node.y,
         onclick: () => actions.selectNode(node.id)
       }, [
-        s('title', `${node.id}`),
+        s('title', `${node.id}`)
       ])
 
     )
   }
 
-  function renderLink(link, state, actions) {
+  function renderLink (link, state, actions) {
     const { source, target } = link
     return (
 
@@ -44,10 +46,9 @@ function renderGraph(messagesKey, state, actions) {
         x1: source.x,
         y1: source.y,
         x2: target.x,
-        y2: target.y,
+        y2: target.y
       })
 
     )
   }
-
 }

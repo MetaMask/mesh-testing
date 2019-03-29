@@ -1,3 +1,4 @@
+'use strict'
 
 const ROLLOUT_THRESHOLD = 1000
 let matchesThreshold
@@ -21,7 +22,7 @@ function start () {
   } else if (matchesThreshold) {
     console.log('MetaMask Mesh Testing - threshold matched -- activating test')
     activate()
-  } else if (location.hostname === 'localhost') {
+  } else if (window.location.hostname === 'localhost') {
     console.log('MetaMask Mesh Testing - development detected -- activating test')
     activate()
   } else {
@@ -42,13 +43,13 @@ function activateBundle (src) {
 }
 
 function checkThreshold ({ rolloutThreshold }) {
-  if (localStorage.getItem('forceTest') === 'true') return true
+  if (window.localStorage.getItem('forceTest') === 'true') return true
 
   // load or setup id
-  let id = Number(localStorage.getItem('id'))
+  let id = Number(window.localStorage.getItem('id'))
   if (!id) {
     id = generateId()
-    localStorage.setItem('id', id)
+    window.localStorage.setItem('id', id)
   }
 
   // check if id matches parital rollout threshold

@@ -1,3 +1,5 @@
+'use strict'
+
 const h = require('virtual-dom/h')
 const s = require('virtual-dom/virtual-hyperscript/svg')
 const renderBaseGraph = require('./base')
@@ -5,10 +7,10 @@ const renderPieChart = require('../pie')
 
 module.exports = renderGraph
 
-function renderGraph(state, actions, { nodeToPieData }) {
+function renderGraph (state, actions, { nodeToPieData }) {
   return renderBaseGraph(state, actions, { renderNode, renderLink })
 
-  function renderNode(node, state, actions) {
+  function renderNode (node, state, actions) {
     const { selectedNode, networkState } = state
     const isSelected = selectedNode === node.id
     const size = (isSelected ? 10 : 5) * 2
@@ -25,9 +27,9 @@ function renderGraph(state, actions, { nodeToPieData }) {
           width: size,
           height: size,
           innerRadius: 0,
-          outerRadius: size/2,
+          outerRadius: size / 2,
           onclick: () => actions.selectNode(node.id),
-          renderLabels: false,
+          renderLabels: false
         })
 
       )
@@ -35,7 +37,7 @@ function renderGraph(state, actions, { nodeToPieData }) {
       const colors = {
         good: '#1f77b4',
         bad: '#aec7e8',
-        missing: '#ff7f0e',
+        missing: '#ff7f0e'
       }
 
       const color = colors[node.type] || '#aec7e8'
@@ -44,21 +46,20 @@ function renderGraph(state, actions, { nodeToPieData }) {
       return (
 
         s('circle', {
-          r: size/2,
+          r: size / 2,
           fill: color,
           cx: node.x,
           cy: node.y,
           onclick: () => actions.selectNode(node.id)
         }, [
-          s('title', `${node.id}`),
+          s('title', `${node.id}`)
         ])
 
       )
-
     }
   }
 
-  function renderLink(link, state, actions) {
+  function renderLink (link, state, actions) {
     const { source, target } = link
     return (
 
@@ -67,10 +68,9 @@ function renderGraph(state, actions, { nodeToPieData }) {
         x1: source.x,
         y1: source.y,
         x2: target.x,
-        y2: target.y,
+        y2: target.y
       })
 
     )
   }
-
 }
