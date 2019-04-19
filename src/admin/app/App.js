@@ -1,6 +1,9 @@
-import React, { Component } from 'react'
+import './bootstrap.css';
 // import './App.css'
-// import Nav from './views/nav'
+
+import React, { Component } from 'react'
+import Nav from './components/nav'
+const dhtExperiment = require('../../experiments/dht/admin')
 
 // const routes = ['packages', 'modules']
 
@@ -9,38 +12,35 @@ class App extends Component {
   constructor() {
     super()
     this.state = {
-      // mode: routes[0],
-      // bundle: 'background',
+      currentView: 'dht'
     }
+
+    this.views = {}
+
+    this.loadExperiment(dhtExperiment)
   }
 
-  // selectMode (target) {
-  //   this.setState(state => ({ mode: target }))
-  // }
+  loadExperiment (experiment) {
+    // load experiment views
+    experiment.views.forEach(view => {
+      this.views[view.id] = view
+    })
+  }
 
-  // selectBundle (target) {
-  //   this.setState(state => ({ bundle: target }))
-  // }
+  selectView (target) {
+    this.setState(state => ({ currentView: target }))
+  }
 
   render () {
-    // const bundleData = bundles[this.state.bundle]
+    const views = Object.values(this.views)
+
     return (
       <div className="App">
-        hello
-        {/* <Nav
-          routes={bundleNames}
-          activeRoute={this.state.bundle}
-          onNavigate={(target) => this.selectBundle(target)}
-          />
         <Nav
-          routes={routes}
-          activeRoute={this.state.mode}
-          onNavigate={(target) => this.selectMode(target)}
+          routes={views}
+          activeRoute={this.state.currentView}
+          onNavigate={(target) => this.selectView(target)}
           />
-        <DepGraph
-          bundleData={bundleData}
-          mode={this.state.mode}
-          />  */}
       </div>
     )
   }
