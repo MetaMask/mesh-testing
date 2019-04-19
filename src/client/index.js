@@ -49,7 +49,7 @@ async function start () {
   console.log(`node started as ${clientId}`)
 
   // setup telemetry
-  const connection = connectViaPost()
+  const connection = connectViaPost({ devMode })
   const telemetry = new TelemetryClient({ clientId, connection })
   telemetry.setStateHandler(getState)
   telemetry.start()
