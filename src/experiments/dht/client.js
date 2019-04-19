@@ -11,7 +11,7 @@ class DhtExperimentClient {
     this.node = node
     this.clientId = clientId
     this.state = {
-      internals: {},
+      routingTable: [],
       providers: {
         all: [],
         group1: [],
@@ -45,7 +45,7 @@ class DhtExperimentClient {
         await this.announceProvidedContent()
         // look for others with matching content
         await this.findProviders()
-        this.state.internals = getStats({ node })
+        Object.assign(this.state, getStats({ node }))
       } catch (err) {
         console.warn(err)
       }
