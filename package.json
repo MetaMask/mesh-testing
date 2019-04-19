@@ -50,13 +50,18 @@
     "beefy": "^2.1.8",
     "browserify": "^16.1.1",
     "exorcist": "^1.0.1",
+    "gh-pages": "^2.0.1",
     "patch-package": "^5.1.1"
   },
   "scripts": {
     "start": "beefy src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
-    "build": "date +%s > ./BUILD_VERSION; echo \"building $(cat BUILD_VERSION)\" && npm run build-client && npm run build-admin",
-    "build-client": "npx browserify src/client/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist client-bundle.js.map > client-bundle.js",
-    "build-admin": "npx browserify src/admin/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist admin-bundle.js.map > admin-bundle.js",
+    "build": "npm run build:clean && npm run build:version && npm run build:base && npm run build:client && npm run build:admin",
+    "build:clean": "rm -rf ./dist && mkdir -p ./dist",
+    "build:base": "cp ./index.html ./dist/index.html",
+    "build:version": "date +%s > ./BUILD_VERSION; echo \"building $(cat BUILD_VERSION)\"",
+    "build:client": "npx browserify src/client/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist ./dist/client-bundle.js.map > ./dist/client-bundle.js",
+    "build:admin": "npx browserify src/admin/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist ./dist/admin-bundle.js.map > ./dist/admin-bundle.js",
+    "deploy": "gh-pages -d ./dist",
     "server": "node src/server/server.js",
     "server-debug": "node --inspect=0.0.0.0:9221 src/server/server.js"
   },
