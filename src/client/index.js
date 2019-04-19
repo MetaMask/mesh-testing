@@ -10,6 +10,9 @@ const {
 } = require('kitsunet-telemetry')
 const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duration))
 const createNode = require('./libp2p/createNode')
+const createPeerConnectionTracker = require('./libp2p/peerConnectionTracker')
+const discoverAndConnect = require('./libp2p/discoverAndConnect')
+
 const DhtExperiment = require('./experiments/dht/experiment')
 
 const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
@@ -33,11 +36,9 @@ async function start () {
   global.node = node
   global.getState = getState
 
-  // connect to all discovered nodes
-  node.on('peer:discovery', (peer) => {
-    // ignore failures
-    node.dial(peer, (err) => {})
-  })
+  // connect to 6 peers from naive discovery 
+  const peerConnectionTracker = createPeerConnectionTracker({ node })
+  discoverAndConnect({ node, clientId, peerConnectionTracker, count: 6 })
 
   // setup experiments
   const dhtExp = new DhtExperiment({ node, clientId })

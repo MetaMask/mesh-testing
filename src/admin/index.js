@@ -54,7 +54,7 @@ async function setupAdmin () {
 
   // connect to telemetry
   console.log(`MetaMask Mesh Testing - connecting with adminCode: ${adminCode}`)
-  const serverConnection = connectViaPost({ devMode, adminCode })
+  const serverConnection = connectViaWs({ devMode, adminCode })
   global.serverConnection = serverConnection
 
   // setup admin ui app
