@@ -13,7 +13,7 @@ const createNode = require('./libp2p/createNode')
 const createPeerConnectionTracker = require('./libp2p/peerConnectionTracker')
 const discoverAndConnect = require('./libp2p/discoverAndConnect')
 
-const DhtExperiment = require('./experiments/dht/experiment')
+const DhtExperiment = require('../experiments/dht/client')
 
 const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
 const devMode = !window.location.search.includes('prod') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')

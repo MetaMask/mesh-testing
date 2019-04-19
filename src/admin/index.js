@@ -4,7 +4,7 @@
 const buildVersion = String(process.env.BUILD_VERSION || 'development')
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`)
 // eslint-disable-next-line no-undef
-Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
+// Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
 require('events').EventEmitter.defaultMaxListeners = 20
 

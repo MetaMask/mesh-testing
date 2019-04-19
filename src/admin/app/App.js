@@ -5,8 +5,6 @@ import React, { Component } from 'react'
 import Nav from './components/nav'
 const dhtExperiment = require('../../experiments/dht/admin')
 
-// const routes = ['packages', 'modules']
-
 class App extends Component {
 
   constructor() {
@@ -14,7 +12,6 @@ class App extends Component {
     this.state = {
       currentView: 'dht'
     }
-
     this.views = {}
 
     this.loadExperiment(dhtExperiment)
@@ -33,6 +30,7 @@ class App extends Component {
 
   render () {
     const views = Object.values(this.views)
+    const currentView = this.views[this.state.currentView]
 
     return (
       <div className="App">
@@ -41,6 +39,7 @@ class App extends Component {
           activeRoute={this.state.currentView}
           onNavigate={(target) => this.selectView(target)}
           />
+          {currentView && currentView.render({ store: this.props.store })}
       </div>
     )
   }

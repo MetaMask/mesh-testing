@@ -2,11 +2,11 @@
 const pify = require('pify')
 const CID = require('cids')
 const multihashing = require('multihashing-async')
-const getStats = require('./getStats')
+const getStats = require('./getDhtStats')
 const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duration))
 
 
-class DhtExperiment {
+class DhtExperimentClient {
   constructor ({ node, clientId }) {
     this.node = node
     this.clientId = clientId
@@ -89,7 +89,7 @@ class DhtExperiment {
   }
 }
 
-module.exports = DhtExperiment
+module.exports = DhtExperimentClient
 
 async function makeKeyId (content) {
   const key = await pify(multihashing)(content, 'sha2-256')

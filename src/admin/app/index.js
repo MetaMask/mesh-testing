@@ -7,5 +7,5 @@ module.exports = ({ store }) => {
   const root = document.createElement('div')
   root.id = 'root'
   document.body.appendChild(root)
-  ReactDOM.render(<App />, root);
+  ReactDOM.render(<App store={store}/>, root);
 }
