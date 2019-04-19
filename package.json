@@ -47,15 +47,15 @@
     "websocket-stream": "^5.1.1"
   },
   "devDependencies": {
-    "beefy": "^2.1.8",
     "browserify": "^16.1.1",
+    "budo": "^11.6.2",
     "concurrently": "^4.1.0",
     "exorcist": "^1.0.1",
     "gh-pages": "^2.0.1",
     "patch-package": "^5.1.1"
   },
   "scripts": {
-    "start": "beefy src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
+    "start": "budo src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
     "build": "npm run build:clean && npm run build:version && npm run build:base && npm run build:client && npm run build:admin",
     "build:clean": "rm -rf ./dist && mkdir -p ./dist",
     "build:base": "cp ./index.html ./dist/index.html",
