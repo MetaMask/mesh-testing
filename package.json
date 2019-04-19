@@ -38,6 +38,9 @@
     "push-stream-to-pull-stream": "^1.0.3",
     "qs": "^6.5.1",
     "raf-throttle": "^2.0.3",
+    "react": "^16.8.6",
+    "react-bootstrap": "^1.0.0-beta.8",
+    "react-dom": "^16.8.6",
     "rebirth": "^2.0.0",
     "rpc-stream": "^2.1.2",
     "throttle-obj-stream": "^1.0.0",
@@ -47,15 +50,33 @@
     "websocket-stream": "^5.1.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.4.3",
+    "@babel/preset-env": "^7.4.3",
+    "@babel/preset-react": "^7.0.0",
+    "babelify": "^10.0.0",
     "browserify": "^16.1.1",
     "budo": "^11.6.2",
     "concurrently": "^4.1.0",
     "exorcist": "^1.0.1",
     "gh-pages": "^2.0.1",
-    "patch-package": "^5.1.1"
+    "patch-package": "^5.1.1",
+    "wzrd": "^1.5.0"
+  },
+  "browserify": {
+    "transform": [
+      [
+        "babelify",
+        {
+          "presets": [
+            "@babel/preset-react",
+            "@babel/preset-env"
+          ]
+        }
+      ]
+    ]
   },
   "scripts": {
-    "start": "budo src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
+    "start": "wzrd src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
     "build": "npm run build:clean && npm run build:version && npm run build:base && npm run build:client && npm run build:admin",
     "build:clean": "rm -rf ./dist && mkdir -p ./dist",
     "build:base": "cp ./index.html ./dist/index.html",
