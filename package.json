@@ -49,6 +49,7 @@
   "devDependencies": {
     "beefy": "^2.1.8",
     "browserify": "^16.1.1",
+    "concurrently": "^4.1.0",
     "exorcist": "^1.0.1",
     "gh-pages": "^2.0.1",
     "patch-package": "^5.1.1"
@@ -62,7 +63,7 @@
     "build:client": "browserify src/client/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist ./dist/client-bundle.js.map > ./dist/client-bundle.js",
     "build:admin": "browserify src/admin/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist ./dist/admin-bundle.js.map > ./dist/admin-bundle.js",
     "deploy": "gh-pages -d ./dist",
-    "server": "npm run server:telemetry & npm run server:star",
+    "server": "concurrently -n telemetry,star 'npm run server:telemetry' 'npm run server:star'",
     "server:telemetry": "node src/server/index.js",
     "server:telemetry:debug": "node --inspect=0.0.0.0:9221 src/server/index.js",
     "server:star": "star-signal --port=9090 --host=127.0.0.1"
