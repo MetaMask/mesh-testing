@@ -59,11 +59,13 @@
     "build:clean": "rm -rf ./dist && mkdir -p ./dist",
     "build:base": "cp ./index.html ./dist/index.html",
     "build:version": "date +%s > ./BUILD_VERSION; echo \"building $(cat BUILD_VERSION)\"",
-    "build:client": "npx browserify src/client/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist ./dist/client-bundle.js.map > ./dist/client-bundle.js",
-    "build:admin": "npx browserify src/admin/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist ./dist/admin-bundle.js.map > ./dist/admin-bundle.js",
+    "build:client": "browserify src/client/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist ./dist/client-bundle.js.map > ./dist/client-bundle.js",
+    "build:admin": "browserify src/admin/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat BUILD_VERSION)\"  ] | exorcist ./dist/admin-bundle.js.map > ./dist/admin-bundle.js",
     "deploy": "gh-pages -d ./dist",
-    "server": "node src/server/server.js",
-    "server-debug": "node --inspect=0.0.0.0:9221 src/server/server.js"
+    "server": "npm run server:telemetry & npm run server:star",
+    "server:telemetry": "node src/server/server.js",
+    "server:telemetry:debug": "node --inspect=0.0.0.0:9221 src/server/server.js",
+    "server:star": "star-signal --port=9090 --host=127.0.0.1"
   },
   "repository": {
     "type": "git",
