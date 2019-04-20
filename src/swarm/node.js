@@ -1,27 +1,21 @@
 'use strict'
-const childProcess = require('child_process')
+const concurrently = require('concurrently')
+const colors = ['magenta', 'cyan', 'green', 'yellow', 'blue', 'red', 'white', 'gray', 'black']
 
-const p = async () => {
+
+start().catch(console.error)
+
+async function start () {
   const procs = []
   let instances = process.argv[2] || 5
   console.log(`launching ${instances} instances...`)
-  let insts = 0
-  while (insts = instances--) {
-    const inst = insts
-    const instance = childProcess.spawn('node', ['--inspect=:0', __dirname + '/client/index.js'])
+  const tasks = Array(instances).fill().map((_, index) => {
+    const scriptPath = __dirname + '/../client/index.js'
+    const command = `node --inspect=:0 ${scriptPath}`
     // const instance = childProcess.spawn('node', [__dirname + 'client/index.js', 'dial=/ip4/127.0.0.1/tcp/50326/ipfs/QmSJY8gjJYArR4u3rTjANWkSLwr75dVTjnknvdfbe7uiCi'])
-    instance.stdout.on('data', (msg) => {
-      console.log(`INSTANCE ${inst}:`, msg.toString())
-    })
-
-    instance.stderr.on('data', (msg) => {
-      console.error(`INSTANCE ${inst}:`, msg.toString())
-    })
-
-    procs.push(instance)
-    console.log(`${instances} remaining to start`)
-  }
-  console.log(`all done...`)
+    const name = `node-${index}`
+    const color = colors[index % colors.length]
+    return { name, command, prefixColor: color }
+  })
+  await concurrently(tasks)
 }
-
-p()
