@@ -3,6 +3,7 @@ const pify = require('pify')
 module.exports = discoverAndConnect
 
 function discoverAndConnect({ node, clientId, count, peerConnectionTracker }) {
+  let dialsInProgress = new Set()
   // connect to all discovered nodes
   let naiveDiscoveredPeers = 0
   node.on('peer:discovery', async (peer) => {
@@ -13,14 +14,19 @@ function discoverAndConnect({ node, clientId, count, peerConnectionTracker }) {
     if (naiveDiscoveredPeers > count) return
     // abort if we're already connected
     if (peerConnectionTracker.has(peerId))
+    // abort if we're already dialing
+    if (dialsInProgress.has(peerId)) return
 
     // attempt connection!
     naiveDiscoveredPeers++
     try {
+      dialsInProgress.add(peerId)
       await pify(cb => node.dial(peer, cb))()
+      dialsInProgress.remove(peerId)
     } catch (err) {
       // ignore failures
       naiveDiscoveredPeers--
+      dialsInProgress.remove(peerId)
       return
     }
     // listen for disconnect
