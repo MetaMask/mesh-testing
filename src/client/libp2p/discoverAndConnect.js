@@ -22,11 +22,11 @@ function discoverAndConnect({ node, clientId, count, peerConnectionTracker }) {
     try {
       dialsInProgress.add(peerId)
       await pify(cb => node.dial(peer, cb))()
-      dialsInProgress.remove(peerId)
+      dialsInProgress.delete(peerId)
     } catch (err) {
       // ignore failures
       naiveDiscoveredPeers--
-      dialsInProgress.remove(peerId)
+      dialsInProgress.delete(peerId)
       return
     }
     // listen for disconnect
