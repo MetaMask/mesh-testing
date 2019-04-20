@@ -16,7 +16,7 @@ const discoverAndConnect = require('./libp2p/discoverAndConnect')
 const DhtExperiment = require('../experiments/dht/client')
 
 const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
-const devMode = !window.location.search.includes('prod') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+const devMode = !process.browser || (!window.location.search.includes('prod') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
 
 start().catch(console.error)
 
@@ -54,11 +54,11 @@ async function start () {
   telemetry.setStateHandler(getState)
   telemetry.start()
 
-  // render loop
-  while (true) {
-    render()
-    await timeout(1e3)
-  }
+  // // render loop
+  // while (true) {
+  //   render()
+  //   await timeout(1e3)
+  // }
 
   function getState () {
     return {
@@ -66,18 +66,18 @@ async function start () {
     }
   }
 
-  function render() {
-    const { dht } = getState()
-    const { providers: { all, group1, group2, group3 } } = dht
-    const content = `
-    me: ${clientId} <br/>
-    all: ${all.length} <br/>
-    group1: ${group1.length} <br/>
-    group2: ${group2.length} <br/>
-    group3: ${group3.length} <br/>
-    `
-    document.body.innerHTML = content
-  }
+  // function render() {
+  //   const { dht } = getState()
+  //   const { providers: { all, group1, group2, group3 } } = dht
+  //   const content = `
+  //   me: ${clientId} <br/>
+  //   all: ${all.length} <br/>
+  //   group1: ${group1.length} <br/>
+  //   group2: ${group2.length} <br/>
+  //   group3: ${group3.length} <br/>
+  //   `
+  //   document.body.innerHTML = content
+  // }
 
 }
   // const options = {

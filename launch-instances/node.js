@@ -8,7 +8,7 @@ const p = async () => {
   let insts = 0
   while (insts = instances--) {
     const inst = insts
-    const instance = childProcess.spawn('node', ['--inspect=:0', '../src/client/index.js'])
+    const instance = childProcess.spawn('node', ['--inspect=:0', __dirname + '/../src/client/index.js'])
     // const instance = childProcess.spawn('node', ['../src/client/index.js', 'dial=/ip4/127.0.0.1/tcp/50326/ipfs/QmSJY8gjJYArR4u3rTjANWkSLwr75dVTjnknvdfbe7uiCi'])
     instance.stdout.on('data', (msg) => {
       console.log(`INSTANCE ${inst}:`, msg.toString())

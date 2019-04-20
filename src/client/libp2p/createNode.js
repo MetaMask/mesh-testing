@@ -1,7 +1,7 @@
 'use strict'
 
 const pify = require('pify')
-
+const wrtc = require('wrtc')
 const Libp2p = require('libp2p')
 const WS = require('libp2p-websockets')
 const WStar = require('libp2p-webrtc-star')
@@ -26,7 +26,7 @@ async function createNode ({ identity, addrs }) {
   addrs = addrs || []
   addrs.forEach((a) => peerInfo.multiaddrs.add(a))
 
-  const wstar = new WStar()
+  const wstar = new WStar({ wrtc })
   const node = new Libp2p({
     peerInfo,
     modules: {
