@@ -54,6 +54,21 @@ async function start () {
   telemetry.setStateHandler(getState)
   telemetry.start()
 
+  // for node, gracefully disconnect from telemetry
+  process.on('SIGINT', async () => {
+    console.log('Gracefully disconnecting from server...')
+    try {
+      await Promise.race([
+        telemetry.telemetryRpc.disconnect(),
+        (async () => { await timeout(3000); throw new Error('time expired'); })(),
+      ])
+      console.log('disconnected gracefully :)')
+    } catch (err) {
+      console.log('failed to disconnect gracefully :(')
+    }
+    process.exit()
+  })
+
   // // render loop
   // while (true) {
   //   render()
