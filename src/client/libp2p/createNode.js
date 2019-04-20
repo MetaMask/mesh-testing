@@ -53,6 +53,12 @@ async function createNode ({ identity, addrs }) {
       dht: {
         enabled: true,
         kBucketSize: 20,
+        randomWalk: {
+          enabled: true,
+          // interval: 30000
+          // queriesPerPeriod: 1
+          // timeout: 10000
+        }
       },
     }
   })
