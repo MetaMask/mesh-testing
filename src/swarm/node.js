@@ -13,8 +13,9 @@ async function start () {
     const scriptPath = __dirname + '/../client/index.js'
     const command = `node --inspect=:0 ${scriptPath}`
     const name = `node-${index}`
-    const color = colors[index % colors.length]
-    return { name, command, prefixColor: color }
+    const prefixColor = colors[index % colors.length]
+    return { name, command, prefixColor }
   })
-  await concurrently(tasks)
+  const prefix = '{pid}-{name}'
+  await concurrently(tasks, { prefix })
 }
