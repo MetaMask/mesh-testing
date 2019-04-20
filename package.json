@@ -98,8 +98,8 @@
     "server:telemetry:debug": "node --inspect=0.0.0.0:9221 src/server/index.js",
     "server:star": "star-signal --port=9090 --host=127.0.0.1",
     "swarm": "npm run swarm:node",
-    "swarm:node": "node ./launch-instances/node.js",
-    "swarm:browser": "node ./launch-instances/browser.js"
+    "swarm:node": "node src/swarm/node.js",
+    "swarm:browser": "node src/swarm/browser.js"
   },
   "repository": {
     "type": "git",
