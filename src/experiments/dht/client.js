@@ -12,12 +12,7 @@ class DhtExperimentClient {
     this.clientId = clientId
     this.state = {
       routingTable: [],
-      providers: {
-        all: [],
-        group1: [],
-        group2: [],
-        group3: [],
-      },
+      providers: {},
     }
 
     this.start()
@@ -26,19 +21,8 @@ class DhtExperimentClient {
   async start () {
     const { node } = this
 
-    // static
-    this.providedContent = ['all']
-    // group (1-3)
-    const groupNumber = 1 + Math.floor(3*Math.random())
-    this.providedContent.push(`group${groupNumber}`)
-
-    this.precomputedCids = {
-      all: await makeKeyId(Buffer.from('all')),
-      group1: await makeKeyId(Buffer.from('group1')),
-      group2: await makeKeyId(Buffer.from('group2')),
-      group3: await makeKeyId(Buffer.from('group3')),
-    }
-
+    await this.prepareGroups({ count: 3 })
+    
     while (true) {
       try {
         // broadcast that we provide content
@@ -51,6 +35,29 @@ class DhtExperimentClient {
       }
       await timeout(10 * 1000)
     }
+  }
+
+  async prepareGroups ({ count }) {
+    // static
+    this.providedContent = ['all']
+    // group number
+    const number = 1 + Math.floor(count*Math.random())
+    const key = `group-${number}`
+    this.state.group = key
+    this.providedContent.push(`group-${number}`)
+  
+    this.precomputedCids = {
+      all: await makeKeyId(Buffer.from('all')),
+    }
+  
+    await Promise.all(
+      Array(count).fill().map(async (_, index) => {
+        const number = index + 1
+        const key = `group-${number}`
+        const value = await makeKeyId(Buffer.from(key))
+        this.precomputedCids[key] = value
+      })
+    )
   }
 
   async announceProvidedContent () {
@@ -94,4 +101,4 @@ module.exports = DhtExperimentClient
 async function makeKeyId (content) {
   const key = await pify(multihashing)(content, 'sha2-256')
   return new CID(key)
-} 
+}

@@ -1,6 +1,6 @@
 const React = require('react')
 const ObsStoreComponent = require('../common/obs-store')
-const DhtGraph = require('./graph')
+const DhtGraph = require('./graphs/routing')
 
 const experiment = {
   views: [],
@@ -16,8 +16,8 @@ experiment.views.push({
 })
 
 experiment.views.push({
-  id: 'dht:2',
-  label: 'dht traffic',
+  id: 'debug',
+  label: 'debug',
   render: ({ store }) => (
     <ObsStoreComponent store={store}/>
   )

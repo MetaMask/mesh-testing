@@ -1,5 +1,6 @@
 const React = require('react')
 const ObservableStore = require('obs-store')
+const palette = require('google-palette')
 const GraphContainer = require('react-force-directed/src/GraphContainer')
 const ForceGraph = require('react-force-directed/src/ForceGraph')
 const {
@@ -9,8 +10,9 @@ const {
 const {
   buildGraphBasicNodes,
   buildGraphAddMissingNodes,
-} = require('../common/graph-viz')
-
+} = require('../../common/graph-viz')
+// const colors = ['#002b36', '#073642', '#586e75', '#657b83', '#839496', '#93a1a1', '#eee8d5', '#fdf6e3']
+const colors = palette('tol-rainbow', 5).map(hex => `#${hex}`)
 
 class DhtGraph extends React.Component {
 
@@ -36,9 +38,7 @@ class DhtGraph extends React.Component {
   }
 
   rebuildGraph (state) {
-    console.log('DhtGraph.rebuildGraph', state)
     const { nodes, links } = buildGraphForDht(state)
-    console.log({ nodes, links })
     this.graphStore.updateState({ nodes, links })
   }
 
@@ -75,9 +75,9 @@ function buildGraphForDht (appState) {
   buildGraphBasicNodes(clientsData, graph)
   buildGraphDhtLinks(clientsData, graph)
 
-  // recolor nodes in dht experiment "hello"
+  // recolor nodes based on group
   // color green if they were part of the getMany response
-  // recolorNodesForGroupNumber(appState, graph)
+  recolorNodesForGroupNumber(clientsData, graph)
 
   return graph
 }
@@ -104,22 +104,33 @@ function buildGraphDhtLinks (networkState, graph) {
   buildGraphAddMissingNodes(graph)
 }
 
-function recolorNodesForGroupNumber (appState, graph) {
-  const { networkState, selectedNode } = appState
-  const clientsData = networkState.clients
-  // if no selectedNode, we're done
-  if (!selectedNode) return
-  const selectedNodeState = clientsData[selectedNode]
-
-  // abort if data is missing
-  if (!selectedNodeState) return
-  if (!selectedNodeState.dht) return
-
-  // color matching nodes
-  const dhtQueriedNodes = selectedNodeState.dht.hello.map(entry => entry.from)
-  graph.nodes.forEach((node) => {
-    if (dhtQueriedNodes.includes(node.id)) {
-      node.color = colors.green
-    }
+function recolorNodesForGroupNumber (clientsData, graph) {
+  graph.nodes.map((node) => {
+    const clientId = node.id
+    const clientData = clientsData[clientId] || {}
+    const dhtData = clientData.dht || {}
+    const groupName = dhtData.group
+    if (!groupName) return
+    const number = Number(groupName.split('-')[1])
+    const color = colors[number % colors.length]
+    node.color = color
   })
+  // // const { networkState, selectedNode } = appState
+  // // const clientsData = networkState.clients
+  // // // if no selectedNode, we're done
+  // // if (!selectedNode) return
+  // // const selectedNodeState = clientsData[selectedNode]
+
+  // // // abort if data is missing
+  // // if (!selectedNodeState) return
+  // // if (!selectedNodeState.dht) return
+
+  // // color matching nodes
+  // const 
+  // const dhtQueriedNodes = selectedNodeState.dht.hello.map(entry => entry.from)
+  // graph.nodes.forEach((node) => {
+  //   if (dhtQueriedNodes.includes(node.id)) {
+  //     node.color = colors.green
+  //   }
+  // })
 }
