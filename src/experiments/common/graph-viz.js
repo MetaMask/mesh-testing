@@ -1,7 +1,4 @@
-const {
-  createNode,
-  createLink,
-} = require('react-force-directed/src/util')
+const { util: { createNode, createLink } } = require('react-force-directed')
 
 module.exports = {
   buildGraphBasicNodes,

@@ -42,6 +42,7 @@
     "react": "^16.8.6",
     "react-bootstrap": "^1.0.0-beta.8",
     "react-dom": "^16.8.6",
+    "react-force-directed": "^1.0.2",
     "rebirth": "^2.0.0",
     "rpc-stream": "^2.1.2",
     "throttle-obj-stream": "^1.0.0",

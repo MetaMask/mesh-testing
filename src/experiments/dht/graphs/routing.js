@@ -1,12 +1,7 @@
 const React = require('react')
 const ObservableStore = require('obs-store')
 const palette = require('google-palette')
-const GraphContainer = require('react-force-directed/src/GraphContainer')
-const ForceGraph = require('react-force-directed/src/ForceGraph')
-const {
-  createNode,
-  createLink,
-} = require('react-force-directed/src/util')
+const { GraphContainer, ForceGraph, util: { createNode, createLink } } = require('react-force-directed')
 const {
   buildGraphBasicNodes,
   buildGraphAddMissingNodes,
