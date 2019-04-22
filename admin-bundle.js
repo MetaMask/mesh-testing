@@ -31611,7 +31611,12 @@ exports.server = function server (server, client) {
     },
     disconnect: async (peerId) => {
       log(`client "${peerId}" sent disconnect request`)
-      server.disconnectClient(client)
+      // let disconnect request complete, before
+      // closing the connection to the client,
+      // otherwise it will always fail
+      setTimeout(() => {
+        server.disconnectClient(client)
+      }, 100)
     }
   })
 }
@@ -75099,7 +75104,7 @@ module.exports = ({
 (function (global,Buffer){
 'use strict'; // setup error reporting before anything else
 
-const buildVersion = String(1555925444 || 'development');
+const buildVersion = String(1555931392 || 'development');
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`); // eslint-disable-next-line no-undef
 // Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
