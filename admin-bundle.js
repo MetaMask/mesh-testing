@@ -53281,7 +53281,7 @@ module.exports = ({
 (function (global,Buffer){
 'use strict'; // setup error reporting before anything else
 
-const buildVersion = String(1555742260 || 'development');
+const buildVersion = String(1555904703 || 'development');
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`); // eslint-disable-next-line no-undef
 // Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
