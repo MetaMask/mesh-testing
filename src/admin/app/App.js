@@ -4,6 +4,7 @@ import './bootstrap.css';
 import React, { Component } from 'react'
 import Nav from './components/nav'
 const dhtExperiment = require('../../experiments/dht/admin')
+const errorsExperiment = require('../../experiments/errors/admin')
 
 class App extends Component {
 
@@ -15,6 +16,7 @@ class App extends Component {
     this.views = {}
 
     this.loadExperiment(dhtExperiment)
+    this.loadExperiment(errorsExperiment)
   }
 
   loadExperiment (experiment) {

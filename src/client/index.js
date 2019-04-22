@@ -14,6 +14,7 @@ const createPeerConnectionTracker = require('./libp2p/peerConnectionTracker')
 const discoverAndConnect = require('./libp2p/discoverAndConnect')
 
 const DhtExperiment = require('../experiments/dht/client')
+const ErrorExperiment = require('../experiments/errors/client')
 
 const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
 const devMode = !process.browser || (!window.location.search.includes('prod') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
@@ -42,6 +43,7 @@ async function start () {
 
   // setup experiments
   const dhtExp = new DhtExperiment({ node, clientId })
+  const errExp = new ErrorExperiment({ node, clientId })
 
   // start node
   console.log('node starting...')
@@ -78,6 +80,7 @@ async function start () {
   function getState () {
     return {
       dht: dhtExp.getState(),
+      error: errExp.getState(),
     }
   }
 

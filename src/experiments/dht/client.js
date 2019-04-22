@@ -31,10 +31,14 @@ class DhtExperimentClient {
         await this.findProviders()
         Object.assign(this.state, getStats({ node }))
       } catch (err) {
-        console.warn(err)
+        this.reportError('main loop', err)
       }
       await timeout(10 * 1000)
     }
+  }
+
+  reportError (label, err) {
+    this.node.emit('app:error', `dht - ${label}`, err)
   }
 
   async prepareGroups ({ count }) {
@@ -70,8 +74,12 @@ class DhtExperimentClient {
     // node.dht.put(Buffer.from(Math.random().toString()), Buffer.from('correct'), (err, result) => console.log('dht put (random)', err || result))
     await Promise.all(
       this.providedContent.map(async (key) => {
-        const cid = this.precomputedCids[key]
-        await pify(cb => node.contentRouting.provide(cid, cb))()
+        try {
+          const cid = this.precomputedCids[key]
+          await pify(cb => node.contentRouting.provide(cid, cb))()
+        } catch (err) {
+          this.reportError(`provide content "${key}"`, err)
+        }
       })
     )
   }
@@ -80,13 +88,17 @@ class DhtExperimentClient {
     const { clientId, node } = this
     await Promise.all(
       Object.entries(this.precomputedCids).map(async ([key, cid]) => {
-        const providers = await pify(cb => node.contentRouting.findProviders(cid, 10 * 1000, cb))()
-        // map to id strings
-        const providerIds = providers.map(provider => provider.id.toB58String())
-        // remove self
-        const providerPeerIds = providerIds.filter(providerId => clientId !== providerId)
-        // update state
-        this.state.providers[key] = providerPeerIds
+        try {
+          const providers = await pify(cb => node.contentRouting.findProviders(cid, 10 * 1000, cb))()
+          // map to id strings
+          const providerIds = providers.map(provider => provider.id.toB58String())
+          // remove self
+          const providerPeerIds = providerIds.filter(providerId => clientId !== providerId)
+          // update state
+          this.state.providers[key] = providerPeerIds
+        } catch (err) {
+          this.reportError('find providers', err)
+        }
       })
     )
   }
