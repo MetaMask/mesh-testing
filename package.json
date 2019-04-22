@@ -18,8 +18,8 @@
     "hat": "0.0.3",
     "http-poll-stream": "^2.1.0",
     "kitsunet-telemetry": "github:musteka-la/kitsunet-telemetry#master",
-    "libp2p": "^0.25.0",
-    "libp2p-kad-dht": "^0.14.12",
+    "libp2p": "^0.25.2",
+    "libp2p-kad-dht": "^0.14.13",
     "libp2p-mplex": "^0.8.5",
     "libp2p-webrtc-star": "^0.15.8",
     "libp2p-websockets": "^0.12.2",
@@ -49,7 +49,7 @@
     "through2": "^2.0.3",
     "virtual-dom": "^2.1.1",
     "webrtcsupport": "^2.2.0",
-    "websocket-stream": "^5.1.1",
+    "websocket-stream": "^5.5.0",
     "wrtc": "^0.3.7"
   },
   "devDependencies": {
@@ -87,6 +87,7 @@
     ]
   },
   "scripts": {
+    "postinstall": "patch-package",
     "start": "wzrd src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
     "build": "npm run build:clean && npm run build:version && npm run build:base && npm run build:client && npm run build:admin",
     "build:clean": "rm -rf dist && mkdir -p dist",

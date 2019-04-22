@@ -1,0 +1,16 @@
+patch-package
+--- a/node_modules/libp2p-kad-dht/src/index.js
++++ b/node_modules/libp2p-kad-dht/src/index.js
+@@ -536,7 +536,11 @@ class KadDHT extends EventEmitter {
+ 
+         each(peers, (peer, cb) => {
+           this._log('putProvider %s to %s', key.toBaseEncodedString(), peer.toB58String())
+-          this.network.sendMessage(peer, msg, cb)
++          this.network.sendMessage(peer, msg, (err) => {
++            // log but ignore errors
++            if (err) this._log.error(err)
++            cb()
++          })
+         }, cb)
+       }
+     ], (err) => callback(err))
