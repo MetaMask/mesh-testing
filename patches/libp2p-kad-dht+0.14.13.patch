@@ -14,3 +14,20 @@ patch-package
          }, cb)
        }
      ], (err) => callback(err))
+--- a/node_modules/libp2p-kad-dht/src/private.js
++++ b/node_modules/libp2p-kad-dht/src/private.js
+@@ -557,6 +557,13 @@ module.exports = (dht) => ({
+    */
+   _findProvidersSingle (peer, key, callback) {
+     const msg = new Message(Message.TYPES.GET_PROVIDERS, key.buffer, 0)
+-    dht.network.sendRequest(peer, msg, callback)
++    dht.network.sendRequest(peer, msg, (err, provs) => {
++      // ignore errors
++      if (err) {
++        dht._log.error(err)
++        return cb(null, [])
++      }
++      cb(null, provs)
++    })
+   }
+ })
