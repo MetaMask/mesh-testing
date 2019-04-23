@@ -75104,7 +75104,7 @@ module.exports = ({
 (function (global,Buffer){
 'use strict'; // setup error reporting before anything else
 
-const buildVersion = String(1555931392 || 'development');
+const buildVersion = String(1555998341 || 'development');
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`); // eslint-disable-next-line no-undef
 // Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
@@ -75324,6 +75324,8 @@ const React = require('react');
 
 const ObservableStore = require('obs-store');
 
+const deepEqual = require('deep-equal');
+
 const palette = require('google-palette');
 
 const {
@@ -75338,8 +75340,7 @@ const {
 const {
   buildGraphBasicNodes,
   buildGraphAddMissingNodes
-} = require('../../common/graph-viz'); // const colors = ['#002b36', '#073642', '#586e75', '#657b83', '#839496', '#93a1a1', '#eee8d5', '#fdf6e3']
-
+} = require('../../common/graph-viz');
 
 const colors = palette('tol-rainbow', 5).map(hex => `#${hex}`);
 
@@ -75347,7 +75348,7 @@ class DhtGraph extends React.Component {
   constructor() {
     super(); // prepare empty graph
 
-    this.graph = {
+    const graph = {
       nodes: [],
       links: [],
       container: {
@@ -75356,7 +75357,7 @@ class DhtGraph extends React.Component {
       } // contain graph in observable store
 
     };
-    this.graphStore = new ObservableStore(this.graph); // bind for listener
+    this.graphStore = new ObservableStore(graph); // bind for listener
 
     this.rebuildGraph = this.rebuildGraph.bind(this);
   }
@@ -75381,6 +75382,10 @@ class DhtGraph extends React.Component {
       nodes,
       links
     } = buildGraphForDht(state);
+    const currentGraph = this.graphStore.getState(); // abort update if no change to graph
+
+    if (deepEqual(nodes, currentGraph.nodes) && deepEqual(links, currentGraph.links)) return; // update graph store
+
     this.graphStore.updateState({
       nodes,
       links
@@ -75480,7 +75485,7 @@ function recolorNodesForGroupNumber(clientsData, graph) {
   // })
 }
 
-},{"../../common/graph-viz":"/home/user/Development/mesh-testing/src/experiments/common/graph-viz.js","google-palette":"/home/user/Development/mesh-testing/node_modules/google-palette/palette.js","obs-store":"/home/user/Development/mesh-testing/node_modules/obs-store/index.js","react":"/home/user/Development/mesh-testing/node_modules/react/index.js","react-force-directed":"/home/user/Development/mesh-testing/node_modules/react-force-directed/dist/index.js"}],"/home/user/Development/mesh-testing/src/experiments/errors/admin.js":[function(require,module,exports){
+},{"../../common/graph-viz":"/home/user/Development/mesh-testing/src/experiments/common/graph-viz.js","deep-equal":"/home/user/Development/mesh-testing/node_modules/deep-equal/index.js","google-palette":"/home/user/Development/mesh-testing/node_modules/google-palette/palette.js","obs-store":"/home/user/Development/mesh-testing/node_modules/obs-store/index.js","react":"/home/user/Development/mesh-testing/node_modules/react/index.js","react-force-directed":"/home/user/Development/mesh-testing/node_modules/react-force-directed/dist/index.js"}],"/home/user/Development/mesh-testing/src/experiments/errors/admin.js":[function(require,module,exports){
 "use strict";
 
 const React = require('react');
@@ -75529,12 +75534,15 @@ class ErrorLogComponent extends ObsStoreComponent {
       errors
     } = errorData;
     const timeOrdered = errors.slice().reverse();
-    return React.createElement("div", null, React.createElement("span", null, clientId), timeOrdered.map(err => this.renderEachError(err)));
+    return React.createElement("div", {
+      key: clientId
+    }, React.createElement("span", null, clientId), timeOrdered.map(err => this.renderEachError(clientId, err)));
   }
 
-  renderEachError(err) {
+  renderEachError(clientId, err) {
+    const key = `${clientId}-${err.now}-${err.message}`;
     return React.createElement("details", {
-      key: err.now
+      key: key
     }, React.createElement("summary", null, React.createElement("span", null, `${err.label} - ${err.message}`)), React.createElement("pre", null, err.stack));
   }
 
