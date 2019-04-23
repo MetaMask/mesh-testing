@@ -25,9 +25,9 @@ patch-package
 +      // ignore errors
 +      if (err) {
 +        dht._log.error(err)
-+        return cb(null, [])
++        return callback(null, [])
 +      }
-+      cb(null, provs)
++      callback(null, provs)
 +    })
    }
  })
