@@ -5,6 +5,7 @@ import React, { Component } from 'react'
 import Nav from './components/nav'
 const dhtExperiment = require('../../experiments/dht/admin')
 const errorsExperiment = require('../../experiments/errors/admin')
+const trafficExperiment = require('../../experiments/traffic/admin') 
 
 class App extends Component {
 
@@ -17,6 +18,7 @@ class App extends Component {
 
     this.loadExperiment(dhtExperiment)
     this.loadExperiment(errorsExperiment)
+    this.loadExperiment(trafficExperiment)
   }
 
   loadExperiment (experiment) {
