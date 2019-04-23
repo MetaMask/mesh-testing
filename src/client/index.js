@@ -13,6 +13,7 @@ const createNode = require('./libp2p/createNode')
 const createPeerConnectionTracker = require('./libp2p/peerConnectionTracker')
 const discoverAndConnect = require('./libp2p/discoverAndConnect')
 
+const TrafficExperiment = require('../experiments/traffic/client')
 const DhtExperiment = require('../experiments/dht/client')
 const ErrorExperiment = require('../experiments/errors/client')
 
@@ -42,6 +43,7 @@ async function start () {
   discoverAndConnect({ node, clientId, peerConnectionTracker, count: 6 })
 
   // setup experiments
+  const trafficExp = new TrafficExperiment({ node })
   const dhtExp = new DhtExperiment({ node, clientId })
   const errExp = new ErrorExperiment({ node, clientId })
 
@@ -81,6 +83,7 @@ async function start () {
     return {
       dht: dhtExp.getState(),
       error: errExp.getState(),
+      traffic: trafficExp.getState(),
     }
   }
 
