@@ -1,22 +1,24 @@
 const React = require('react')
 const ObservableStore = require('obs-store')
+const deepEqual = require('deep-equal')
 const palette = require('google-palette')
 const { GraphContainer, ForceGraph, util: { createNode, createLink } } = require('react-force-directed')
 const {
   buildGraphBasicNodes,
   buildGraphAddMissingNodes,
 } = require('../../common/graph-viz')
-// const colors = ['#002b36', '#073642', '#586e75', '#657b83', '#839496', '#93a1a1', '#eee8d5', '#fdf6e3']
+
 const colors = palette('tol-rainbow', 5).map(hex => `#${hex}`)
+
 
 class DhtGraph extends React.Component {
 
   constructor () {
     super()
     // prepare empty graph
-    this.graph = { nodes: [], links: [], container: { width: 0, height: 0 } }
+    const graph = { nodes: [], links: [], container: { width: 0, height: 0 } }
     // contain graph in observable store
-    this.graphStore = new ObservableStore(this.graph)
+    this.graphStore = new ObservableStore(graph)
     // bind for listener
     this.rebuildGraph = this.rebuildGraph.bind(this)
   }
@@ -34,6 +36,10 @@ class DhtGraph extends React.Component {
 
   rebuildGraph (state) {
     const { nodes, links } = buildGraphForDht(state)
+    const currentGraph = this.graphStore.getState()
+    // abort update if no change to graph
+    if (deepEqual(nodes, currentGraph.nodes) && deepEqual(links, currentGraph.links)) return
+    // update graph store
     this.graphStore.updateState({ nodes, links })
   }
 

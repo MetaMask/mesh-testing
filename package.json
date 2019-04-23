@@ -9,6 +9,7 @@
     "cors": "^2.8.4",
     "d3": "^4.13.0",
     "debug": "^4.1.1",
+    "deep-equal": "^1.0.1",
     "detect-node": "^2.0.4",
     "end-of-stream": "^1.4.1",
     "envify": "^4.1.0",
