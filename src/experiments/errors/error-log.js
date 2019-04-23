@@ -21,16 +21,17 @@ class ErrorLogComponent extends ObsStoreComponent {
     const timeOrdered = errors.slice().reverse()
 
     return (
-      <div>
+      <div key={clientId}>
         <span>{clientId}</span>
-        {timeOrdered.map(err => this.renderEachError(err))}
+        {timeOrdered.map(err => this.renderEachError(clientId, err))}
       </div>
     )
   }
 
-  renderEachError (err) {
+  renderEachError (clientId, err) {
+    const key = `${clientId}-${err.now}-${err.message}`
     return (
-      <details key={err.now} >
+      <details key={key}>
         <summary>
           <span>{`${err.label} - ${err.message}`}</span>
         </summary>
