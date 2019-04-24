@@ -12,13 +12,13 @@ class App extends Component {
   constructor() {
     super()
     this.state = {
-      currentView: 'dht'
+      currentView: 'traffic'
     }
     this.views = {}
 
+    this.loadExperiment(trafficExperiment)
     this.loadExperiment(dhtExperiment)
     this.loadExperiment(errorsExperiment)
-    this.loadExperiment(trafficExperiment)
   }
 
   loadExperiment (experiment) {
