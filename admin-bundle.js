@@ -74999,12 +74999,12 @@ class App extends _react.Component {
   constructor() {
     super();
     this.state = {
-      currentView: 'dht'
+      currentView: 'traffic'
     };
     this.views = {};
+    this.loadExperiment(trafficExperiment);
     this.loadExperiment(dhtExperiment);
     this.loadExperiment(errorsExperiment);
-    this.loadExperiment(trafficExperiment);
   }
 
   loadExperiment(experiment) {
@@ -75025,13 +75025,17 @@ class App extends _react.Component {
     const currentView = this.views[this.state.currentView];
     return _react.default.createElement("div", {
       className: "App"
+    }, _react.default.createElement("div", {
+      className: "AppColumn LeftPanel"
     }, _react.default.createElement(_nav.default, {
       routes: views,
       activeRoute: this.state.currentView,
       onNavigate: target => this.selectView(target)
     }), currentView && currentView.render({
       store: this.props.store
-    }));
+    })), _react.default.createElement("div", {
+      className: "AppColumn RightPanel"
+    }, _react.default.createElement("span", null, "beep boop")));
   }
 
 }
@@ -75077,7 +75081,7 @@ var _default = NavTabs;
 exports.default = _default;
 
 },{"react":"/home/xyz/Development/mesh-testing/node_modules/react/index.js","react-bootstrap/Tab":"/home/xyz/Development/mesh-testing/node_modules/react-bootstrap/Tab.js","react-bootstrap/Tabs":"/home/xyz/Development/mesh-testing/node_modules/react-bootstrap/Tabs.js"}],"/home/xyz/Development/mesh-testing/src/admin/app/index.css":[function(require,module,exports){
-var css = "html,\nbody,\n#root,\n.App {\n  width: 100%;\n  height: 100%;\n}\n"; (require("browserify-css").createStyle(css, { "href": "src/admin/app/index.css" }, { "insertAt": "bottom" })); module.exports = css;
+var css = "html,\nbody,\n#root {\n  width: 100%;\n  height: 100%;\n}\n.App {\n  display: flex;\n  flex-direction: row;\n  flex-wrap: nowrap;\n  height: 100%;\n}\n.AppColumn {\n  height: 100%;\n}\n.AppColumn.LeftPanel {\n  flex-grow: 1;\n}\n.AppColumn.RightPanel {\n  flex: 0;\n  flex-basis: 360px;\n  border-left: solid 1px #eaeaea;\n}\n"; (require("browserify-css").createStyle(css, { "href": "src/admin/app/index.css" }, { "insertAt": "bottom" })); module.exports = css;
 },{"browserify-css":"/home/xyz/Development/mesh-testing/node_modules/browserify-css/browser.js"}],"/home/xyz/Development/mesh-testing/src/admin/app/index.js":[function(require,module,exports){
 "use strict";
 
@@ -75107,7 +75111,7 @@ module.exports = ({
 (function (global,Buffer){
 'use strict'; // setup error reporting before anything else
 
-const buildVersion = String(1556010959 || 'development');
+const buildVersion = String(1556076093 || 'development');
 console.log(`MetaMask Mesh Testing - version: ${buildVersion}`); // eslint-disable-next-line no-undef
 // Raven.config('https://5793e1040722484d9f9a620df418a0df@sentry.io/286549', { release: buildVersion }).install()
 
