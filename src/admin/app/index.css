@@ -1,4 +1,23 @@
-html, body, #root, .App {
+html, body, #root {
   width: 100%;
   height: 100%;
+}
+
+.App {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  height: 100%;
+}
+
+.AppColumn {
+  height: 100%;
+}
+.AppColumn.LeftPanel {
+  flex-grow: 1;
+}
+.AppColumn.RightPanel {
+  flex: 0;
+  flex-basis: 360px;
+  border-left: solid 1px #eaeaea;
 }

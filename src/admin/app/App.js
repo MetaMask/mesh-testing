@@ -38,12 +38,17 @@ class App extends Component {
 
     return (
       <div className="App">
-        <Nav
-          routes={views}
-          activeRoute={this.state.currentView}
-          onNavigate={(target) => this.selectView(target)}
-          />
-          {currentView && currentView.render({ store: this.props.store })}
+        <div className="AppColumn LeftPanel">
+          <Nav
+            routes={views}
+            activeRoute={this.state.currentView}
+            onNavigate={(target) => this.selectView(target)}
+            />
+            {currentView && currentView.render({ store: this.props.store })}
+        </div>
+        <div className="AppColumn RightPanel">
+          <span>beep boop</span>
+        </div>
       </div>
     )
   }
