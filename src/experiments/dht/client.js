@@ -35,6 +35,10 @@ class DhtExperimentClient {
       }
       await timeout(10 * 1000)
     }
+
+    // // start random walk
+    // node._dht.randomWalk._options.enabled = true
+    // node._dht.randomWalk.start()
   }
 
   reportError (label, err) {
