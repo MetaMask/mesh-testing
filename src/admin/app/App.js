@@ -3,6 +3,7 @@ import './bootstrap.css';
 
 import React, { Component } from 'react'
 import Nav from './components/nav'
+const SidePanel = require('./views/SidePanel')
 const dhtExperiment = require('../../experiments/dht/admin')
 const errorsExperiment = require('../../experiments/errors/admin')
 const trafficExperiment = require('../../experiments/traffic/admin') 
@@ -12,7 +13,8 @@ class App extends Component {
   constructor() {
     super()
     this.state = {
-      currentView: 'traffic'
+      currentView: 'traffic',
+      selectedNode: null,
     }
     this.views = {}
 
@@ -33,8 +35,12 @@ class App extends Component {
   }
 
   render () {
+    const actions = {
+      selectNode: (clientId) => this.setState({ selectedNode: clientId }),
+    }
     const views = Object.values(this.views)
     const currentView = this.views[this.state.currentView]
+    const appState = Object.assign({}, this.state)
 
     return (
       <div className="App">
@@ -44,10 +50,10 @@ class App extends Component {
             activeRoute={this.state.currentView}
             onNavigate={(target) => this.selectView(target)}
             />
-            {currentView && currentView.render({ store: this.props.store })}
+            {currentView && currentView.render({ store: this.props.store, actions })}
         </div>
         <div className="AppColumn RightPanel">
-          <span>beep boop</span>
+          <SidePanel appState={appState} actions={actions} store={this.props.store}/>
         </div>
       </div>
     )

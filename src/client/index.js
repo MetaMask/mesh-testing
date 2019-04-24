@@ -80,10 +80,14 @@ async function start () {
   // }
 
   function getState () {
-    return {
-      dht: dhtExp.getState(),
-      error: errExp.getState(),
-      traffic: trafficExp.getState(),
+    try {
+      return {
+        dht: dhtExp.getState(),
+        error: errExp.getState(),
+        traffic: trafficExp.getState(),
+      }
+    } catch (err) {
+      console.error('Error getting client state', err)
     }
   }
 

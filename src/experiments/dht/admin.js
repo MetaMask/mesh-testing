@@ -18,8 +18,8 @@ experiment.views.push({
 experiment.views.push({
   id: 'debug',
   label: 'debug',
-  render: ({ store }) => (
-    <ObsStoreComponent store={store}/>
+  render: ({ store, actions }) => (
+    <ObsStoreComponent store={store} actions={actions}/>
   )
 })
 

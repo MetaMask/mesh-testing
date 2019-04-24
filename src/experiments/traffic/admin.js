@@ -9,8 +9,8 @@ const experiment = {
 experiment.views.push({
   id: 'traffic',
   label: 'traffic',
-  render: ({ store }) => (
-    <BasicTrafficGraph store={store}/>
+  render: ({ store, actions }) => (
+    <BasicTrafficGraph store={store} actions={actions}/>
   )
 })
 

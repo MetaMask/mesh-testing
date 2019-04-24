@@ -45,9 +45,7 @@ class BaseForceGraph extends React.Component {
   }
 
   render () {
-    const actions = {
-      selectNode: console.log
-    }
+    const { actions } = this.props
 
     return (
       <div ref={this.containerRef} style={{ width: '100%', height: '100%' }}>
