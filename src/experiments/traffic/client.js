@@ -8,6 +8,8 @@ const statDirectionToEvent = {
   out: 'dataSent'
 }
 
+const movingAverageInterval = 10 * 1000
+
 class TrafficExperiment {
   constructor ({ node }) {
     this.libp2pPeersStats = {}
@@ -34,10 +36,10 @@ class TrafficExperiment {
       Object.entries(state.global.protocols).forEach(([protocolName, protocolStats]) => {
         const protocolTimeSeries = timeSeriesProtocols[protocolName] || (timeSeriesProtocols[protocolName] = {})
         for (let direction of ['dataSent', 'dataReceived']) {
-          const newValue = protocolStats.movingAverages[direction]['60000']
-          const timeSeries = protocolTimeSeries[direction] || []
-          timeSeries.push(newValue)
-          protocolTimeSeries[direction] = timeSeries.slice(-timeSeriesMaxSize)
+          const newValue = protocolStats.movingAverages[direction]
+          const timeSeries = protocolTimeSeries[direction] || Array(timeSeriesMaxSize).fill(0)
+          timeSeries.unshift(newValue)
+          protocolTimeSeries[direction] = timeSeries.slice(0, timeSeriesMaxSize)
         }
       })
     }, 10 * 1000)
@@ -105,12 +107,12 @@ function libp2pStatsToJson (peerStats) {
     const container = accumulator[name] = accumulator[name] || createEmptyStatsJson()
     container.snapshot.dataReceived += newStats.snapshot.dataReceived
     container.snapshot.dataSent += newStats.snapshot.dataSent
-    container.movingAverages.dataReceived['60000'] += newStats.movingAverages.dataReceived['60000']
-    container.movingAverages.dataReceived['300000'] += newStats.movingAverages.dataReceived['300000']
-    container.movingAverages.dataReceived['900000'] += newStats.movingAverages.dataReceived['900000']
-    container.movingAverages.dataSent['60000'] += newStats.movingAverages.dataSent['60000']
-    container.movingAverages.dataSent['300000'] += newStats.movingAverages.dataSent['300000']
-    container.movingAverages.dataSent['900000'] += newStats.movingAverages.dataSent['900000']
+    container.movingAverages.dataReceived += newStats.movingAverages.dataReceived
+    container.movingAverages.dataReceived += newStats.movingAverages.dataReceived
+    container.movingAverages.dataReceived += newStats.movingAverages.dataReceived
+    container.movingAverages.dataSent += newStats.movingAverages.dataSent
+    container.movingAverages.dataSent += newStats.movingAverages.dataSent
+    container.movingAverages.dataSent += newStats.movingAverages.dataSent
   }
 }
 
@@ -118,19 +120,11 @@ function createEmptyStatsJson () {
   return {
     snapshot: {
       dataReceived: 0,
-      dataSent: 0
+      dataSent: 0,
     },
     movingAverages: {
-      dataReceived: {
-        '60000': 0,
-        '300000': 0,
-        '900000': 0
-      },
-      dataSent: {
-        '60000': 0,
-        '300000': 0,
-        '900000': 0
-      }
+      dataReceived: 0,
+      dataSent: 0,
     }
   }
 }
@@ -142,16 +136,8 @@ function statObjToJson (statsObj) {
       dataSent: Number.parseInt(statsObj.snapshot.dataSent.toString())
     },
     movingAverages: {
-      dataReceived: {
-        '60000': statsObj.movingAverages.dataReceived['60000'].movingAverage(),
-        '300000': statsObj.movingAverages.dataReceived['300000'].movingAverage(),
-        '900000': statsObj.movingAverages.dataReceived['900000'].movingAverage()
-      },
-      dataSent: {
-        '60000': statsObj.movingAverages.dataSent['60000'].movingAverage(),
-        '300000': statsObj.movingAverages.dataSent['300000'].movingAverage(),
-        '900000': statsObj.movingAverages.dataSent['900000'].movingAverage()
-      }
+      dataReceived: statsObj.movingAverages.dataReceived[movingAverageInterval].movingAverage(),
+      dataSent: statsObj.movingAverages.dataSent[movingAverageInterval].movingAverage(),
     }
   }
 }
@@ -161,9 +147,7 @@ function createStat () {
     computeThrottleMaxQueueSize: 1000,
     computeThrottleTimeout: 2000,
     movingAverageIntervals: [
-      60 * 1000, // 1 minute
-      5 * 60 * 1000, // 5 minutes
-      15 * 60 * 1000 // 15 minutes
+      movingAverageInterval
     ]
   })
   stat.start()

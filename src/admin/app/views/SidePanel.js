@@ -126,8 +126,8 @@ function renderSelectedNodeGlobalStats (trafficStats, state, actions) {
     return (
       h('div', [
         renderNodePeerTrafficStatsTimeSeries(trafficStats),
-        renderNodePeerTrafficStats('transports', transports),
-        renderNodePeerTrafficStats('protocols', protocols)
+        // renderNodePeerTrafficStats('transports', transports),
+        // renderNodePeerTrafficStats('protocols', protocols)
       ])
     )
   } else {
@@ -164,68 +164,68 @@ function renderSelectedNodePeerStats (trafficStats, state, actions) {
           onClick: () => actions.selectNode(peerId)
         }, 'select')
       ]),
-      renderNodePeerTrafficStats('transports', transports),
-      renderNodePeerTrafficStats('protocols', protocols)
+      // renderNodePeerTrafficStats('transports', transports),
+      // renderNodePeerTrafficStats('protocols', protocols)
     ])
   })
 }
 
-function renderNodePeerTrafficStats (label, trafficCategory) {
+// function renderNodePeerTrafficStats (label, trafficCategory) {
 
-  return (
-    h('table', [
-      h('thead', [
-        h('tr', [
-          h('th', label),
-          h('th', '1min'),
-          h('th', 'all'),
-        ])
-      ]),
-      h('tbody', [
-        renderRow('in', trafficCategory, 'dataReceived'),
-        renderRow('out', trafficCategory, 'dataSent'),
-      ])
-    ])
-  )
+//   return (
+//     h('table', [
+//       h('thead', [
+//         h('tr', [
+//           h('th', label),
+//           h('th', '1min'),
+//           h('th', 'all'),
+//         ])
+//       ]),
+//       h('tbody', [
+//         renderRow('in', trafficCategory, 'dataReceived'),
+//         renderRow('out', trafficCategory, 'dataSent'),
+//       ])
+//     ])
+//   )
 
-  function renderRow (label, trafficCategory, direction) {
-    const size1Min = getTimeLargest(trafficCategory, '60000', direction)
-    const label1Min = labelForFileSize(size1Min)
-    const sizeAll = getSnapshotLargest(trafficCategory, direction)
-    const labelAll = labelForFileSize(sizeAll)
-    return (
-      h('tr', [
-        h('th', label),
-        h('td', [
-          renderNodeStatsPieChart(label1Min, trafficCategory, (stats) => get1Min(stats, direction)),
-        ]),
-        h('td', [
-          renderNodeStatsPieChart(labelAll, trafficCategory, (stats) => stats.snapshot[direction])
-        ]),
-      ])
-    )
-  }
-}
+//   function renderRow (label, trafficCategory, direction) {
+//     const size1Min = getTimeLargest(trafficCategory, direction)
+//     const label1Min = labelForFileSize(size1Min)
+//     const sizeAll = getSnapshotLargest(trafficCategory, direction)
+//     const labelAll = labelForFileSize(sizeAll)
+//     return (
+//       h('tr', [
+//         h('th', label),
+//         h('td', [
+//           renderNodeStatsPieChart(label1Min, trafficCategory, (stats) => get1Min(stats, direction)),
+//         ]),
+//         h('td', [
+//           renderNodeStatsPieChart(labelAll, trafficCategory, (stats) => stats.snapshot[direction])
+//         ]),
+//       ])
+//     )
+//   }
+// }
 
-function labelForFileSize (size) {
-  const fileSizeOrder = Math.floor((Math.log(size)/Math.log(10))/3)
-  const fileSizeUnit = ['b','kb','mb'][fileSizeOrder]
-  const fileSizeForUnit = size / Math.pow(10, fileSizeOrder * 3)
-  const fileSizeLabel = `${fileSizeForUnit.toFixed(1)} ${fileSizeUnit}`
-  return fileSizeLabel
-}
+// function labelForFileSize (size) {
+//   const fileSizeOrder = Math.floor((Math.log(size)/Math.log(10))/3)
+//   const fileSizeUnit = ['b','kb','mb'][fileSizeOrder]
+//   const fileSizeForUnit = size / Math.pow(10, fileSizeOrder * 3)
+//   const fileSizeLabel = `${fileSizeForUnit.toFixed(1)} ${fileSizeUnit}`
+//   return fileSizeLabel
+// }
 
-function getSnapshotLargest (trafficCategory, direction) {
-  return trafficCategory.map(([name, stats]) => stats.snapshot[direction]).filter(Boolean).sort().slice(-1)[0]
-}
+// function getSnapshotLargest (trafficCategory, direction) {
+//   return trafficCategory.map(([name, stats]) => stats.snapshot[direction]).filter(Boolean).sort().slice(-1)[0]
+// }
 
-function getTimeLargest (trafficCategory, time, direction) {
-  return trafficCategory.map(([name, stats]) => stats.movingAverages[direction][time]).filter(Boolean).sort().slice(-1)[0]
-}
+// function getTimeLargest (trafficCategory, direction) {
+//   return trafficCategory.map(([name, stats]) => stats.movingAverages[direction]).filter(Boolean).sort().slice(-1)[0]
+// }
 
-function get1Min (stats, direction) {
-  return stats.movingAverages[direction]['60000']
-}
+// function get1Min (stats, direction) {
+//   return stats.movingAverages[direction]['60000']
+// }
 
 function peerIdToShortId (peerId) {
   return peerId && `${peerId.slice(0, 4)}...${peerId.slice(-4)}`
