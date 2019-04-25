@@ -24,10 +24,29 @@ class TrafficExperiment {
     })
     // record stats for each message
     node._switch.observer.on('message', (...args) => this.recordStats(...args))
+    
+    // grab a timeline of traffic usage
+    this.timeSeries = { global: { protocols: {} } }
+    const timeSeriesMaxSize = 10
+    setInterval(() => {
+      const state = libp2pStatsToJson(this.libp2pPeersStats)
+      const timeSeriesProtocols = this.timeSeries.global.protocols
+      Object.entries(state.global.protocols).forEach(([protocolName, protocolStats]) => {
+        const protocolTimeSeries = timeSeriesProtocols[protocolName] || (timeSeriesProtocols[protocolName] = {})
+        for (let direction of ['dataSent', 'dataReceived']) {
+          const newValue = protocolStats.movingAverages[direction]['60000']
+          const timeSeries = protocolTimeSeries[direction] || []
+          timeSeries.push(newValue)
+          protocolTimeSeries[direction] = timeSeries.slice(-timeSeriesMaxSize)
+        }
+      })
+    }, 10 * 1000)
   }
 
   getState () {
-    return libp2pStatsToJson(this.libp2pPeersStats)
+    const baseState = libp2pStatsToJson(this.libp2pPeersStats)
+    baseState.timeSeries = this.timeSeries
+    return baseState
   }
 
   recordStats (peerId, transport, protocol, direction, bufferLength) {
@@ -52,6 +71,7 @@ class TrafficExperiment {
       peerStats.mystery.push(statDirectionToEvent[direction], bufferLength)
     }
   }
+
 }
 
 module.exports = TrafficExperiment

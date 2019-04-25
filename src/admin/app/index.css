@@ -18,8 +18,8 @@ html, body, #root {
 }
 .AppColumn.RightPanel {
   flex: 0;
-  flex-basis: 360px;
-  max-width: 360px;
+  flex-basis: 420px;
+  max-width: 420px;
   overflow-x: hidden;
   overflow-y: auto;
   border-left: solid 1px #eaeaea;

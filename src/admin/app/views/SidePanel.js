@@ -2,6 +2,7 @@ const React = require('react')
 const h = require('react-hyperscript')
 const s = require('react-hyperscript')
 const renderPieChart = require('../components/pie')
+const StackedArea = require('../components/stackedArea')
 
 class SidePanel extends React.Component {
   constructor () {
@@ -124,6 +125,7 @@ function renderSelectedNodeGlobalStats (trafficStats, state, actions) {
     const protocols = Object.entries(trafficStats.global.protocols)
     return (
       h('div', [
+        renderNodePeerTrafficStatsTimeSeries(trafficStats),
         renderNodePeerTrafficStats('transports', transports),
         renderNodePeerTrafficStats('protocols', protocols)
       ])
@@ -133,6 +135,18 @@ function renderSelectedNodeGlobalStats (trafficStats, state, actions) {
       'no global stats'
     )
   }
+}
+
+function renderNodePeerTrafficStatsTimeSeries (trafficStats) {
+  const protols = trafficStats.timeSeries.global.protocols
+  const direction = 'dataSent'
+  return (
+    h(StackedArea, {
+      key: direction,
+      data: protols,
+      direction,
+    })
+  )
 }
 
 function renderSelectedNodePeerStats (trafficStats, state, actions) {
