@@ -139,14 +139,16 @@ function renderSelectedNodeGlobalStats (trafficStats, state, actions) {
 
 function renderNodePeerTrafficStatsTimeSeries (trafficStats) {
   const protols = trafficStats.timeSeries.global.protocols
-  const direction = 'dataSent'
-  return (
-    h(StackedArea, {
-      key: direction,
-      data: protols,
-      direction,
-    })
-  )
+  return ['dataSent', 'dataReceived'].map(direction => {
+    return ([
+      h('h3', `protocols ${direction}`),
+      h(StackedArea, {
+        key: direction,
+        data: protols,
+        direction,
+      })
+    ])
+  })
 }
 
 function renderSelectedNodePeerStats (trafficStats, state, actions) {
