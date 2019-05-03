@@ -17,7 +17,7 @@ class TrafficExperiment {
     // track stats for each peer connected
     node.on('peer:connect', (peerInfo) => {
       const peerId = peerInfo.id.toB58String()
-      this.libp2pPeersStats[peerId] = { transports: {}, protocols: {}, mystery: createStat() }
+      this.libp2pPeersStats[peerId] = { transports: {}, protocols: {} }
     })
     // remove stats for each peer disconnected
     node.on('peer:disconnect', (peerInfo) => {
@@ -68,10 +68,6 @@ class TrafficExperiment {
       const protocolStats = peerStats.protocols[protocol] || (peerStats.protocols[protocol] = createStat())
       protocolStats.push(statDirectionToEvent[direction], bufferLength)
     }
-    // record mysterious messages that dont have a transport or protocol
-    if (!protocol && !transport) {
-      peerStats.mystery.push(statDirectionToEvent[direction], bufferLength)
-    }
   }
 
 }
@@ -80,14 +76,10 @@ module.exports = TrafficExperiment
 
 
 function libp2pStatsToJson (peerStats) {
-  const allStats = { global: { transports: {}, protocols: {}, mystery: null }, peers: {} }
+  const allStats = { global: { transports: {}, protocols: {} }, peers: {} }
   // each peer
   Object.entries(peerStats).forEach(([peerId, peerStatsContainer]) => {
-    const peerStats = allStats.peers[peerId] = { transports: {}, protocols: {}, mystery: null }
-    // mystery
-    const mysteryStats = statObjToJson(peerStatsContainer.mystery)
-    addStatsToGlobal(allStats.global, 'mystery', mysteryStats)
-    peerStats.mystery = mysteryStats
+    const peerStats = allStats.peers[peerId] = { transports: {}, protocols: {} }
     // each transport
     Object.keys(peerStatsContainer.transports).forEach((transportName) => {
       const transportStats = statObjToJson(peerStatsContainer.transports[transportName])
