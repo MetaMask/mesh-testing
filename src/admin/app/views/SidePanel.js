@@ -113,21 +113,20 @@ function renderSelectedNodeStats (selectedNode, state, actions) {
       h('h4', 'peers'),
       renderSelectedNodePeerStats(trafficStats, state, actions)
     ])
-    // renderSelectedNodeTransportStats(nodeStats),
-    // renderSelectedNodeProtocolStats(nodeStats),
   ])
 }
 
 function renderSelectedNodeGlobalStats (trafficStats, state, actions) {
   // global stats
-  if (trafficStats.global) {
-    const transports = Object.entries(trafficStats.global.transports)
-    const protocols = Object.entries(trafficStats.global.protocols)
+  const timeSeries = trafficStats.timeSeries || {}
+  const globalStats = timeSeries.global
+  if (globalStats) {
+    const transports = globalStats.transports
+    const protocols = globalStats.protocols
     return (
       h('div', [
-        renderNodePeerTrafficStatsTimeSeries(trafficStats),
-        // renderNodePeerTrafficStats('transports', transports),
-        // renderNodePeerTrafficStats('protocols', protocols)
+        // renderNodePeerTrafficStatsTimeSeries('transports', transports),
+        renderNodePeerTrafficStatsTimeSeries('protocols', protocols),
       ])
     )
   } else {
@@ -137,14 +136,13 @@ function renderSelectedNodeGlobalStats (trafficStats, state, actions) {
   }
 }
 
-function renderNodePeerTrafficStatsTimeSeries (trafficStats) {
-  const protols = trafficStats.timeSeries.global.protocols
+function renderNodePeerTrafficStatsTimeSeries (label, trafficStats) {
   return ['dataSent', 'dataReceived'].map(direction => {
     return ([
-      h('h3', `protocols ${direction}`),
+      h('h3', `${label} - ${direction}`),
       h(StackedArea, {
         key: direction,
-        data: protols,
+        data: trafficStats,
         direction,
       })
     ])

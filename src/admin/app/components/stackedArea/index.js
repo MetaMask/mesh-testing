@@ -7,7 +7,7 @@ import {
 module.exports = class StackedArea extends PureComponent {
   render() {
     const { data, direction } = this.props
-    const dataEntries = Object.entries(data)
+    const dataEntries = Object.entries(data).sort((a,b) => a[0] > b[0] ? 1 : -1)
     // transform the data from rows into columns
     const timeSeriesLength = 10
     // create rows with label
@@ -15,12 +15,14 @@ module.exports = class StackedArea extends PureComponent {
       return { label: `${index*10}s ago` }
     })
     // populate rows column by column
-    dataEntries.forEach(([protocolName, protocolStats]) => {
-      const timeSeries = protocolStats[direction]
+    dataEntries.forEach(([name, stats]) => {
+      const timeSeries = stats[direction]
       Array(timeSeriesLength).fill().forEach((_, index) => {
-        rows[index][protocolName] = timeSeries[index] || 0
+        rows[index][name] = timeSeries[index] || 0
       })
     })
+
+    console.log('ordered keys', dataEntries.map(e => e[0]))
 
     const bitrateToLabel = (size) => `${labelForFileSize(size)}/s`
 

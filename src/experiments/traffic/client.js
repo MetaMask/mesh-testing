@@ -13,6 +13,7 @@ const movingAverageInterval = 10 * 1000
 class TrafficExperiment {
   constructor ({ node }) {
     this.libp2pPeersStats = {}
+    this.node = node
 
     // track stats for each peer connected
     node.on('peer:connect', (peerInfo) => {
@@ -28,27 +29,30 @@ class TrafficExperiment {
     node._switch.observer.on('message', (...args) => this.recordStats(...args))
     
     // grab a timeline of traffic usage
-    this.timeSeries = { global: { protocols: {} } }
-    const timeSeriesMaxSize = 10
-    setInterval(() => {
-      const state = libp2pStatsToJson(this.libp2pPeersStats)
-      const timeSeriesProtocols = this.timeSeries.global.protocols
-      Object.entries(state.global.protocols).forEach(([protocolName, protocolStats]) => {
-        const protocolTimeSeries = timeSeriesProtocols[protocolName] || (timeSeriesProtocols[protocolName] = {})
-        for (let direction of ['dataSent', 'dataReceived']) {
-          const newValue = protocolStats.movingAverages[direction]
-          const timeSeries = protocolTimeSeries[direction] || Array(timeSeriesMaxSize).fill(0)
-          timeSeries.unshift(newValue)
-          protocolTimeSeries[direction] = timeSeries.slice(0, timeSeriesMaxSize)
-        }
-      })
-    }, 10 * 1000)
+    this.timeSeries = { global: { protocols: {}, transports: {} } }
+    this.timeSeriesMaxSize = 10
+    this.runLoop()
+  }
+
+  // run the stats querying on a loop
+  async runLoop () {
+    while (true) {
+      try {
+        const { timeSeriesMaxSize } = this
+        const state = libp2pStatsToJson(this.libp2pPeersStats)
+        updateTimeSeriesStatsForCategory(this.timeSeries.global.protocols, state.global.protocols, timeSeriesMaxSize)
+        updateTimeSeriesStatsForCategory(this.timeSeries.global.transports, state.global.transports, timeSeriesMaxSize)
+      } catch (err) {
+        this.node.emit('app:error', 'traffic', err)
+      }
+      await new Promise(resolve => setTimeout(resolve, 10e3))
+    }
   }
 
   getState () {
-    const baseState = libp2pStatsToJson(this.libp2pPeersStats)
-    baseState.timeSeries = this.timeSeries
-    return baseState
+    const state = libp2pStatsToJson(this.libp2pPeersStats)
+    state.timeSeries = this.timeSeries
+    return state
   }
 
   recordStats (peerId, transport, protocol, direction, bufferLength) {
@@ -144,4 +148,16 @@ function createStat () {
   })
   stat.start()
   return stat
+}
+
+function updateTimeSeriesStatsForCategory (stateForCategory, movingAverages, timeSeriesMaxSize) {
+  Object.entries(movingAverages).forEach(([name, stats]) => {
+    const entryTimeSeries = stateForCategory[name] || (stateForCategory[name] = {})
+    for (let direction of ['dataSent', 'dataReceived']) {
+      const newValue = stats.movingAverages[direction]
+      const timeSeries = entryTimeSeries[direction] || Array(timeSeriesMaxSize).fill(0)
+      timeSeries.unshift(newValue)
+      entryTimeSeries[direction] = timeSeries.slice(0, timeSeriesMaxSize)
+    }
+  })
 }
