@@ -11,7 +11,7 @@ const DHT = require('libp2p-kad-dht')
 const PeerInfo = pify(require('peer-info'))
 const PeerId = pify(require('peer-id'))
 
-async function createNode ({ identity, addrs }) {
+async function createNode ({ identity, addrs, datastore }) {
   let id = {}
   const privKey = identity && identity.privKey ? identity.privKey : null
   if (!privKey) {
@@ -28,6 +28,7 @@ async function createNode ({ identity, addrs }) {
 
   const wstar = new WStar({ wrtc })
   const node = new Libp2p({
+    datastore,
     peerInfo,
     modules: {
       transport: [

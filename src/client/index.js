@@ -3,6 +3,8 @@
 const pify = require('pify')
 const PeerId = require('peer-id')
 const PeerInfo = require('peer-info')
+const LevelStore = require('datastore-level')
+const LocalStorageDown = require('localstorage-down')
 const {
   TelemetryClient,
   network: { connectViaPost, connectViaWs },
@@ -20,18 +22,42 @@ const ErrorExperiment = require('../experiments/errors/client')
 const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
 const devMode = !process.browser || (!window.location.search.includes('prod') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
 
+const persistenceMode = !!process.browser
+
 start().catch(console.error)
 
 async function start () {
 
-  const id = await pify(PeerId.create)()
+  // load id from persistence if possible
+  let id
+  let persistedId
+  if (persistenceMode) {
+    const raw = localStorage.getItem('libp2p-id')
+    if (raw) persistedId = JSON.parse(raw)
+  }
+  if (persistenceMode && persistedId) {
+    id = await pify(PeerId.createFromJSON)(persistedId)
+  }
+  if (!id) {
+    id = await pify(PeerId.create)()
+    if (persistenceMode) {
+      const raw = JSON.stringify(id.toJSON())
+      localStorage.setItem('libp2p-id', raw)
+    }
+  }
+
   const peerInfo = await pify(PeerInfo.create)(id)
   const clientId = peerInfo.id.toB58String()
   const identity = id.toJSON()
   const primaryAddress = devMode ? `/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${clientId}`
     : `/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${clientId}`
 
-  const node = await createNode({ identity, addrs: [primaryAddress] })
+  let datastore = undefined
+  if (persistenceMode) {
+    datastore = new LevelStore('libp2p/client', { db: LocalStorageDown })
+  }
+
+  const node = await createNode({ identity, addrs: [primaryAddress], datastore })
 
   // for debugging
   global.Buffer = Buffer
