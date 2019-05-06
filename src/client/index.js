@@ -108,6 +108,7 @@ async function start () {
   function getState () {
     try {
       return {
+        version: BUILD_VERSION,
         dht: dhtExp.getState(),
         error: errExp.getState(),
         traffic: trafficExp.getState(),
