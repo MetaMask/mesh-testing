@@ -68,10 +68,36 @@ async function start () {
   const peerConnectionTracker = createPeerConnectionTracker({ node })
   discoverAndConnect({ node, clientId, peerConnectionTracker, count: 6 })
 
+  // rpc interface exposed to telemetry server and admin
+  const rpcInterface = {
+    // refresh: async () => {
+    //   return restart()
+    // },
+    // refreshShortDelay: () => {
+    //   return restartWithDelay(randomFromRange(5 * sec, 10 * sec))
+    // },
+    // refreshLongDelay: async () => {
+    //   return restartWithDelay(randomFromRange(2 * min, 10 * min))
+    // },
+  }
+
+  // async function restartWithDelay (timeoutDuration) {
+  //   log(`Telemetry - restarting in ${timeoutDuration / 1000} sec...`)
+  //   setTimeout(() => restart(), timeoutDuration)
+  // }
+  // async function restart () {
+  //   if (isNode) {
+  //     log('restart requested from telemetry server...')
+  //     return
+  //   }
+  //   await telemetryRpc.disconnect(clientId)
+  //   window.location.reload()
+  // }
+
   // setup experiments
-  const trafficExp = new TrafficExperiment({ node })
-  const dhtExp = new DhtExperiment({ node, clientId })
-  const errExp = new ErrorExperiment({ node, clientId })
+  const trafficExp = new TrafficExperiment({ node, rpcInterface })
+  const dhtExp = new DhtExperiment({ node, rpcInterface, clientId })
+  const errExp = new ErrorExperiment({ node, rpcInterface, clientId })
 
   // start node
   console.log('node starting...')
@@ -80,7 +106,7 @@ async function start () {
 
   // setup telemetry
   const connection = connectViaPost({ devMode })
-  const telemetry = new TelemetryClient({ clientId, connection })
+  const telemetry = new TelemetryClient({ clientId, connection, rpcInterface })
   telemetry.setStateHandler(getState)
   telemetry.start()
 
