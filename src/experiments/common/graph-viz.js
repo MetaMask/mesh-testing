@@ -13,13 +13,14 @@ function buildGraphBasicNodes (networkState, graph) {
   })
 }
 
-function buildGraphAddMissingNodes (graph) {
+function buildGraphAddMissingNodes (graph, _color) {
+  const color = _color || 'orange'
   graph.links.forEach((link) => {
     const { target } = link
     // if connected to a missing node, create missing node
     const alreadyExists = !!graph.nodes.find(item => item.id === target)
     if (!alreadyExists) {
-      const newNode = createNode({ id: target, color: 'orange' })
+      const newNode = createNode({ id: target, color })
       graph.nodes.push(newNode)
     }
   })

@@ -8,10 +8,18 @@ const experiment = {
 }
 
 experiment.views.push({
-  id: 'dht',
+  id: 'dht:active',
   label: 'dht',
   render: ({ store }) => (
     <DhtGraph store={store}/>
+  )
+})
+
+experiment.views.push({
+  id: 'dht:missing',
+  label: 'dht full',
+  render: ({ store }) => (
+    <DhtGraph store={store} includeMissing={true}/>
   )
 })
 

@@ -12,7 +12,8 @@ const colors = palette('tol-rainbow', 5).map(hex => `#${hex}`)
 class DhtGraph extends BaseForceGraph {
 
   buildGraph (state) {
-    return buildGraphForDht(state)
+    const { includeMissing } = this.props
+    return buildGraphForDht(state, includeMissing)
   }
 
 }
@@ -20,7 +21,7 @@ class DhtGraph extends BaseForceGraph {
 module.exports = DhtGraph
 
 
-function buildGraphForDht (appState) {
+function buildGraphForDht (appState, includeMissing) {
   const graph = { nodes: [], links: [] }
 
   // const { networkState, selectedNode } = appState
@@ -28,7 +29,7 @@ function buildGraphForDht (appState) {
   if (!clientsData) return graph
 
   buildGraphBasicNodes(clientsData, graph)
-  buildGraphDhtLinks(clientsData, graph)
+  buildGraphDhtLinks(clientsData, graph, includeMissing)
 
   // recolor nodes based on group
   // color green if they were part of the getMany response
@@ -37,26 +38,33 @@ function buildGraphForDht (appState) {
   return graph
 }
 
-function buildGraphDhtLinks (networkState, graph) {
+function buildGraphDhtLinks (networkState, graph, includeMissing) {
   // build links from stats
   Object.entries(networkState).forEach(([clientId, clientData]) => {
     const dhtData = clientData.dht || {}
     const peers = dhtData.routingTable
     if (!peers) return
 
-    const links = peers.map(({ id: peerId }) => {
+    const links = []
+    peers.forEach(({ id: peerId }) => {
       const source = clientId
       const target = peerId
-      return createLink({
+      if (!includeMissing) {
+        const isMissing = !graph.nodes.find(peer => peer.id === target)
+        if (isMissing) return
+      }
+      links.push(createLink({
         source,
         target,
-      })
+      }))
     })
 
     graph.links = graph.links.concat(links)
   })
 
-  buildGraphAddMissingNodes(graph)
+  if (includeMissing) {
+    buildGraphAddMissingNodes(graph, 'red')
+  }
 }
 
 function recolorNodesForGroupNumber (clientsData, graph) {
