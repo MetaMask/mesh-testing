@@ -198,10 +198,24 @@ global.sendCallWithTimeout = async function sendCallWithTimeout (rpc, method, ar
 }
 
 async function sendCall (rpc, method, args) {
-  return  await rpc[method].apply(rpc, args)
+  return callDeep(rpc, method, args)
 }
 
 async function errorAfterTimeout (duration) {
   await timeout(duration)
   throw new Error('Timeout occurred.')
+}
+
+function callDeep (obj, path, args) {
+  return getDeep(obj, path).apply(obj, args)
+}
+
+function getDeep(obj, path) {
+  const pathParts = path.split('.')
+	let _obj = obj
+	while (_obj && pathParts.length) {
+		const n = path.shift()
+		_obj = _obj[n]
+	}
+	return _obj
 }
