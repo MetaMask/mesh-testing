@@ -14,7 +14,7 @@ COPY ./ /www/
 
 # start server
 # CMD npm run server
-CMD npm run server-debug
+CMD npm run server:telemetry
 
 # expose server
-EXPOSE 9000 9221
+EXPOSE 9000

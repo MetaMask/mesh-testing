@@ -1,52 +1,70 @@
 'use strict'
 
-const PeerInfo = require('peer-info')
-const PeerId = require('peer-id')
 const pify = require('pify')
-const Node = require('./node')
-const isNode = require('detect-node')
+const wrtc = require('wrtc')
+const Libp2p = require('libp2p')
+const WS = require('libp2p-websockets')
+const WStar = require('libp2p-webrtc-star')
+const Mplex = require('libp2p-mplex')
+// const Bootstrap = require('libp2p-bootstrap')
+const DHT = require('libp2p-kad-dht')
+const PeerInfo = pify(require('peer-info'))
+const PeerId = pify(require('peer-id'))
 
-async function createNode ({ id, addrs, devMode }, callback) {
-  if (!id.privKey) {
-    id = await pify(PeerId.create)()
+async function createNode ({ identity, addrs }) {
+  let id = {}
+  const privKey = identity && identity.privKey ? identity.privKey : null
+  if (!privKey) {
+    id = await PeerId.create()
   } else {
-    id = await pify(PeerId.createFromJSON)(id)
+    id = await PeerId.createFromJSON(identity)
   }
 
-  addrs = addrs || null
-  PeerInfo.create(id, (err, peerInfo) => {
-    if (err) {
-      return callback(err)
-    }
+  const peerInfo = await PeerInfo.create(id)
+  const peerIdStr = peerInfo.id.toB58String()
 
-    const peerIdStr = peerInfo.id.toB58String()
+  addrs = addrs || []
+  addrs.forEach((a) => peerInfo.multiaddrs.add(a))
 
-    if (addrs) {
-      addrs.forEach((a) => peerInfo.multiaddrs.add(a))
-    } else {
-      if (devMode) {
-        if (isNode) {
-          peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ws/ipfs/${peerIdStr}`)
-          peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/0/ipfs/${peerIdStr}`)
-        } else {
-          peerInfo.multiaddrs.add(`/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${peerIdStr}`)
+  const wstar = new WStar({ wrtc })
+  const node = new Libp2p({
+    peerInfo,
+    modules: {
+      transport: [
+        WS,
+        wstar
+      ],
+      streamMuxer: [
+        Mplex
+      ],
+      peerDiscovery: [
+        wstar.discovery,
+        // Bootstrap
+      ],
+      dht: DHT,
+    },
+    config: {
+      peerDiscovery: {
+        // bootstrap: {
+        //   list: bootstrap,
+        //   interval: 1000
+        // }
+      },
+      dht: {
+        enabled: true,
+        kBucketSize: 20,
+        randomWalk: {
+          enabled: true,
+          // interval: 30000
+          // queriesPerPeriod: 1
+          // timeout: 10000
         }
-      } else {
-        peerInfo.multiaddrs.add(`/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${peerIdStr}`)
-      }
+      },
     }
-
-    const node = new Node(peerInfo, {
-      config: {
-        EXPERIMENTAL: {
-          pubsub: true
-        }
-      }
-    })
-    node.idStr = peerIdStr
-
-    callback(null, node)
   })
+  node.peerId = peerIdStr
+
+  return node
 }
 
 module.exports = createNode
