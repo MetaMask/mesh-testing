@@ -172,25 +172,36 @@ async function handleAdmin (stream, request) {
 // client communication
 //
 
-global.broadcastCall = function broadcastCall (method, args, timeoutDuration) {
+global.broadcastCall = async function broadcastCall (method, args, timeoutDuration) {
   console.log(`broadcasting to ${clients.length} clients:`, method, args)
-  return Promise.all(clients.map((client) => sendCallWithTimeout(client.rpcAsync, method, args, timeoutDuration)))
+  const results = {}
+  await Promise.all(
+    clients.map(async (client) => {
+      if (!client.peerId) return
+      const response = await sendCallWithTimeout(client.rpcAsync, method, args, timeoutDuration)
+      results[client.peerId] = response
+    })
+  )
+  return results
 }
 
-global.sendCallWithTimeout = function sendCallWithTimeout (rpc, method, args, timeoutDuration) {
-  return Promise.race([
-    timeout(timeoutDuration, 'timeout'),
-    sendCall(rpc, method, args)
-  ])
+global.sendCallWithTimeout = async function sendCallWithTimeout (rpc, method, args, timeoutDuration) {
+  try {
+    const result = await Promise.race([
+      errorAfterTimeout(timeoutDuration),
+      sendCall(rpc, method, args),
+    ])
+    return { result }
+  } catch (err) {
+    return { error: { message: err.message, stack: err.stack } }
+  }
 }
 
 async function sendCall (rpc, method, args) {
-  let result
-  try {
-    result = await rpc[method].apply(rpc, args)
-  } catch (err) {
-    return err.message
-  }
-  console.log(`got result: ${result}`)
-  return result
+  return  await rpc[method].apply(rpc, args)
+}
+
+async function errorAfterTimeout (duration) {
+  await timeout(duration)
+  throw new Error('Timeout occurred.')
 }
