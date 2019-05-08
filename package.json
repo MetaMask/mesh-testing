@@ -19,7 +19,7 @@
     "google-palette": "^1.1.0",
     "hat": "0.0.3",
     "http-poll-stream": "^2.1.0",
-    "kitsunet-telemetry": "^1.1.1",
+    "kitsunet-telemetry": "^1.1.2",
     "libp2p": "^0.25.2",
     "libp2p-kad-dht": "^0.14.13",
     "libp2p-mplex": "^0.8.5",
@@ -105,6 +105,7 @@
     "server:telemetry": "node src/server/index.js",
     "server:telemetry:debug": "node --inspect=0.0.0.0:9221 src/server/index.js",
     "server:star": "star-signal --port=9090 --host=127.0.0.1",
+    "server:deploy": "docker-compose pull && docker-compose build && docker-compose stop && docker-compose up -d && docker-compose logs --tail 200 -f",
     "swarm": "npm run swarm:node",
     "swarm:node": "node src/swarm/node.js",
     "swarm:browser": "node src/swarm/browser.js"
