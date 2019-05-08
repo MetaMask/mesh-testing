@@ -10,6 +10,7 @@ const endOfStream = require('end-of-stream')
 const hat = require('hat')
 const ObservableStore = require('obs-store')
 const { createHttpClientHandler } = require('http-poll-stream')
+const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duration))
 
 const {
   utils,
@@ -19,7 +20,6 @@ const {
 } = require('kitsunet-telemetry')
 
 const {
-  timeout,
   sec,
   min
 } = utils
@@ -189,7 +189,7 @@ global.sendCallWithTimeout = async function sendCallWithTimeout (rpc, method, ar
   try {
     const result = await Promise.race([
       errorAfterTimeout(timeoutDuration),
-      sendCall(rpc, method, args),
+      rpc.send(method, ...args),
     ])
     return { result }
   } catch (err) {
@@ -197,25 +197,7 @@ global.sendCallWithTimeout = async function sendCallWithTimeout (rpc, method, ar
   }
 }
 
-async function sendCall (rpc, method, args) {
-  return callDeep(rpc, method, args)
-}
-
 async function errorAfterTimeout (duration) {
   await timeout(duration)
   throw new Error('Timeout occurred.')
-}
-
-function callDeep (obj, path, args) {
-  return getDeep(obj, path).apply(obj, args)
-}
-
-function getDeep(obj, path) {
-  const pathParts = path.split('.')
-	let _obj = obj
-	while (_obj && pathParts.length) {
-		const n = path.shift()
-		_obj = _obj[n]
-	}
-	return _obj
 }

@@ -57,19 +57,18 @@ async function setupAdmin () {
   const serverConnection = connectViaWs({ devMode, adminCode })
   global.serverConnection = serverConnection
 
-  // setup admin ui app
-  const store = new ObservableStore()
-  global.networkStore = store
-  startAdminApp({ store })
-
   // setup admin rpc
-
   endOfStream(serverConnection, (err) => console.log('server rpcConnection disconnect', err))
   global.serverAsync = createRpc({
     clientInterface: baseRpcHandler(),
     serverInterface: serverAdminRpcHandler(),
     connection: serverConnection
   })
+
+  // setup admin ui app
+  const store = new ObservableStore()
+  global.networkStore = store
+  startAdminApp({ store, serverAsync })
 
   console.log('MetaMask Mesh Testing - connected!')
 

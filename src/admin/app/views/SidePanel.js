@@ -34,7 +34,7 @@ module.exports = SidePanel
 function renderSelectedNodePanel (state, actions) {
   const { selectedNode, networkState } = state
   const clientsData = networkState.clients || {}
-  const selectedNodeData = clientsData || {}
+  const selectedNodeData = clientsData[selectedNode]
   // const selectedNodePeers = selectedNodeData.peers
   const shortId = peerIdToShortId(selectedNode)
   
@@ -63,33 +63,39 @@ function renderSelectedNodePanel (state, actions) {
         onClick: () => copyToClipboard(selectedNode)
       }, 'copy id'),
 
+      // h('button', {
+      //   onClick: () => actions.pingNode(selectedNode)
+      // }, 'ping'),
+      // h('button', {
+      //   onClick: () => actions.sendPubsub(selectedNode)
+      // }, 'pubsub'),
+      // h('button', {
+      //   onClick: () => actions.sendMulticast(selectedNode, 1)
+      // }, 'multicast 1'),
+      // h('button', {
+      //   onClick: () => actions.sendMulticast(selectedNode, 3)
+      // }, 'multicast 3'),
+      // h('button', {
+      //   onClick: () => actions.sendMulticast(selectedNode, 6)
+      // }, 'multicast 6'),
+      // h('button', {
+      //   onClick: () => actions.appendEbtMessage(selectedNode, selectedNodeData.ebtState.sequence)
+      // }, 'ebt'),
+      // h('button', {
+      //   onClick: () => actions.restartNode(selectedNode)
+      // }, 'restart'),
+      // h('button', {
+      //   onClick: () => {
+      //     selectedNodeData.blockTrackerEnabled = !selectedNodeData.blockTrackerEnabled
+      //     actions.enableBlockTracker(selectedNode, selectedNodeData.blockTrackerEnabled)
+      //   }
+      // }, `${selectedNodeData.blockTrackerEnabled ? 'disable' : 'enable'} block tracker`),
+
+      h('span', `random walk: ${selectedNodeData.dht.randomWalkEnabled}`),
+      
       h('button', {
-        onClick: () => actions.pingNode(selectedNode)
-      }, 'ping'),
-      h('button', {
-        onClick: () => actions.sendPubsub(selectedNode)
-      }, 'pubsub'),
-      h('button', {
-        onClick: () => actions.sendMulticast(selectedNode, 1)
-      }, 'multicast 1'),
-      h('button', {
-        onClick: () => actions.sendMulticast(selectedNode, 3)
-      }, 'multicast 3'),
-      h('button', {
-        onClick: () => actions.sendMulticast(selectedNode, 6)
-      }, 'multicast 6'),
-      h('button', {
-        onClick: () => actions.appendEbtMessage(selectedNode, selectedNodeData.ebtState.sequence)
-      }, 'ebt'),
-      h('button', {
-        onClick: () => actions.restartNode(selectedNode)
-      }, 'restart'),
-      h('button', {
-        onClick: () => {
-          selectedNodeData.blockTrackerEnabled = !selectedNodeData.blockTrackerEnabled
-          actions.enableBlockTracker(selectedNode, selectedNodeData.blockTrackerEnabled)
-        }
-      }, `${selectedNodeData.blockTrackerEnabled ? 'disable' : 'enable'} block tracker`),
+        onClick: () => actions.client.sendToClient(selectedNode, 'dht.enableRandomWalk')
+      }, 'random walk'),
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 

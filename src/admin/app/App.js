@@ -34,9 +34,21 @@ class App extends Component {
     this.setState(state => ({ currentView: target }))
   }
 
+  getClientActions () {
+    const { server } = this.props
+    return {
+      sendToClient: async (clientId, method, ...args) => {
+        console.log('sendToClient - sending...')
+        const responses = await server.sendToClient(clientId, method, args)
+        console.log('sendToClient - done', responses)
+      }
+    }
+  }
+
   render () {
     const actions = {
       selectNode: (clientId) => this.setState({ selectedNode: clientId }),
+      client: this.getClientActions(),
     }
     const views = Object.values(this.views)
     const currentView = this.views[this.state.currentView]

@@ -22,8 +22,6 @@ module.exports = class StackedArea extends PureComponent {
       })
     })
 
-    console.log('ordered keys', dataEntries.map(e => e[0]))
-
     const bitrateToLabel = (size) => `${labelForFileSize(size)}/s`
 
     return (

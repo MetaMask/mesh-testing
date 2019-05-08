@@ -55,7 +55,7 @@ async function createNode ({ identity, addrs, datastore }) {
         enabled: true,
         kBucketSize: 20,
         randomWalk: {
-          enabled: true,
+          enabled: false,
           // interval: 30000
           // queriesPerPeriod: 1
           // timeout: 10000

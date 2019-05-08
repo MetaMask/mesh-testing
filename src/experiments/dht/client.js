@@ -7,12 +7,20 @@ const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duratio
 
 
 class DhtExperimentClient {
-  constructor ({ node, clientId }) {
+  constructor ({ node, clientId, rpcInterface }) {
     this.node = node
     this.clientId = clientId
     this.state = {
       routingTable: [],
       providers: {},
+    }
+
+    rpcInterface.dht = {
+      enableRandomWalk: () => {
+        // https://github.com/libp2p/js-libp2p-kad-dht/issues/110
+        this.node._dht.randomWalk._options.enabled = true
+        this.node._dht.randomWalk.start()
+      }
     }
 
     this.start()
@@ -108,7 +116,9 @@ class DhtExperimentClient {
   }
 
   getState () {
-    return this.state
+    const baseState = this.state
+    const state = Object.assign({}, baseState, { randomWalkEnabled: this.node._dht.randomWalk._options.enabled })
+    return state
   }
 }
 

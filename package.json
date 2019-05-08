@@ -19,7 +19,7 @@
     "google-palette": "^1.1.0",
     "hat": "0.0.3",
     "http-poll-stream": "^2.1.0",
-    "kitsunet-telemetry": "^1.0.0",
+    "kitsunet-telemetry": "^1.0.1",
     "libp2p": "^0.25.2",
     "libp2p-kad-dht": "^0.14.13",
     "libp2p-mplex": "^0.8.5",
