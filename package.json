@@ -93,11 +93,11 @@
   },
   "scripts": {
     "postinstall": "patch-package",
-    "start": "wzrd src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js",
+    "start": "wzrd src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js src/partialRollout.js:partialRollout.js",
     "build": "npm run build:clean && npm run build:version && npm run build:base && npm run build:client && npm run build:admin",
     "build:clean": "rm -rf dist && mkdir -p dist",
     "build:version": "date +%s > dist/BUILD_VERSION; echo \"building $(cat dist/BUILD_VERSION)\"",
-    "build:base": "cp index.html dist/ && cp partialRollout.js dist/",
+    "build:base": "cp index.html dist/ && cp src/partialRollout.js dist/",
     "build:client": "browserify src/client/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat dist/BUILD_VERSION)\"  ] | exorcist dist/client-bundle.js.map > dist/client-bundle.js",
     "build:admin": "browserify src/admin/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat dist/BUILD_VERSION)\"  ] | exorcist dist/admin-bundle.js.map > dist/admin-bundle.js",
     "deploy": "gh-pages -d dist",
