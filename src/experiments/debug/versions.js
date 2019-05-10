@@ -4,6 +4,9 @@ const {
   buildGraphAddMissingNodes,
 } = require('../common/graph-viz')
 const BaseForceGraph = require('../common/BaseForceGraph')
+const {
+  interpolateColor, rgbToHex
+} = require('../../util/colorUtils')
 
 class BasicTrafficGraph extends BaseForceGraph {
 
@@ -55,17 +58,14 @@ function colorForVersion (version, versions) {
   if (version === 'development') {
     return 'purple'
   }
+  const youngestColor = [0,255,0]
+  const oldestColor = [255,0,0]
   const versionIndex = versions.indexOf(version)
-  switch (versionIndex) {
-    case 0:
-      return 'green'
-    case 1:
-      return 'yellow'
-    case 2:
-      return 'orange'
-    default:
-      return 'red'
-  }
+  const versionsCount = versions.length
+  const percent = versionIndex/(versionsCount-1)
+  const color = interpolateColor(youngestColor, oldestColor, percent)
+  const colorString = rgbToHex(color)
+  return colorString
 }
 
 // mostly same as traffic
