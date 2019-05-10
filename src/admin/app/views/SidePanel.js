@@ -1,8 +1,15 @@
 const React = require('react')
 const h = require('react-hyperscript')
 const s = require('react-hyperscript')
+const TimeAgo = require('javascript-time-ago')
+const TimeAgoEn = require('javascript-time-ago/locale/en')
+
 const renderPieChart = require('../components/pie')
 const StackedArea = require('../components/stackedArea')
+
+TimeAgo.addLocale(TimeAgoEn)
+const timeAgo = new TimeAgo('en-US')
+
 
 class SidePanel extends React.Component {
   constructor () {
@@ -41,6 +48,10 @@ function renderSelectedNodePanel (state, actions) {
   if (!selectedNode) return null
   if (!selectedNodeData) return null
 
+  let versionRelativeTime = getVersionRelativeTime(selectedNodeData.version)
+  const nodeDebugData = selectedNodeData.debug || {}
+  const uptime = nodeDebugData.uptime && timeAgo.format(Date.now() - nodeDebugData.uptime)
+
   return (
 
     h('div', [
@@ -56,13 +67,12 @@ function renderSelectedNodePanel (state, actions) {
 
       h('h2', 'selected node'),
 
-      h('.app-selected-node', [
-        `id: ${shortId}`
-      ]),
-
-      h('button', {
+      h('button.app-selected-node', {
         onClick: () => copyToClipboard(selectedNode)
-      }, 'copy id'),
+      }, `id: ${shortId}`),
+
+      h('div', `version: ${selectedNodeData.version} (${versionRelativeTime})`),
+      h('div', `uptime: ${uptime}`),
 
       // h('button', {
       //   onClick: () => actions.pingNode(selectedNode)
@@ -280,4 +290,12 @@ function renderNodeStatsPieChart (label, specificStats, mapFn) {
     ])
 
   )
+}
+
+function getVersionRelativeTime (version) {
+  if (!version) return
+  const seconds = parseInt(version)
+  if (Number.isNaN(seconds)) return
+  const ms = seconds * 1000
+  return timeAgo.format(ms)
 }

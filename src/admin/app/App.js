@@ -6,6 +6,7 @@ import Nav from './components/nav'
 const SidePanel = require('./views/SidePanel')
 const dhtExperiment = require('../../experiments/dht/admin')
 const errorsExperiment = require('../../experiments/errors/admin')
+const debugExperiment = require('../../experiments/debug/admin')
 const trafficExperiment = require('../../experiments/traffic/admin') 
 
 class App extends Component {
@@ -21,6 +22,7 @@ class App extends Component {
     this.loadExperiment(trafficExperiment)
     this.loadExperiment(dhtExperiment)
     this.loadExperiment(errorsExperiment)
+    this.loadExperiment(debugExperiment)
   }
 
   loadExperiment (experiment) {

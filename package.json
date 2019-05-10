@@ -19,6 +19,7 @@
     "google-palette": "^1.1.0",
     "hat": "0.0.3",
     "http-poll-stream": "^2.1.0",
+    "javascript-time-ago": "^2.0.1",
     "kitsunet-telemetry": "^1.1.2",
     "libp2p": "^0.25.2",
     "libp2p-kad-dht": "github:libp2p/js-libp2p-kad-dht#0a30f8f",

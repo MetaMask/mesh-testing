@@ -19,6 +19,7 @@ const TrafficExperiment = require('../experiments/traffic/client')
 const DhtExperiment = require('../experiments/dht/client')
 const ErrorExperiment = require('../experiments/errors/client')
 const PeersExperiment = require('../experiments/peers/client')
+const DebugExperiment = require('../experiments/debug/client')
 
 const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
 const devMode = !process.browser || (!window.location.search.includes('prod') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
@@ -61,17 +62,7 @@ async function start () {
   const node = await createNode({ identity, addrs: [primaryAddress], datastore })
 
   // rpc interface exposed to telemetry server and admin
-  const rpcInterface = {
-    // refresh: async () => {
-    //   return restart()
-    // },
-    // refreshShortDelay: () => {
-    //   return restartWithDelay(randomFromRange(5 * sec, 10 * sec))
-    // },
-    // refreshLongDelay: async () => {
-    //   return restartWithDelay(randomFromRange(2 * min, 10 * min))
-    // },
-  }
+  const rpcInterface = {}
 
   // for debugging
   global.Buffer = Buffer
@@ -83,24 +74,12 @@ async function start () {
   const peerConnectionTracker = createPeerConnectionTracker({ node })
   discoverAndConnect({ node, clientId, peerConnectionTracker, count: 6 })
 
-  // async function restartWithDelay (timeoutDuration) {
-  //   log(`Telemetry - restarting in ${timeoutDuration / 1000} sec...`)
-  //   setTimeout(() => restart(), timeoutDuration)
-  // }
-  // async function restart () {
-  //   if (isNode) {
-  //     log('restart requested from telemetry server...')
-  //     return
-  //   }
-  //   await telemetryRpc.disconnect(clientId)
-  //   window.location.reload()
-  // }
-
   // setup experiments
   const trafficExp = new TrafficExperiment({ node, rpcInterface })
   const dhtExp = new DhtExperiment({ node, rpcInterface, clientId })
   const errExp = new ErrorExperiment({ node, rpcInterface, clientId })
   const peersExp = new PeersExperiment({ node, rpcInterface, peerConnectionTracker })
+  const debugExp = new DebugExperiment({ rpcInterface, version: BUILD_VERSION })
 
   // start node
   console.log('node starting...')
@@ -142,72 +121,16 @@ async function start () {
         error: errExp.getState(),
         traffic: trafficExp.getState(),
         peers: peersExp.getState(),
+        debug: debugExp.getState(),
       }
     } catch (err) {
       console.error('Error getting client state', err)
     }
   }
 
-  // function render() {
-  //   const { dht } = getState()
-  //   const { providers: { all, group1, group2, group3 } } = dht
-  //   const content = `
-  //   me: ${clientId} <br/>
-  //   all: ${all.length} <br/>
-  //   group1: ${group1.length} <br/>
-  //   group2: ${group2.length} <br/>
-  //   group3: ${group3.length} <br/>
-  //   `
-  //   document.body.innerHTML = content
-  // }
+  // restart client after random time
+  if (!devMode && process.browser) {
+    debugExp.restartWithRandomDelay(1 * hour, 2 * hour)
+  }
 
 }
-  // const options = {
-  //   BUILD_VERSION,
-  //   identity,
-  //   libp2pAddrs,
-  //   libp2pBootstrap: [
-  //     // `/dns4/monkey.musteka.la/tcp/443/wss/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC`
-  //     '/ip4/127.0.0.1/tcp/30334/ws/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
-  //   ],
-  //   // rpcUrl,
-  //   // rpcEnableTracker,
-  //   ethAddrs: [
-  //     // Nanopool
-  //     '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5',
-  //     // Gnosis GNO
-  //     '0x6810e776880c02933d47db1b9fc05908e5386b96',
-  //     // Gnosis GNO whale
-  //     '0x1d805bc00b8fa3c96ae6c8fa97b2fd24b19a9801'
-  //   ],
-  //   slicePath: [
-  //     '8e99',
-  //     '1372',
-  //     '66cc',
-  //     'd019',
-  //     '0aa8',
-  //     '0cc6',
-  //     '06d5',
-  //     '59e7'
-  //   ],
-  //   sliceDepth: 10,
-  //   NODE_ENV: devMode ? 'dev' : 'prod'
-  // }
-
-  // console.log('kitsunet booting')
-  // const kitsunet = await kitsunetFactory(options)
-  // console.log('kitsunet created')
-
-  // for debugging
-  // global.Buffer = Buffer
-  // global.node = kitsunet.node
-  // global.kitsunet = kitsunet
-
-  // // start it up
-  // await kitsunet.start()
-  // console.log('kitsunet started')
-
-  // restart client after random time
-  // const timeUntilRestart = randomFromRange(1, 2) * hour
-  // await timeout(timeUntilRestart)
-  // window.location.reload()
