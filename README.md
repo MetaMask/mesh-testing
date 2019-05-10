@@ -9,6 +9,7 @@ If you would have any questions or would like to propose an experiment, please o
 
 ### Development
 
+in separate terminal tabs:
 ```
 npm start
 npm run server
