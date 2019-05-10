@@ -39,6 +39,7 @@ function renderSelectedNodePanel (state, actions) {
   const shortId = peerIdToShortId(selectedNode)
   
   if (!selectedNode) return null
+  if (!selectedNodeData) return null
 
   return (
 
@@ -96,6 +97,10 @@ function renderSelectedNodePanel (state, actions) {
       h('button', {
         onClick: () => actions.client.sendToClient(selectedNode, 'dht.enableRandomWalk')
       }, 'random walk'),
+
+      h('button', {
+        onClick: () => actions.client.sendToClient(selectedNode, 'peers.disconnectAllPeers')
+      }, 'disconnect all'),
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 

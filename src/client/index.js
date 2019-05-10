@@ -18,6 +18,7 @@ const discoverAndConnect = require('./libp2p/discoverAndConnect')
 const TrafficExperiment = require('../experiments/traffic/client')
 const DhtExperiment = require('../experiments/dht/client')
 const ErrorExperiment = require('../experiments/errors/client')
+const PeersExperiment = require('../experiments/peers/client')
 
 const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
 const devMode = !process.browser || (!window.location.search.includes('prod') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
@@ -59,15 +60,6 @@ async function start () {
 
   const node = await createNode({ identity, addrs: [primaryAddress], datastore })
 
-  // for debugging
-  global.Buffer = Buffer
-  global.node = node
-  global.getState = getState
-
-  // connect to 6 peers from naive discovery 
-  const peerConnectionTracker = createPeerConnectionTracker({ node })
-  discoverAndConnect({ node, clientId, peerConnectionTracker, count: 6 })
-
   // rpc interface exposed to telemetry server and admin
   const rpcInterface = {
     // refresh: async () => {
@@ -80,6 +72,16 @@ async function start () {
     //   return restartWithDelay(randomFromRange(2 * min, 10 * min))
     // },
   }
+
+  // for debugging
+  global.Buffer = Buffer
+  global.node = node
+  global.getState = getState
+  global.rpcInterface = rpcInterface
+
+  // connect to 6 peers from naive discovery 
+  const peerConnectionTracker = createPeerConnectionTracker({ node })
+  discoverAndConnect({ node, clientId, peerConnectionTracker, count: 6 })
 
   // async function restartWithDelay (timeoutDuration) {
   //   log(`Telemetry - restarting in ${timeoutDuration / 1000} sec...`)
@@ -98,6 +100,7 @@ async function start () {
   const trafficExp = new TrafficExperiment({ node, rpcInterface })
   const dhtExp = new DhtExperiment({ node, rpcInterface, clientId })
   const errExp = new ErrorExperiment({ node, rpcInterface, clientId })
+  const peersExp = new PeersExperiment({ node, rpcInterface, peerConnectionTracker })
 
   // start node
   console.log('node starting...')
@@ -105,7 +108,7 @@ async function start () {
   console.log(`node started as ${clientId}`)
 
   // setup telemetry
-  const connection = connectViaPost({ devMode })
+  const connection = devMode ? connectViaWs({ devMode }) : connectViaPost({ devMode })
   const telemetry = new TelemetryClient({ clientId, connection, rpcInterface })
   telemetry.setStateHandler(getState)
   telemetry.start()
@@ -138,6 +141,7 @@ async function start () {
         dht: dhtExp.getState(),
         error: errExp.getState(),
         traffic: trafficExp.getState(),
+        peers: peersExp.getState(),
       }
     } catch (err) {
       console.error('Error getting client state', err)
