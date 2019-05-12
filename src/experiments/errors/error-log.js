@@ -1,6 +1,8 @@
 const React = require('react')
 const ObsStoreComponent = require('../common/obs-store')
-const JsonComponent = require('../common/json')
+const {
+  interpolateColor, rgbToHex
+} = require('../../util/colorUtils')
 
 class ErrorLogComponent extends ObsStoreComponent {
 
@@ -43,3 +45,29 @@ class ErrorLogComponent extends ObsStoreComponent {
 }
 
 module.exports = ErrorLogComponent
+module.exports.colorByErrorCount = colorByErrorCount
+
+
+function colorByErrorCount (appState, graph) {
+  graph.nodes.forEach(node => {
+    const clientData = appState.clients[node.id]
+    const { error } = clientData || {}
+    const { errors } = error || {}
+    const color = colorForErrorCount(errors, 10)
+    node.color = color
+  })
+}
+
+function colorForErrorCount (errors, max) {
+  if (!errors) {
+    return 'black'
+  }
+  const errorCount = errors.length
+  // get color between green and red
+  const youngestColor = [0,255,0]
+  const oldestColor = [255,0,0]
+  const percent = Math.min(errorCount / max, 1)
+  const color = interpolateColor(youngestColor, oldestColor, percent)
+  const colorString = rgbToHex(color)
+  return colorString
+}
