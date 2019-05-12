@@ -8,23 +8,6 @@ class GraphBuilder extends React.Component {
   constructor (...args) {
     super(...args)
 
-    // this.options = {}
-    // this.options.color = [
-    //   { id: 1, label: 'versions' },
-    //   { id: 2, label: 'uptime' },
-    //   { id: 3, label: 'traffic' },
-    // ]
-    // this.options.topo = [
-    //   { id: 1, label: 'connected' },
-    //   { id: 2, label: 'peerbook' },
-    //   { id: 3, label: 'dht' },
-    // ]
-    // this.options.size = [
-    //   { id: 1, label: 'none' },
-    //   { id: 2, label: 'traffic' },
-    //   { id: 3, label: 'errors' },
-    // ]
-
     const options = this.props.graphOptions
     this.state = {
       selected: {
@@ -44,7 +27,7 @@ class GraphBuilder extends React.Component {
     }
 
     return (
-      <div>
+      <div style={{ width: '100%', height: '100%' }}>
         {optionsSelector({ state, options, onSelect, category: 'topo' })}
         {optionsSelector({ state, options, onSelect, category: 'color' })}
         {/* {optionsSelector({ state, options, onSelect, category: 'size' })} */}
