@@ -28,7 +28,8 @@ experiment.views.push({
 
 experiment.graphBuilder = {
   topo: [
-    { id: 'dht:routingTable', label: 'dht', value: topoByRoutingTable },
+    { id: 'dht:routingTable', label: 'dht', value: (appState, graph) => topoByRoutingTable(appState, graph, { includeMissing: false }) },
+    { id: 'dht:routingTable:full', label: 'dht full', value: (appState, graph) => topoByRoutingTable(appState, graph, { includeMissing: true }) },
   ],
   color: [
     { id: 'dht:group', label: 'dht group', value: colorByGroup },
