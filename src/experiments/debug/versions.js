@@ -48,10 +48,7 @@ function colorByVersion (appState, graph) {
   const versions = getVersionsFromClientsDataEntries(clientsDataEntries)
   graph.nodes.forEach(node => {
     const clientId = node.id
-    const clientData = appState.clients[clientId]
-    if (!clientData) {
-      node.color = 'black'
-    }
+    const clientData = appState.clients[clientId] || {}
     const { version } = clientData
     const color = colorForVersion(version, versions)
     node.color = color
@@ -70,6 +67,9 @@ function getVersionsFromClientsDataEntries (clientsDataEntries) {
 }
 
 function colorForVersion (version, versions) {
+  if (!version) {
+    return 'black'
+  }
   if (version === 'development') {
     return 'purple'
   }

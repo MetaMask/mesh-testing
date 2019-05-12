@@ -45,7 +45,7 @@ function buildGraph (appState) {
 
 function colorByUptime (appState, graph) {
   graph.nodes.forEach(node => {
-    const clientData = appState.clients[node.id]
+    const clientData = appState.clients[node.id] || {}
     const { uptime } = clientData.debug || {}
     const color = colorForUptime(uptime, ms2Hours)
     node.color = color
