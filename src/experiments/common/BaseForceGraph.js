@@ -31,6 +31,13 @@ class BaseForceGraph extends React.Component {
     store.unsubscribe(this.rebuildGraph)
   }
 
+  // force graph rebuild on proprs update
+  componentWillReceiveProps (nextProps) {
+    this.props = nextProps
+    const { store } = this.props
+    this.rebuildGraph(store.getState())
+  }
+
   rebuildGraph (state) {
     const { nodes, links } = this.buildGraph(state)
     const currentGraph = this.graphStore.getState()

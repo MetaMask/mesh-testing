@@ -1,5 +1,9 @@
 const React = require('react')
 const DhtGraph = require('./graphs/routing')
+const {
+  topoByRoutingTable,
+  colorByGroup,
+} = DhtGraph
 
 const experiment = {
   views: [],
@@ -21,5 +25,14 @@ experiment.views.push({
     <DhtGraph store={store} includeMissing={true}/>
   )
 })
+
+experiment.graphBuilder = {
+  topo: [
+    { id: 'dht:routingTable', label: 'dht', value: topoByRoutingTable },
+  ],
+  color: [
+    { id: 'dht:group', label: 'dht group', value: colorByGroup },
+  ]
+}
 
 module.exports = experiment

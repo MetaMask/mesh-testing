@@ -18,6 +18,7 @@ class BasicTrafficGraph extends BaseForceGraph {
 }
  
 module.exports = BasicTrafficGraph
+module.exports.colorByUptime = colorByUptime
 
 
 function buildGraph (appState) {
@@ -31,20 +32,29 @@ function buildGraph (appState) {
 
   // create nodes and set color based on version age
   clientsDataEntries.forEach(([clientId, clientData]) => {
-    const { uptime } = clientData.debug || {}
-    const color = colorForUptime(uptime, ms2Hours)
-    const newNode = createNode({ id: clientId, color })
+    const newNode = createNode({ id: clientId })
     graph.nodes.push(newNode)
   })
 
   buildGraphLinks(clientsDataEntries, graph)
 
+  colorByUptime(appState, graph)
+
   return graph
+}
+
+function colorByUptime (appState, graph) {
+  graph.nodes.forEach(node => {
+    const clientData = appState.clients[node.id]
+    const { uptime } = clientData.debug || {}
+    const color = colorForUptime(uptime, ms2Hours)
+    node.color = color
+  })
 }
 
 function colorForUptime (uptime, max) {
   if (!uptime) {
-    return 'purple'
+    return 'black'
   }
   // get color between green and red
   const youngestColor = [0,255,0]

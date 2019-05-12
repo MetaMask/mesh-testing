@@ -17,6 +17,7 @@ class BasicTrafficGraph extends BaseForceGraph {
 }
  
 module.exports = BasicTrafficGraph
+module.exports.colorByVersion = colorByVersion
 
 
 function buildGraph (appState) {
@@ -28,19 +29,33 @@ function buildGraph (appState) {
 
   const clientsDataEntries = Object.entries(clientsData)
 
-  const versions = getVersionsFromClientsDataEntries(clientsDataEntries)
-
   // create nodes and set color based on version age
   clientsDataEntries.forEach(([clientId, clientData]) => {
-    const { version } = clientData
-    const color = colorForVersion(version, versions)
-    const newNode = createNode({ id: clientId, color })
+    const newNode = createNode({ id: clientId })
     graph.nodes.push(newNode)
   })
 
   buildGraphLinks(clientsDataEntries, graph)
 
+  colorByVersion(appState, graph)
+
   return graph
+}
+
+function colorByVersion (appState, graph) {
+  // set color based on version age
+  const clientsDataEntries = Object.entries(appState.clients)
+  const versions = getVersionsFromClientsDataEntries(clientsDataEntries)
+  graph.nodes.forEach(node => {
+    const clientId = node.id
+    const clientData = appState.clients[clientId]
+    if (!clientData) {
+      node.color = 'black'
+    }
+    const { version } = clientData
+    const color = colorForVersion(version, versions)
+    node.color = color
+  })
 }
 
 function getVersionsFromClientsDataEntries (clientsDataEntries) {

@@ -13,34 +13,40 @@ class DhtGraph extends BaseForceGraph {
 
   buildGraph (state) {
     const { includeMissing } = this.props
-    return buildGraphForDht(state, includeMissing)
+    return buildGraphForDht(state, { includeMissing })
   }
 
 }
 
 module.exports = DhtGraph
+module.exports.topoByRoutingTable = topoByRoutingTable
+module.exports.colorByGroup = colorByGroup
 
 
-function buildGraphForDht (appState, includeMissing) {
+function buildGraphForDht (appState, opts = {}) {
   const graph = { nodes: [], links: [] }
 
-  // const { networkState, selectedNode } = appState
   const clientsData = appState.clients
   if (!clientsData) return graph
+  
+  topoByRoutingTable(appState, graph, opts)
+  colorByGroup(appState, graph)
+  return graph
+}
 
+function topoByRoutingTable (appState, graph, opts = {}) {
+  const { includeMissing } = opts
+
+  const clientsData = appState.clients
   buildGraphBasicNodes(clientsData, graph)
   buildGraphDhtLinks(clientsData, graph, includeMissing)
-
-  // recolor nodes based on group
-  // color green if they were part of the getMany response
-  recolorNodesForGroupNumber(clientsData, graph)
 
   return graph
 }
 
-function buildGraphDhtLinks (networkState, graph, includeMissing) {
+function buildGraphDhtLinks (clientsData, graph, includeMissing) {
   // build links from stats
-  Object.entries(networkState).forEach(([clientId, clientData]) => {
+  Object.entries(clientsData).forEach(([clientId, clientData]) => {
     const dhtData = clientData.dht || {}
     const peers = dhtData.routingTable
     if (!peers) return
@@ -67,13 +73,17 @@ function buildGraphDhtLinks (networkState, graph, includeMissing) {
   }
 }
 
-function recolorNodesForGroupNumber (clientsData, graph) {
-  graph.nodes.map((node) => {
+function colorByGroup (appState, graph) {
+  const clientsData = appState.clients
+  graph.nodes.forEach((node) => {
     const clientId = node.id
     const clientData = clientsData[clientId] || {}
     const dhtData = clientData.dht || {}
     const groupName = dhtData.group
-    if (!groupName) return
+    if (!groupName) {
+      node.color = 'black'
+      return
+    }
     const number = Number(groupName.split('-')[1])
     const color = colors[number % colors.length]
     node.color = color

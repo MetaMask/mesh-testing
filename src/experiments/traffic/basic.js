@@ -14,6 +14,7 @@ class BasicTrafficGraph extends BaseForceGraph {
 }
  
 module.exports = BasicTrafficGraph
+module.exports.topoByTraffic = topoByTraffic
 
 
 function buildGraph (appState) {
@@ -23,10 +24,15 @@ function buildGraph (appState) {
   const clientsData = appState.clients
   if (!clientsData) return graph
 
-  buildGraphBasicNodes(clientsData, graph)
-  buildGraphLinks(clientsData, graph)
+  topoByTraffic(appState, graph)
 
   return graph
+}
+
+function topoByTraffic (appState, graph) {
+  const clientsData = appState.clients
+  buildGraphBasicNodes(clientsData, graph)
+  buildGraphLinks(clientsData, graph)
 }
 
 function buildGraphLinks (clientsData, graph, networkFilter) {

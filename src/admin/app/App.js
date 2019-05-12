@@ -4,6 +4,7 @@ import './bootstrap.css';
 import React, { Component } from 'react'
 import Nav from './components/nav'
 const SidePanel = require('./views/SidePanel')
+const GraphBuilder = require('./views/graphBuilder')
 const dhtExperiment = require('../../experiments/dht/admin')
 const errorsExperiment = require('../../experiments/errors/admin')
 const debugExperiment = require('../../experiments/debug/admin')
@@ -14,10 +15,25 @@ class App extends Component {
   constructor() {
     super()
     this.state = {
-      currentView: 'traffic',
+      currentView: 'graphBuilder',
       selectedNode: null,
     }
     this.views = {}
+    this.experiments = []
+
+    this.graphOptions = {
+      topo: [],
+      color: [],
+      size: [],
+    }
+
+    this.views.graphBuilder = {
+      id: 'graphBuilder',
+      label: 'custom',
+      render: ({ store, actions }) => (
+        <GraphBuilder graphOptions={this.graphOptions} store={store} actions={actions}/>
+      )
+    }
 
     this.loadExperiment(trafficExperiment)
     this.loadExperiment(dhtExperiment)
@@ -26,10 +42,19 @@ class App extends Component {
   }
 
   loadExperiment (experiment) {
-    // load experiment views
+    // gather experiment views
     experiment.views.forEach(view => {
       this.views[view.id] = view
     })
+    // gather graph builder components
+    const { graphBuilder } = experiment
+    if (graphBuilder) {
+      this.graphOptions.topo = this.graphOptions.topo.concat(graphBuilder.topo || [])
+      this.graphOptions.color = this.graphOptions.color.concat(graphBuilder.color || [])
+      this.graphOptions.size = this.graphOptions.size.concat(graphBuilder.size || [])
+    }
+    // gather experiments
+    this.experiments.push(experiment)
   }
 
   selectView (target) {
