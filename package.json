@@ -101,7 +101,7 @@
     "build:base": "cp index.html dist/ && cp src/partialRollout.js dist/",
     "build:client": "browserify src/client/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat dist/BUILD_VERSION)\"  ] | exorcist dist/client-bundle.js.map > dist/client-bundle.js",
     "build:admin": "browserify src/admin/index.js --full-paths --debug -t [ envify --BUILD_VERSION \"$(cat dist/BUILD_VERSION)\"  ] | exorcist dist/admin-bundle.js.map > dist/admin-bundle.js",
-    "deploy": "gh-pages -d dist",
+    "deploy": "npm run build && gh-pages -d dist",
     "server": "concurrently -n telemetry,star 'npm run server:telemetry' 'npm run server:star'",
     "server:telemetry": "node src/server/index.js",
     "server:telemetry:debug": "node --inspect=0.0.0.0:9221 src/server/index.js",
