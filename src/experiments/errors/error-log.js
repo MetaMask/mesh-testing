@@ -53,7 +53,7 @@ function colorByErrorCount (appState, graph) {
     const clientData = appState.clients[node.id]
     const { error } = clientData || {}
     const { errors } = error || {}
-    const color = colorForErrorCount(errors, 10)
+    const color = colorForErrorCount(errors, 5)
     node.color = color
   })
 }
