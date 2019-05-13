@@ -49,7 +49,8 @@ function colorByVersion (appState, graph) {
   graph.nodes.forEach(node => {
     const clientId = node.id
     const clientData = appState.clients[clientId] || {}
-    const { version } = clientData
+    const debugData = clientData.debug || {}
+    const version = clientData.version || debugData.version
     const color = colorForVersion(version, versions)
     node.color = color
   })
@@ -57,10 +58,12 @@ function colorByVersion (appState, graph) {
 
 function getVersionsFromClientsDataEntries (clientsDataEntries) {
   const versionSet = new Set()
-  clientsDataEntries.forEach(([clientId, clientsData]) => {
-    if (!clientsData.version) return
-    if (clientsData.version === 'development') return
-    versionSet.add(clientsData.version)
+  clientsDataEntries.forEach(([clientId, clientData]) => {
+    const debugData = clientData.debug || {}
+    const version = clientData.version || debugData.version
+    if (!version) return
+    if (version === 'development') return
+    versionSet.add(version)
   })
   const sorted = Array.from(versionSet.values()).sort().reverse()
   return sorted
@@ -77,6 +80,9 @@ function colorForVersion (version, versions) {
   const oldestColor = [255,0,0]
   const versionIndex = versions.indexOf(version)
   const versionsCount = versions.length
+  if (versionsCount === 1) {
+    return rgbToHex(youngestColor)
+  }
   const percent = versionIndex/(versionsCount-1)
   const color = interpolateColor(youngestColor, oldestColor, percent)
   const colorString = rgbToHex(color)
