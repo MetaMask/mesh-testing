@@ -10,6 +10,7 @@ const {
   network: { connectViaPost, connectViaWs },
   utils: { hour },
 } = require('kitsunet-telemetry')
+const kitsunetFactory = require('./libp2p/kitsunetFactory')
 const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duration))
 const createNode = require('./libp2p/createNode')
 const createPeerConnectionTracker = require('./libp2p/peerConnectionTracker')
@@ -59,12 +60,39 @@ async function start () {
     datastore = new LevelStore('libp2p/client', { db: LocalStorageDown })
   }
 
-  const node = await createNode({ identity, addrs: [primaryAddress], datastore })
+  const { kitsunet, blockTracker, provider } = await kitsunetFactory({
+    options: {
+      identity,
+      libp2pAddrs: [primaryAddress],
+      NODE_ENV: devMode ? 'dev' : 'prod',
+      sliceDepth: 10,
+      rpcUrl: 'http://localhost:8546',
+      ethAddrs: [
+        '0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5',
+        '0x6810e776880c02933d47db1b9fc05908e5386b96',
+        '0x1d805bc00b8fa3c96ae6c8fa97b2fd24b19a9801'
+      ],
+      // libp2pBootstrap: [
+      //   '/ip4/127.0.0.1/tcp/30334/ws/ipfs/QmUA1Ghihi5u3gDwEDxhbu49jU42QPbvHttZFwB6b4K5oC'
+      // ],
+      slicePath: [
+        '8e99',
+        '1372'
+      ],
+      dialInterval: 10000
+    },
+    addrs: []
+  })
+  const node = kitsunet.node
+  // const node = await createNode({ identity, addrs: [primaryAddress], datastore })
 
   // rpc interface exposed to telemetry server and admin
   const rpcInterface = {}
 
   // for debugging
+  global.kitsunet = kitsunet
+  global.blockTracker = blockTracker
+  global.provider = provider
   global.Buffer = Buffer
   global.node = node
   global.getState = getState
@@ -83,7 +111,9 @@ async function start () {
 
   // start node
   console.log('node starting...')
-  await pify(node.start).call(node)
+  // await pify(node.start).call(node)
+  await kitsunet.start()
+  await kitsunet.telemetry.stop()
   console.log(`node started as ${clientId}`)
 
   // setup telemetry
@@ -107,12 +137,6 @@ async function start () {
     process.exit()
   })
 
-  // // render loop
-  // while (true) {
-  //   render()
-  //   await timeout(1e3)
-  // }
-
   function getState () {
     try {
       return {
@@ -122,6 +146,7 @@ async function start () {
         traffic: trafficExp.getState(),
         peers: peersExp.getState(),
         debug: debugExp.getState(),
+        kitsunet: kitsunet.kitsunetStats.getState(),
       }
     } catch (err) {
       console.error('Error getting client state', err)

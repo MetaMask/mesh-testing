@@ -117,7 +117,8 @@ class DhtExperimentClient {
 
   getState () {
     const baseState = this.state
-    const state = Object.assign({}, baseState, { randomWalkEnabled: this.node._dht.randomWalk._options.enabled })
+    const randomWalkOptions = this.node._dht.randomWalk._options || {}
+    const state = Object.assign({}, baseState, { randomWalkEnabled: randomWalkOptions.enabled })
     return state
   }
 }
