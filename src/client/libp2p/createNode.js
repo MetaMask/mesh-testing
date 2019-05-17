@@ -44,6 +44,11 @@ async function createNode ({ identity, addrs, datastore }) {
       ],
       dht: DHT,
     },
+    connectionManager: {
+      minPeers: 3,
+      // this needs to be bigger than kbucket size
+      maxPeers: 30,
+    },
     config: {
       peerDiscovery: {
         // bootstrap: {
