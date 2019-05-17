@@ -89,11 +89,11 @@ class App extends Component {
     return (
       <div className="App">
         <div className="AppColumn LeftPanel">
-          <Nav
+          {/* <Nav
             routes={views}
             activeRoute={this.state.currentView}
             onNavigate={(target) => this.selectView(target)}
-            />
+            /> */}
             {currentView && currentView.render({ store: this.props.store, actions })}
         </div>
         <div className="AppColumn RightPanel">
