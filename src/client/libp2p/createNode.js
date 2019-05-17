@@ -47,7 +47,7 @@ async function createNode ({ identity, addrs, datastore }) {
     connectionManager: {
       minPeers: 3,
       // this needs to be bigger than kbucket size
-      maxPeers: 30,
+      maxPeers: 40,
     },
     config: {
       peerDiscovery: {
