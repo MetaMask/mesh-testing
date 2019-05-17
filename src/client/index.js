@@ -8,7 +8,7 @@ const LocalStorageDown = require('localstorage-down')
 const {
   TelemetryClient,
   network: { connectViaPost, connectViaWs },
-  utils: { hour },
+  utils: { hour, sec },
 } = require('kitsunet-telemetry')
 const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duration))
 const createNode = require('./libp2p/createNode')
@@ -88,7 +88,12 @@ async function start () {
 
   // setup telemetry
   const connection = devMode ? connectViaWs({ devMode }) : connectViaPost({ devMode })
-  const telemetry = new TelemetryClient({ clientId, connection, rpcInterface })
+  const telemetry = new TelemetryClient({
+    clientId,
+    connection,
+    rpcInterface,
+    submitInterval: devMode ? 1 * sec : 15 * sec
+  })
   telemetry.setStateHandler(getState)
   telemetry.start()
 
@@ -106,12 +111,6 @@ async function start () {
     }
     process.exit()
   })
-
-  // // render loop
-  // while (true) {
-  //   render()
-  //   await timeout(1e3)
-  // }
 
   function getState () {
     try {
