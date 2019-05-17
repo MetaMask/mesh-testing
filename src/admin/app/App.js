@@ -20,7 +20,6 @@ class App extends Component {
       selectedNode: null,
     }
     this.views = {}
-    this.experiments = []
 
     const graphLayout = { id: 'default:graph', label: 'graph', value: 'graph' }
     const circleLayout = { id: 'default:circle', label: 'circle', value: 'circle' }
@@ -40,6 +39,19 @@ class App extends Component {
       )
     }
 
+    this.actions = {
+      selectNode: (clientId) => this.setState({ selectedNode: clientId }),
+      client: {
+        sendToClient: async (clientId, method, ...args) => {
+          const { server } = this.props
+          // console.log(`sendToClient "${method} - sending...`)
+          const response = await server.sendToClient(clientId, method, args)
+          // console.log(`sendToClient "${method}- done`, response)
+          return response
+        }
+      }
+    }
+
     this.loadExperiment(trafficExperiment)
     this.loadExperiment(dhtExperiment)
     this.loadExperiment(errorsExperiment)
@@ -48,43 +60,31 @@ class App extends Component {
   }
 
   loadExperiment (experiment) {
-    // gather experiment views
-    experiment.views.forEach(view => {
-      this.views[view.id] = view
-    })
-    // gather graph builder components
-    const { graphBuilder } = experiment
-    if (graphBuilder) {
-      this.graphOptions.layout = this.graphOptions.layout.concat(graphBuilder.layout || [])
-      this.graphOptions.topo = this.graphOptions.topo.concat(graphBuilder.topo || [])
-      this.graphOptions.color = this.graphOptions.color.concat(graphBuilder.color || [])
-      this.graphOptions.size = this.graphOptions.size.concat(graphBuilder.size || [])
-    }
-    // gather experiments
-    this.experiments.push(experiment)
+    const { views, graphOptions, actions } = this
+    experiment({ views, graphOptions, actions })
+    // // gather experiment views
+    // experiment.views.forEach(view => {
+    //   this.views[view.id] = view
+    // })
+    // // gather graph builder components
+    // const { graphBuilder } = experiment
+    // if (graphBuilder) {
+    //   this.graphOptions.layout = this.graphOptions.layout.concat(graphBuilder.layout || [])
+    //   this.graphOptions.topo = this.graphOptions.topo.concat(graphBuilder.topo || [])
+    //   this.graphOptions.color = this.graphOptions.color.concat(graphBuilder.color || [])
+    //   this.graphOptions.size = this.graphOptions.size.concat(graphBuilder.size || [])
+    // }
+    // // gather experiments
+    // this.experiments.push(experiment)
   }
 
   selectView (target) {
     this.setState(state => ({ currentView: target }))
   }
 
-  getClientActions () {
-    const { server } = this.props
-    return {
-      sendToClient: async (clientId, method, ...args) => {
-        console.log('sendToClient - sending...')
-        const responses = await server.sendToClient(clientId, method, args)
-        console.log('sendToClient - done', responses)
-      }
-    }
-  }
-
   render () {
-    const actions = {
-      selectNode: (clientId) => this.setState({ selectedNode: clientId }),
-      client: this.getClientActions(),
-    }
-    const views = Object.values(this.views)
+    const { actions } = this
+    // const views = Object.values(this.views)
     const currentView = this.views[this.state.currentView]
     const appState = Object.assign({}, this.state)
 
@@ -96,6 +96,11 @@ class App extends Component {
             activeRoute={this.state.currentView}
             onNavigate={(target) => this.selectView(target)}
             /> */}
+            <div>
+              <button onClick={() => actions.dht.performQueryTest(appState, actions)}>
+                run dht test
+              </button>
+            </div>
             {currentView && currentView.render({ store: this.props.store, actions })}
         </div>
         <div className="AppColumn RightPanel">

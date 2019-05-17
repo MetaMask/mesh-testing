@@ -1,25 +1,14 @@
-const React = require('react')
 const BasicTrafficGraph = require('./basic')
 const { topoByTraffic } = BasicTrafficGraph
 
-const experiment = {
-  views: [],
-  actions: []
+module.exports = initializeExperiment
+
+function initializeExperiment ({ graphOptions, actions }) {
+  // graph builder options
+  Object.assign(graphOptions, {
+    topo: [
+      ...graphOptions.topo,
+      { id: 'traffic:peers', label: 'traffic', value: topoByTraffic },
+    ],
+  })
 }
-
-experiment.views.push({
-  id: 'traffic',
-  label: 'traffic',
-  render: ({ store, actions }) => (
-    <BasicTrafficGraph store={store} actions={actions}/>
-  )
-})
-
-experiment.graphBuilder = {
-  topo: [
-    { id: 'traffic:peers', label: 'traffic', value: topoByTraffic },
-  ],
-}
-
-
-module.exports = experiment

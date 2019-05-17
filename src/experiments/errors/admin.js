@@ -1,24 +1,14 @@
-const React = require('react')
-const ErrorLogComponent = require('./error-log')
-const { colorByErrorCount } = ErrorLogComponent
+const { colorByErrorCount } = require('./error-log')
 
-const experiment = {
-  views: [],
-  actions: []
+module.exports = initializeExperiment
+
+
+function initializeExperiment ({ graphOptions, actions }) {
+  // graph builder options
+  Object.assign(graphOptions, {
+    color: [
+      ...graphOptions.color,
+      { id: 'errors', label: 'errors', value: colorByErrorCount },
+    ],
+  })
 }
-
-experiment.views.push({
-  id: 'errors',
-  label: 'errors',
-  render: ({ store }) => (
-    <ErrorLogComponent store={store}/>
-  )
-})
-
-experiment.graphBuilder = {
-  color: [
-    { id: 'errors', label: 'errors', value: colorByErrorCount },
-  ]
-}
-
-module.exports = experiment

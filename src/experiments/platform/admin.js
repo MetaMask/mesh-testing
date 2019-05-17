@@ -1,17 +1,15 @@
-const experiment = {
-  views: [],
-  actions: []
+
+module.exports = initializeExperiment
+
+function initializeExperiment ({ graphOptions, actions }) {
+  // graph builder options
+  Object.assign(graphOptions, {
+    color: [
+      ...graphOptions.color,
+      { id: 'platform:name', label: 'platform', value: colorByPlatform },
+    ],
+  })
 }
-
-experiment.graphBuilder = {
-  color: [
-    { id: 'platform:name', label: 'platform', value: colorByPlatform },
-  ],
-}
-
-
-module.exports = experiment
-
 
 function colorByPlatform (appState, graph) {
   // set color based on platform
