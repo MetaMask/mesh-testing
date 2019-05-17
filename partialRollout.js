@@ -1,6 +1,6 @@
 'use strict'
 
-const ROLLOUT_THRESHOLD = 1000
+const ROLLOUT_THRESHOLD = 2000
 let matchesThreshold
 
 const isAdmin = document.location.search.includes('admin')
@@ -9,7 +9,7 @@ start()
 
 function start () {
   try {
-    matchesThreshold = checkThreshold({ rolloutThreshold: ROLLOUT_THRESHOLD })
+    matchesThreshold = checkThreshold(ROLLOUT_THRESHOLD)
   } catch (err) {
     // checkThreshold throws if localStorage access is disallowed, warn + abort
     console.warn('MetaMask Mesh Testing - threshold check failed:', err)
@@ -42,7 +42,7 @@ function activateBundle (src) {
   document.body.appendChild(script)
 }
 
-function checkThreshold ({ rolloutThreshold }) {
+function checkThreshold (rolloutThreshold) {
   if (window.localStorage.getItem('forceTest') === 'true') return true
 
   // load or setup id
