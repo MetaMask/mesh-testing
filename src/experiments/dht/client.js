@@ -16,12 +16,24 @@ class DhtExperimentClient {
     }
 
     rpcInterface.dht = {
-      enableRandomWalk: () => {
-        // https://github.com/libp2p/js-libp2p-kad-dht/issues/110
+      enableRandomWalk: async () => {
         if (!this.node._dht) throw new Error('Dht doesnt exist') 
+        // https://github.com/libp2p/js-libp2p-kad-dht/issues/110
         this.node._dht.randomWalk._options.enabled = true
         this.node._dht.randomWalk.start()
-      }
+      },
+      findProviders: async (key) => {
+        if (!this.node._dht) throw new Error('Dht doesnt exist')
+        const start = Date.now()
+        const cid = await makeKeyId(Buffer.from(key))
+        const providers = await pify(cb => node.contentRouting.findProviders(cid, 10 * 1000, cb))()
+        // map to id strings
+        const providerIds = providers.map(provider => provider.id.toB58String())
+        // remove self
+        const providerPeerIds = providerIds.filter(providerId => clientId !== providerId)
+        const time = Date.now() - start
+        return { time, result: providerPeerIds }
+      },
     }
 
     this.start()
@@ -30,14 +42,14 @@ class DhtExperimentClient {
   async start () {
     const { node } = this
 
-    await this.prepareGroups({ count: 3 })
+    await this.prepareGroups({ count: 100 })
     
     while (true) {
       try {
         // broadcast that we provide content
         await this.announceProvidedContent()
-        // look for others with matching content
-        await this.findProviders()
+        // // look for others with matching content
+        // await this.findProviders()
         Object.assign(this.state, getStats({ node }))
       } catch (err) {
         this.reportError('main loop', err)
@@ -63,14 +75,10 @@ class DhtExperimentClient {
     this.state.group = key
     this.providedContent.push(`group-${number}`)
   
-    this.precomputedCids = {
-      all: await makeKeyId(Buffer.from('all')),
-    }
+    this.precomputedCids = {}
   
     await Promise.all(
-      Array(count).fill().map(async (_, index) => {
-        const number = index + 1
-        const key = `group-${number}`
+      this.providedContent.map(async (key) => {
         const value = await makeKeyId(Buffer.from(key))
         this.precomputedCids[key] = value
       })
@@ -97,24 +105,24 @@ class DhtExperimentClient {
     )
   }
 
-  async findProviders () {
-    const { clientId, node } = this
-    await Promise.all(
-      Object.entries(this.precomputedCids).map(async ([key, cid]) => {
-        try {
-          const providers = await pify(cb => node.contentRouting.findProviders(cid, 10 * 1000, cb))()
-          // map to id strings
-          const providerIds = providers.map(provider => provider.id.toB58String())
-          // remove self
-          const providerPeerIds = providerIds.filter(providerId => clientId !== providerId)
-          // update state
-          this.state.providers[key] = providerPeerIds
-        } catch (err) {
-          this.reportError('find providers', err)
-        }
-      })
-    )
-  }
+  // async findProviders () {
+  //   const { clientId, node } = this
+  //   await Promise.all(
+  //     Object.entries(this.precomputedCids).map(async ([key, cid]) => {
+  //       try {
+  //         const providers = await pify(cb => node.contentRouting.findProviders(cid, 10 * 1000, cb))()
+  //         // map to id strings
+  //         const providerIds = providers.map(provider => provider.id.toB58String())
+  //         // remove self
+  //         const providerPeerIds = providerIds.filter(providerId => clientId !== providerId)
+  //         // update state
+  //         this.state.providers[key] = providerPeerIds
+  //       } catch (err) {
+  //         this.reportError('find providers', err)
+  //       }
+  //     })
+  //   )
+  // }
 
   getState () {
     const baseState = this.state

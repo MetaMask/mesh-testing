@@ -125,15 +125,29 @@ function renderSelectedNode (state, actions) {
       //   }
       // }, `${selectedNodeData.blockTrackerEnabled ? 'disable' : 'enable'} block tracker`),
 
-      h('span', `random walk: ${selectedNodeData.dht.randomWalkEnabled}`),
-      
-      h('button', {
-        onClick: () => actions.client.sendToClient(selectedNode, 'dht.enableRandomWalk')
-      }, 'random walk'),
+      h('div', `random walk: ${selectedNodeData.dht.randomWalkEnabled}`),
+      h('div', `dht group: ${selectedNodeData.dht.group}`),
 
-      h('button', {
-        onClick: () => actions.client.sendToClient(selectedNode, 'peers.disconnectAllPeers')
-      }, 'disconnect all'),
+      h('input', {
+        id: 'dht-group',
+        placeholder: 'query dht providers',
+        onKeyPress: (e) => {
+          if (e.key !== 'Enter') return
+          actions.client.sendToClient(selectedNode, 'dht.findProviders', e.target.value)
+        },
+      }),
+      
+      h('div', [
+        h('button', {
+          onClick: () => actions.client.sendToClient(selectedNode, 'dht.enableRandomWalk')
+        }, 'random walk'),  
+      ]),
+
+      h('div', [      
+        h('button', {
+          onClick: () => actions.client.sendToClient(selectedNode, 'peers.disconnectAllPeers')
+        }, 'disconnect all'),
+      ]),
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 
