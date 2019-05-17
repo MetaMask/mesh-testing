@@ -18,6 +18,7 @@ class DhtExperimentClient {
     rpcInterface.dht = {
       enableRandomWalk: () => {
         // https://github.com/libp2p/js-libp2p-kad-dht/issues/110
+        if (!this.node._dht) throw new Error('Dht doesnt exist') 
         this.node._dht.randomWalk._options.enabled = true
         this.node._dht.randomWalk.start()
       }
@@ -117,7 +118,9 @@ class DhtExperimentClient {
 
   getState () {
     const baseState = this.state
-    const state = Object.assign({}, baseState, { randomWalkEnabled: this.node._dht.randomWalk._options.enabled })
+    const dht = this.node._dht
+    const randomWalkEnabled = dht && dht.randomWalk._options.enabled
+    const state = Object.assign({}, baseState, { randomWalkEnabled })
     return state
   }
 }
