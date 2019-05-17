@@ -21,7 +21,11 @@ class App extends Component {
     this.views = {}
     this.experiments = []
 
+    const graphLayout = { id: 'default:graph', label: 'graph', value: 'graph' }
+    const circleLayout = { id: 'default:circle', label: 'circle', value: 'circle' }
+
     this.graphOptions = {
+      layout: [graphLayout, circleLayout],
       topo: [],
       color: [],
       size: [],
@@ -49,6 +53,7 @@ class App extends Component {
     // gather graph builder components
     const { graphBuilder } = experiment
     if (graphBuilder) {
+      this.graphOptions.layout = this.graphOptions.layout.concat(graphBuilder.layout || [])
       this.graphOptions.topo = this.graphOptions.topo.concat(graphBuilder.topo || [])
       this.graphOptions.color = this.graphOptions.color.concat(graphBuilder.color || [])
       this.graphOptions.size = this.graphOptions.size.concat(graphBuilder.size || [])

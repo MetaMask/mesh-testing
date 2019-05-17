@@ -68,11 +68,16 @@ class BaseForceGraph extends React.Component {
 
   render () {
     const { actions } = this.props
+    const setupSimulationForces = this.setupSimulationForces
 
     return (
       <div ref={this.containerRef} style={{ width: '100%', height: '100%' }}>
         <GraphContainer onSize={size => this.onResize(size)}>
-          <ForceGraph graphStore={this.graphStore} actions={actions}/>
+          <ForceGraph
+            graphStore={this.graphStore}
+            actions={actions}
+            setupSimulationForces={setupSimulationForces}
+          />
         </GraphContainer>
         {ForceGraph.createStyle()}
       </div>

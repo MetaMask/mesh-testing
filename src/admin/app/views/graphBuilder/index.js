@@ -11,6 +11,7 @@ class GraphBuilder extends React.Component {
     const options = this.props.graphOptions
     this.state = {
       selected: {
+        layout: options.layout[0],
         topo: options.topo[0],
         color: options.color[0],
         size: options.size[0],
@@ -28,6 +29,7 @@ class GraphBuilder extends React.Component {
 
     return (
       <div style={{ width: '100%', height: '100%' }}>
+        {optionsSelector({ state, options, onSelect, category: 'layout' })}
         {optionsSelector({ state, options, onSelect, category: 'topo' })}
         {optionsSelector({ state, options, onSelect, category: 'color' })}
         {/* {optionsSelector({ state, options, onSelect, category: 'size' })} */}
