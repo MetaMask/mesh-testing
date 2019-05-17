@@ -20,6 +20,7 @@ const DhtExperiment = require('../experiments/dht/client')
 const ErrorExperiment = require('../experiments/errors/client')
 const PeersExperiment = require('../experiments/peers/client')
 const DebugExperiment = require('../experiments/debug/client')
+const PlatformExperiment = require('../experiments/platform/client')
 
 const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
 const devMode = !process.browser || (!window.location.search.includes('prod') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
@@ -80,6 +81,7 @@ async function start () {
   const errExp = new ErrorExperiment({ node, rpcInterface, clientId })
   const peersExp = new PeersExperiment({ node, rpcInterface, peerConnectionTracker })
   const debugExp = new DebugExperiment({ rpcInterface, version: BUILD_VERSION })
+  const platformExp = new PlatformExperiment({})
 
   // start node
   console.log('node starting...')
@@ -121,6 +123,7 @@ async function start () {
         traffic: trafficExp.getState(),
         peers: peersExp.getState(),
         debug: debugExp.getState(),
+        platform: platformExp.getState(),
       }
     } catch (err) {
       console.error('Error getting client state', err)

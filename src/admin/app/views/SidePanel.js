@@ -75,6 +75,8 @@ function renderSelectedNode (state, actions) {
   const nodeDebugData = selectedNodeData.debug || {}
   const uptime = nodeDebugData.uptime && timeAgo.format(Date.now() - nodeDebugData.uptime)
 
+  const platformData = selectedNodeData.platform
+
   return (
 
     h('div', [
@@ -96,6 +98,10 @@ function renderSelectedNode (state, actions) {
 
       h('div', `version: ${selectedNodeData.version} (${versionRelativeTime})`),
       h('div', `uptime: ${uptime}`),
+
+      platformData && h('div', [
+        `${platformData.name}@${platformData.version} on ${platformData.os}`
+      ]),
 
       // h('button', {
       //   onClick: () => actions.pingNode(selectedNode)

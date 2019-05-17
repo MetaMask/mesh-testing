@@ -9,6 +9,7 @@ const dhtExperiment = require('../../experiments/dht/admin')
 const errorsExperiment = require('../../experiments/errors/admin')
 const debugExperiment = require('../../experiments/debug/admin')
 const trafficExperiment = require('../../experiments/traffic/admin') 
+const platformExperiment = require('../../experiments/platform/admin') 
 
 class App extends Component {
 
@@ -43,6 +44,7 @@ class App extends Component {
     this.loadExperiment(dhtExperiment)
     this.loadExperiment(errorsExperiment)
     this.loadExperiment(debugExperiment)
+    this.loadExperiment(platformExperiment)
   }
 
   loadExperiment (experiment) {
