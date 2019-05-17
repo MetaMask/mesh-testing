@@ -39,15 +39,38 @@ module.exports = SidePanel
 
 
 function renderSelectedNodePanel (state, actions) {
+  const { selectedNode } = state
+  
+  if (selectedNode) {
+    return renderSelectedNode(state, actions)
+  } else {
+    return renderGlobalStats(state, actions)
+  }
+}
+
+function renderGlobalStats (state, actions) {
+  const { networkState } = state
+  const clientsData = networkState.clients || {}
+  const clientsCount = Object.keys(clientsData).length
+
+  return (
+    <div>
+      <span>Connected Nodes: {clientsCount}</span>
+      {/* <span>Nodes: {clientsCount}</span> */}
+    </div>
+  )
+}
+
+function renderSelectedNode (state, actions) {
   const { selectedNode, networkState } = state
   const clientsData = networkState.clients || {}
   const selectedNodeData = clientsData[selectedNode]
   // const selectedNodePeers = selectedNodeData.peers
-  const shortId = peerIdToShortId(selectedNode)
-  
+
   if (!selectedNode) return null
   if (!selectedNodeData) return null
 
+  const shortId = peerIdToShortId(selectedNode)
   let versionRelativeTime = getVersionRelativeTime(selectedNodeData.version)
   const nodeDebugData = selectedNodeData.debug || {}
   const uptime = nodeDebugData.uptime && timeAgo.format(Date.now() - nodeDebugData.uptime)
