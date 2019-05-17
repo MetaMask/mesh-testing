@@ -2,7 +2,7 @@ const React = require('react')
 const ObservableStore = require('obs-store')
 const deepEqual = require('deep-equal')
 const { GraphContainer, ForceGraph } = require('react-force-directed')
-
+const uniqBy = require('lodash.uniqby')
 
 class BaseForceGraph extends React.Component {
 
@@ -39,12 +39,27 @@ class BaseForceGraph extends React.Component {
   }
 
   rebuildGraph (state) {
-    const { nodes, links } = this.buildGraph(state)
+    const newGraph = this.buildGraph(state)
     const currentGraph = this.graphStore.getState()
+
+    // ensure links have an id
+    newGraph.links.forEach(link => {
+      const { source, target } = link
+      const direction = source > target
+      const [start, end] = direction ? [source, target] : [target, source]
+      const linkId = `${start}-${end}`
+      link.id = linkId
+    })
+
+     // dedupe links (~42% savings on links)
+    newGraph.links = uniqBy(newGraph.links, 'id')
+
     // abort update if no change to graph
-    if (deepEqual(nodes, currentGraph.nodes) && deepEqual(links, currentGraph.links)) return
+    if (deepEqual(newGraph.nodes, currentGraph.nodes) && deepEqual(newGraph.links, currentGraph.links)) {
+      return
+    }
     // update graph store
-    this.graphStore.updateState({ nodes, links })
+    this.graphStore.updateState(newGraph)
   }
 
   onResize (size) {
