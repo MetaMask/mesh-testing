@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "@babel/plugin-proposal-class-properties": "^7.4.4",
     "@nodeutils/defaults-deep": "^1.1.0",
+    "babel-preset-env": "^1.7.0",
     "cids": "^0.6.0",
     "cors": "^2.8.4",
     "d3": "^4.13.0",
@@ -28,6 +30,7 @@
     "libp2p-websockets": "^0.12.2",
     "localstorage-down": "^0.6.7",
     "lodash.toplainobject": "^4.2.0",
+    "lodash.uniqby": "^4.7.0",
     "multihashing-async": "^0.6.0",
     "multiplex": "^6.7.0",
     "multiplex-rpc": "^1.0.1",
@@ -47,6 +50,7 @@
     "react-bootstrap": "^1.0.0-beta.8",
     "react-dom": "^16.8.6",
     "react-force-directed": "^1.0.2",
+    "react-force-graph": "^1.21.1",
     "react-hyperscript": "^3.2.0",
     "rebirth": "^2.0.0",
     "recharts": "^1.5.0",
@@ -87,6 +91,9 @@
           "presets": [
             "@babel/preset-react",
             "@babel/preset-env"
+          ],
+          "plugins": [
+            "@babel/plugin-proposal-class-properties"
           ]
         }
       ]

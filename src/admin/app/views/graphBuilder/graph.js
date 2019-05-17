@@ -1,8 +1,3 @@
-const { util: { createNode, createLink } } = require('react-force-directed')
-const {
-  buildGraphBasicNodes,
-  buildGraphAddMissingNodes,
-} = require('../../../../experiments/common/graph-viz')
 const BaseForceGraph = require('../../../../experiments/common/BaseForceGraph')
 
 class CustomGraph extends BaseForceGraph {

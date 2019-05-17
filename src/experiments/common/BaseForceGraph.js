@@ -1,23 +1,51 @@
 const React = require('react')
 const ObservableStore = require('obs-store')
 const deepEqual = require('deep-equal')
-const { GraphContainer, ForceGraph } = require('react-force-directed')
-
+const uniqBy = require('lodash.uniqby')
+// using build since there were babelify dep issues
+const ForceGraph2D = require('./react-force-graph-2d.min.js')
 
 class BaseForceGraph extends React.Component {
-
-  constructor () {
-    super()
-    // prepare empty graph
-    const graph = { nodes: [], links: [], container: { width: 0, height: 0 } }
-    // contain graph in observable store
-    this.graphStore = new ObservableStore(graph)
-    // bind for listener
-    this.rebuildGraph = this.rebuildGraph.bind(this)
+  
+  state = {
+    graph: {
+      nodes: [],
+      links: [],
+    }
   }
 
   buildGraph () {
     throw new Error('Must be implemented by child Class')
+  }
+
+  rebuildGraph = (state) => {
+    try {
+      const newGraph = this.buildGraph(state)
+      const oldGraph = this.state.graph
+
+      // ensure links have an id
+      newGraph.links.forEach(link => {
+        const { source, target } = link
+        const direction = source > target
+        const [start, end] = direction ? [source, target] : [target, source]
+        const linkId = `${start}-${end}`
+        link.id = linkId
+      })
+
+      // dedupe links (~42% savings on links)
+      newGraph.links = uniqBy(newGraph.links, 'id')
+      
+      // abort update if no change to graph
+      if (deepEqual(newGraph.nodes, oldGraph.nodes) &&
+        deepEqual(newGraph.links, oldGraph.links)) {
+        return
+      }
+      // update graph store
+      const graph = mergeGraph(oldGraph, newGraph)
+      this.setState({ graph })
+    } catch (err) {
+      console.error('graph rebuild err:', err)
+    }
   }
 
   componentDidMount () {
@@ -33,36 +61,50 @@ class BaseForceGraph extends React.Component {
 
   // force graph rebuild on proprs update
   componentWillReceiveProps (nextProps) {
+    // this is lame - we do it so that build works with props
     this.props = nextProps
     const { store } = this.props
     this.rebuildGraph(store.getState())
   }
 
-  rebuildGraph (state) {
-    const { nodes, links } = this.buildGraph(state)
-    const currentGraph = this.graphStore.getState()
-    // abort update if no change to graph
-    if (deepEqual(nodes, currentGraph.nodes) && deepEqual(links, currentGraph.links)) return
-    // update graph store
-    this.graphStore.updateState({ nodes, links })
-  }
-
-  onResize (size) {
-    this.graphStore.updateState({ container: size })
-  }
-
   render () {
     const { actions } = this.props
+    const { graph } = this.state
 
     return (
-      <div ref={this.containerRef} style={{ width: '100%', height: '100%' }}>
-        <GraphContainer onSize={size => this.onResize(size)}>
-          <ForceGraph graphStore={this.graphStore} actions={actions}/>
-        </GraphContainer>
-        {ForceGraph.createStyle()}
-      </div>
+      <ForceGraph2D
+        ref={el => { this.fg = el }}
+        enableNodeDrag={false}
+        // onNodeClick={this._handleClick}
+        graphData={graph}
+      />
     )
   }
 }
 
 module.exports = BaseForceGraph
+
+function mergeGraph (oldGraph, newGraph) {
+  const graph = {}
+  // create index for faster lookups during merge
+  const graphIndex = createGraphIndex(oldGraph)
+  // merge old graph for existing nodes + links
+  graph.nodes = newGraph.nodes.map((node) => {
+    return Object.assign(graphIndex.nodes[node.id] || {}, node)
+  })
+  graph.links = newGraph.links.map((link) => {
+    return Object.assign(graphIndex.links[link.id] || {}, link)
+  })
+  return graph
+}
+
+function createGraphIndex (graph) {
+  const graphIndex = { nodes: {}, links: {} }
+  graph.nodes.forEach(node => {
+    graphIndex.nodes[node.id] = node
+  })
+  graph.links.forEach(link => {
+    graphIndex.links[link.id] = link
+  })
+  return graphIndex
+}
