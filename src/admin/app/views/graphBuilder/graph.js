@@ -1,16 +1,20 @@
 const d3 = require('d3')
-const { util: { createNode, createLink } } = require('react-force-directed')
-const {
-  buildGraphBasicNodes,
-  buildGraphAddMissingNodes,
-} = require('../../../../experiments/common/graph-viz')
 const BaseForceGraph = require('../../../../experiments/common/BaseForceGraph')
 
 class CustomGraph extends BaseForceGraph {
 
   buildGraph (state) {
     const { config } = this.props
-    this.setupSimulationForces = (config.layout.value === 'circle') ? this.setupCircleLayout : null
+
+    switch (config.layout.value) {
+      case 'circle':
+        this.setupSimulationForces = this.setupCircleLayout
+        break
+      default:
+        this.setupSimulationForces = null
+        break
+    }
+
     return buildGraph(state, config)
   }
 

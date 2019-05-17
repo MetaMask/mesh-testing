@@ -25,6 +25,13 @@ class GraphBuilder extends React.Component {
     const { selected } = state
     const onSelect = (item, category) => {
       this.setState(state => ({ selected: { ...state.selected, [category]: item } }))
+      // nasty hack bc my state mgmt is dreadful
+      // this triggers graph rebuild even if graph itself doesnt change
+      if (this.graphElement) {
+        setTimeout(() => {
+          this.graphElement.graphStore.updateState({})
+        })
+      }
     }
 
     return (
@@ -33,7 +40,12 @@ class GraphBuilder extends React.Component {
         {optionsSelector({ state, options, onSelect, category: 'topo' })}
         {optionsSelector({ state, options, onSelect, category: 'color' })}
         {/* {optionsSelector({ state, options, onSelect, category: 'size' })} */}
-        <CustomGraph store={store} actions={actions} config={selected}/>
+        <CustomGraph
+          ref={el => this.graphElement = el}
+          store={store}
+          actions={actions}
+          config={selected}
+        />
       </div>
     )
 

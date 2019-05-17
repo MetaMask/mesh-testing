@@ -55,7 +55,8 @@ class BaseForceGraph extends React.Component {
     newGraph.links = uniqBy(newGraph.links, 'id')
 
     // abort update if no change to graph
-    if (deepEqual(newGraph.nodes, currentGraph.nodes) && deepEqual(newGraph.links, currentGraph.links)) {
+    if (deepEqual(newGraph.nodes, currentGraph.nodes)
+      && deepEqual(newGraph.links, currentGraph.links)) {
       return
     }
     // update graph store
