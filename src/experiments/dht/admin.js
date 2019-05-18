@@ -38,20 +38,24 @@ function initializeExperiment ({ graphOptions, actions }) {
           }
           // query network for target
           const response = await actions.client.sendToClient(clientId, 'dht.findProviders', target)
+          testResults[clientId] = response
           // record results
           const result = response.result || {}
           const providers = result.result || []
-          const error = response.error || {}
-          testResults[clientId] = response
+          const error = response.error
+          // dont put in table if errored
+          if (error) return
+          const routingTable = dhtStats.routingTable || []
           testTable[clientId] = {
             time: result.time,
             providers: providers.length,
+            table: routingTable.length,
             target: target,
-            error: error.message,
           }
         })
       )
-      console.log('dht query test results', testResults)
+      const errorCount = Object.values(testResults).filter(result => result.error).length
+      console.log(`dht query test results: ${count-errorCount}/${count} completed`, testResults)
       console.table(testTable)
     }
   }

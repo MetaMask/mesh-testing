@@ -32,7 +32,6 @@ class DhtExperimentClient {
         // remove self
         const providerPeerIds = providerIds.filter(providerId => clientId !== providerId)
         const time = Date.now() - start
-        // TODO: include providers._getProviderCids -> length
         return { time, result: providerPeerIds }
       },
     }
