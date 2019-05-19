@@ -4,7 +4,7 @@ const BaseForceGraph = require('../../../../experiments/common/BaseForceGraph')
 class CustomGraph extends BaseForceGraph {
 
   buildGraph (state) {
-    const { config } = this.props
+    const { config, appState } = this.props
 
     switch (config.layout.value) {
       case 'circle':
@@ -15,7 +15,7 @@ class CustomGraph extends BaseForceGraph {
         break
     }
 
-    return buildGraph(state, config)
+    return buildGraph(state, config, appState)
   }
 
   setupCircleLayout (simulation, state) {
@@ -60,17 +60,17 @@ class CustomGraph extends BaseForceGraph {
 module.exports = CustomGraph
 
 
-function buildGraph (appState, config) {
+function buildGraph (telemetryStats, config, appState) {
   const graph = { nodes: [], links: [] }
 
-  const clientsData = appState.clients
+  const clientsData = telemetryStats.clients
   if (!clientsData) return graph
 
   const topoFn = config.topo.value
   const colorFn = config.color.value
 
-  topoFn(appState, graph)
-  colorFn(appState, graph)
+  topoFn(telemetryStats, graph, appState)
+  colorFn(telemetryStats, graph, appState)
 
   return graph
 }

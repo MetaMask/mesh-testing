@@ -1,15 +1,44 @@
+const { util: { createLink } } = require('react-force-directed')
 const DhtGraph = require('./graphs/routing')
 const {
   topoByRoutingTable,
   colorByGroup,
 } = DhtGraph
+const {
+  buildGraphBasicNodes,
+  buildGraphAddMissingNodes,
+} = require('../common/graph-viz')
 
 module.exports = initializeExperiment
 
-function initializeExperiment ({ graphOptions, actions }) {
+function initializeExperiment ({ graphOptions, actions, setState }) {
   // actions
   actions.dht = {
-    performQueryTest: async (state, actions) => {
+    performQueryTest: async (clientId, target, actions) => {
+      // reset state
+      setState(({ dht }) => ({ dht: { ...dht, queries: [] } }))
+      // perform query
+      const response = await actions.client.sendToClient(clientId, 'dht.findProviders', target)
+      console.log('got response!', response)
+      const result = response.result || {}
+      const error = response.error
+      // dont put in table if errored
+      if (error) return console.error(error)
+      // parse result
+      const providers = result.result
+      const query = result.query
+      query.providers = providers
+      query.clientId = clientId
+      // add query stats to state
+      if (!query) return console.warn('no query present')
+      const queries = [query]
+      // merge dht state
+      setState(({ dht }) => ({ dht: { ...dht, queries } }))
+    },
+    performQueryTestMany: async (state, actions) => {
+      // reset state
+      // setState(({ dht }) => ({ dht: { ...dht, queries: [] } }))
+
       const clientsData = state.networkState.clients
       if (!clientsData) {
         return console.warn('clients data missing') 
@@ -41,10 +70,11 @@ function initializeExperiment ({ graphOptions, actions }) {
           testResults[clientId] = response
           // record results
           const result = response.result || {}
-          const providers = result.result || []
           const error = response.error
           // dont put in table if errored
-          if (error) return
+          if (error) return console.error(error)
+          // const query = result.query
+          const providers = result.result || []
           const routingTable = dhtStats.routingTable || []
           testTable[clientId] = {
             time: result.time,
@@ -52,6 +82,11 @@ function initializeExperiment ({ graphOptions, actions }) {
             table: routingTable.length,
             target: target,
           }
+          // add query stats to state
+          // if (!query) return console.warn('no query present')
+          // const queries = [query]
+          // merge dht state
+          // setState(({ dht }) => ({ dht: { ...dht, queries } }))
         })
       )
       const errorCount = Object.values(testResults).filter(result => result.error).length
@@ -65,12 +100,95 @@ function initializeExperiment ({ graphOptions, actions }) {
       ...graphOptions.topo,
       { id: 'dht:routingTable', label: 'dht', value: (appState, graph) => topoByRoutingTable(appState, graph, { includeMissing: false }) },
       { id: 'dht:routingTable:full', label: 'dht full', value: (appState, graph) => topoByRoutingTable(appState, graph, { includeMissing: true }) },
+      { id: 'dht:query', label: 'dht query', value: topoByDhtQuery },
     ],
     color: [
       ...graphOptions.color,
       { id: 'dht:group', label: 'dht group', value: colorByGroup },
+      { id: 'dht:query', label: 'dht query', value: colorByDhtQuery },
     ]
   })
+}
+
+function topoByDhtQuery (stats, graph, appState) {
+  const clientsData = stats.clients
+  buildGraphBasicNodes(clientsData, graph)
+  buildGraphDhtQueryLinks(clientsData, graph, appState)
+  return graph
+}
+
+function buildGraphDhtQueryLinks (clientsData, graph, appState) {
+  const { links } = graph
+  const dhtState = appState.dht || {}
+  const queries = dhtState.queries || []
+  queries.forEach(query => {
+    const { clientId } = query
+    query.paths.forEach(path => {
+      // initial peers
+      path.initialPeers.forEach(peerId => {
+        links.push(createLink({ source: clientId, target: peerId }))
+      })
+      // introductions
+      Object.entries(path.introductions).forEach(([peerId, intros]) => {
+        intros.forEach(introId => {
+          links.push(createLink({ source: peerId, target: introId }))
+        })
+      })
+    })
+  })
+
+  buildGraphAddMissingNodes(graph, 'red')
+}
+
+function colorByDhtQuery (stats, graph, appState) {
+  const connectedIds = Object.keys(stats.clients)
+  const dhtState = appState.dht || {}
+  const queries = dhtState.queries || []
+  // const clientsData = stats.clients
+  graph.nodes.forEach((node) => {
+    let color = colorForNodeByQueries(node, queries)
+    if (!color) {
+      if (connectedIds.includes(node.id)) {
+        color = 'blue'
+      } else {
+        color = 'black'
+      }
+    }
+    node.color = color
+  })
+}
+
+function colorForNodeByQueries(node, queries) {
+  if (queries.some(query => isNodeQueryProvider(node, query))) {
+    return 'green'
+  }
+  if (queries.some(query => isNodeQueryOrigin(node, query))) {
+    return 'pink'
+  }
+  if (queries.some(query => isNodeQueryInitialPeer(node, query))) {
+    return 'orange'
+  }
+  if (queries.some(query => isNodeQueryIntroduced(node, query))) {
+    return 'yellow'
+  }
+  return
+}
+
+
+function isNodeQueryProvider (node, query) {
+  return query.providers.includes(node.id)
+}
+
+function isNodeQueryOrigin (node, query) {
+  return query.clientId === node.id
+}
+
+function isNodeQueryInitialPeer (node, query) {
+  return query.paths.some(path => path.initialPeers.includes(node.id))
+}
+
+function isNodeQueryIntroduced (node, query) {
+  return query.paths.some(path => Object.values(path.introductions).flat().includes(node.id))
 }
 
 function shuffle (array) {

@@ -64,6 +64,12 @@ async function setupAdmin () {
     serverInterface: serverAdminRpcHandler(),
     connection: serverConnection
   })
+  global.sendToClient = async (clientId, method, ...args) => {
+    return serverAsync.sendToClient(clientId, method, args)
+  }
+  global.broadcast = async (method, ...args) => {
+    return serverAsync.send(method, args)
+  }
 
   // setup admin ui app
   const store = new ObservableStore()

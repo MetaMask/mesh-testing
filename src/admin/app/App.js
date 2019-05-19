@@ -35,7 +35,7 @@ class App extends Component {
       id: 'graphBuilder',
       label: 'custom',
       render: ({ store, actions }) => (
-        <GraphBuilder graphOptions={this.graphOptions} store={store} actions={actions}/>
+        <GraphBuilder graphOptions={this.graphOptions} store={store} actions={actions} appState={this.state}/>
       )
     }
 
@@ -61,7 +61,8 @@ class App extends Component {
 
   loadExperiment (experiment) {
     const { views, graphOptions, actions } = this
-    experiment({ views, graphOptions, actions })
+    const setState = this.setState.bind(this)
+    experiment({ views, graphOptions, actions, setState })
     // // gather experiment views
     // experiment.views.forEach(view => {
     //   this.views[view.id] = view
@@ -97,9 +98,12 @@ class App extends Component {
             onNavigate={(target) => this.selectView(target)}
             /> */}
             <div>
-              <button onClick={() => actions.dht.performQueryTest(appState, actions)}>
+              <button onClick={() => actions.dht.performQueryTestMany(appState, actions)}>
                 run dht test
               </button>
+            </div>
+            <div>
+              {this.state.dht && 'query is ready'}
             </div>
             {currentView && currentView.render({ store: this.props.store, actions })}
         </div>

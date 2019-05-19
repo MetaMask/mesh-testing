@@ -23,7 +23,7 @@
     "javascript-time-ago": "^2.0.1",
     "kitsunet-telemetry": "^1.1.2",
     "libp2p": "^0.25.2",
-    "libp2p-kad-dht": "^0.14.15",
+    "libp2p-kad-dht": "github:kumavis/js-libp2p-kad-dht#feat/query-stats",
     "libp2p-mplex": "^0.8.5",
     "libp2p-webrtc-star": "^0.15.8",
     "libp2p-websockets": "^0.12.2",

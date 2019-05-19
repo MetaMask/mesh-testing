@@ -20,7 +20,7 @@ class GraphBuilder extends React.Component {
   }
 
   render () {
-    const { store, actions, graphOptions: options } = this.props
+    const { store, actions, appState, graphOptions: options } = this.props
     const { state } = this
     const { selected } = state
     const onSelect = (item, category) => {
@@ -45,6 +45,7 @@ class GraphBuilder extends React.Component {
           store={store}
           actions={actions}
           config={selected}
+          appState={appState}
         />
       </div>
     )

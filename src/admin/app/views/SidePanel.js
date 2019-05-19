@@ -41,10 +41,14 @@ module.exports = SidePanel
 function renderSelectedNodePanel (state, actions) {
   const { selectedNode } = state
   
-  if (selectedNode) {
-    return renderSelectedNode(state, actions)
-  } else {
-    return renderGlobalStats(state, actions)
+  try {
+    if (selectedNode) {
+      return renderSelectedNode(state, actions)
+    } else {
+      return renderGlobalStats(state, actions)
+    }
+  } catch (err) {
+    return h('pre', err.stack)
   }
 }
 
@@ -139,7 +143,8 @@ function renderSelectedNode (state, actions) {
         placeholder: 'query dht providers',
         onKeyPress: (e) => {
           if (e.key !== 'Enter') return
-          actions.client.sendToClient(selectedNode, 'dht.findProviders', e.target.value)
+          console.log('sending dht query', selectedNode, e.target.value)
+          actions.dht.performQueryTest(selectedNode, e.target.value, actions)
         },
       }),
       
@@ -154,6 +159,23 @@ function renderSelectedNode (state, actions) {
           onClick: () => actions.client.sendToClient(selectedNode, 'peers.disconnectAllPeers')
         }, 'disconnect all'),
       ]),
+
+      h('div', [      
+        h('button', {
+          onClick: () => actions.client.sendToClient(selectedNode, 'debug.refresh'),
+        }, 'restart'),
+      ]),
+
+      h('div', [      
+        h('button', {
+          onClick: () => {
+            // temp while broadcast is broken
+            Object.keys(clientsData).map(id => actions.client.sendToClient(id, 'debug.refresh'))
+          }
+        }, 'restart all'),
+      ]),
+
+      // 
 
       // selectedNodePeers && renderSelectedNodePeers(selectedNodePeers),
 

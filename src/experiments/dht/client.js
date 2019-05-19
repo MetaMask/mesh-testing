@@ -7,7 +7,7 @@ const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duratio
 
 
 class DhtExperimentClient {
-  constructor ({ node, clientId, rpcInterface }) {
+  constructor ({ node, clientId, rpcInterface, setState }) {
     this.node = node
     this.clientId = clientId
     this.state = {
@@ -23,16 +23,16 @@ class DhtExperimentClient {
         this.node._dht.randomWalk.start()
       },
       findProviders: async (key) => {
+        console.log('dht findProviders query starting...')
         if (!this.node._dht) throw new Error('Dht doesnt exist')
-        const start = Date.now()
         const cid = await makeKeyId(Buffer.from(key))
-        const providers = await pify(cb => node.contentRouting.findProviders(cid, { maxTimeout: 10 * 1e3 }, cb))()
+        const start = Date.now()
+        const { result: providers, queryStats: query } = await node._dht._findNProvidersWithStatsAsync(cid, 10 * 1e3, 20)
         // map to id strings
         const providerIds = providers.map(provider => provider.id.toB58String())
-        // remove self
-        const providerPeerIds = providerIds.filter(providerId => clientId !== providerId)
         const time = Date.now() - start
-        return { time, result: providerPeerIds }
+        console.log('dht findProviders query completed!')
+        return { time, result: providerIds, query }
       },
     }
 
