@@ -26,7 +26,7 @@ class DhtExperimentClient {
         if (!this.node._dht) throw new Error('Dht doesnt exist')
         const start = Date.now()
         const cid = await makeKeyId(Buffer.from(key))
-        const providers = await pify(cb => node.contentRouting.findProviders(cid, 10 * 1000, cb))()
+        const providers = await pify(cb => node.contentRouting.findProviders(cid, { maxTimeout: 10 * 1e3 }, cb))()
         // map to id strings
         const providerIds = providers.map(provider => provider.id.toB58String())
         // remove self
