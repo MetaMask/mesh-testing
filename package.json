@@ -30,6 +30,7 @@
     "localstorage-down": "^0.6.7",
     "lodash.toplainobject": "^4.2.0",
     "lodash.uniqby": "^4.7.0",
+    "multihashing": "^0.3.3",
     "multihashing-async": "^0.6.0",
     "multiplex": "^6.7.0",
     "multiplex-rpc": "^1.0.1",
