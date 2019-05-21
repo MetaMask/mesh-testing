@@ -2,6 +2,7 @@
 const pify = require('pify')
 const CID = require('cids')
 const multihashing = require('multihashing-async')
+const PeerId = require('peer-id')
 const getStats = require('./getDhtStats')
 const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duration))
 
@@ -40,7 +41,9 @@ class DhtExperimentClient {
   }
 
   async start () {
-    const { node } = this
+    const { node, clientId } = this
+
+    this.peerIdHashString = await peerIdStringToPeerIdHashString(clientId)
 
     await this.prepareGroups({ count: 100 })
     
@@ -128,7 +131,10 @@ class DhtExperimentClient {
     const baseState = this.state
     const dht = this.node._dht
     const randomWalkEnabled = dht && dht.randomWalk._options.enabled
-    const state = Object.assign({}, baseState, { randomWalkEnabled })
+    const state = Object.assign({}, baseState, {
+      peerIdHash: this.peerIdHashString,
+      randomWalkEnabled,
+    })
     return state
   }
 }
@@ -138,4 +144,10 @@ module.exports = DhtExperimentClient
 async function makeKeyId (content) {
   const key = await pify(multihashing)(content, 'sha2-256')
   return new CID(key)
+}
+
+async function peerIdStringToPeerIdHashString (peerIdString) {
+  const peerId = PeerId.createFromB58String(peerIdString)
+  const hash = await pify(cb => multihashing.digest(peerId.id, 'sha2-256', cb))()
+  return hash.toString('base64')
 }

@@ -23,9 +23,10 @@ class App extends Component {
 
     const graphLayout = { id: 'default:graph', label: 'graph', value: 'graph' }
     const circleLayout = { id: 'default:circle', label: 'circle', value: 'circle' }
+    const xorLayout = { id: 'default:xor', label: 'xor', value: 'xor' }
 
     this.graphOptions = {
-      layout: [graphLayout, circleLayout],
+      layout: [graphLayout, circleLayout, xorLayout],
       topo: [],
       color: [],
       size: [],

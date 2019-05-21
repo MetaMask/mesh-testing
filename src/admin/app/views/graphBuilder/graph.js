@@ -1,4 +1,5 @@
 const d3 = require('d3')
+const { posForNode } = require('./layout-peerId')
 const BaseForceGraph = require('../../../../experiments/common/BaseForceGraph')
 
 class CustomGraph extends BaseForceGraph {
@@ -7,8 +8,11 @@ class CustomGraph extends BaseForceGraph {
     const { config, appState } = this.props
 
     switch (config.layout.value) {
+      case 'xor':
+        this.setupSimulationForces = this.setupXorLayout.bind(this)
+        break
       case 'circle':
-        this.setupSimulationForces = this.setupCircleLayout
+        this.setupSimulationForces = this.setupCircleLayout.bind(this)
         break
       default:
         this.setupSimulationForces = null
@@ -18,27 +22,40 @@ class CustomGraph extends BaseForceGraph {
     return buildGraph(state, config, appState)
   }
 
-  setupCircleLayout (simulation, state) {
-    const nodes = state.nodes
-    const links = state.links
+  setupLayoutBasics (simulation, state) {
+    const { nodes, links } = state
     const width = state.container.width || 0
     const height = state.container.height || 0
     const center = { x: width / 2, y: height / 2 }
+    const radius = 0.7 * Math.min(width, height) / 2
 
-    const radius = 0.8 * Math.min(width, height) / 2
-  
     simulation
       .nodes(nodes)
-      // // pull nodes along links
+      // pull nodes along links
       .force('link', 
         d3.forceLink()
         .id(d => d.id)
         .links(links)
         .distance(d => d.distance)
-        .strength(0)
-        // dont actually run this -- but use it for setting link xy pos
-        .iterations(0)
       )
+      // warm then cool
+      .alpha(1)
+      .alphaTarget(0)
+      .restart()
+
+    return { width, height, center, radius }
+  }
+
+  setupCircleLayout (simulation, state) {
+    const { nodes, links } = state    
+    const { width, height, center, radius } = this.setupLayoutBasics(simulation, state)
+  
+    simulation.force('link')
+      // dont actually run the link sim -- but use it for setting link xy pos
+      .strength(0)
+      .iterations(0)
+
+    simulation
       // push nodes away from each other
       .force('charge', d3.forceManyBody().strength(d => -4 * d.radius))
       .force('collision', null)
@@ -49,10 +66,45 @@ class CustomGraph extends BaseForceGraph {
       .force('y', null)
       // push nodes back into frame
       .force('boundry', null)
-      // warm then cool
-      .alpha(1)
-      .alphaTarget(0)
-      .restart()
+  }
+
+  setupXorLayout (simulation, state) {
+    const { nodes, links } = state    
+    const { width, height, center, radius } = this.setupLayoutBasics(simulation, state)
+
+    // im sorry this is so sloppy
+    function getStats () {
+      return global.networkStore.getState()
+    }
+
+    function getPosForNode (node) {
+      const appState = getStats() || {}
+      const clientData = appState.clients
+      const nodeData = clientData[node.id] || {}
+      const dhtData = nodeData.dht || {}
+      const { peerIdHash } = dhtData
+      if (!peerIdHash) return Object.assign({}, center)
+      const { x, y } = posForNode(peerIdHash, radius)
+      const pos = { x: center.x + x, y: center.y + y }
+      return pos
+    }
+
+    simulation.force('link')
+      // dont actually run the link sim -- but use it for setting link xy pos
+      .strength(0)
+      .iterations(0)
+
+    simulation
+      // push nodes away from each other
+      .force('charge', null)
+      .force('collision', null)
+      // // translate nodes around the center
+      .force('center', null)
+      // // push nodes towards the center
+      .force('x', d3.forceX((node) => getPosForNode(node).x))
+      .force('y', d3.forceY((node) => getPosForNode(node).y))
+      // push nodes back into frame
+      .force('boundry', null)
   }
 
 }
