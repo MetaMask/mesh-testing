@@ -1,6 +1,11 @@
 const d3 = require('d3')
+const multihashing = require('multihashing')
+const PeerId = require('peer-id')
 const { posForNode } = require('./layout-peerId')
 const BaseForceGraph = require('../../../../experiments/common/BaseForceGraph')
+
+
+const hashCache = new Map()
 
 class CustomGraph extends BaseForceGraph {
 
@@ -82,7 +87,8 @@ class CustomGraph extends BaseForceGraph {
       const clientData = appState.clients
       const nodeData = clientData[node.id] || {}
       const dhtData = nodeData.dht || {}
-      const { peerIdHash } = dhtData
+      let { peerIdHash } = dhtData
+      peerIdHash = peerIdHash || lookupPeerIdHash(node.id)
       if (!peerIdHash) return Object.assign({}, center)
       const { x, y } = posForNode(peerIdHash, radius)
       const pos = { x: center.x + x, y: center.y + y }
@@ -125,4 +131,13 @@ function buildGraph (telemetryStats, config, appState) {
   colorFn(telemetryStats, graph, appState)
 
   return graph
+}
+
+function lookupPeerIdHash (peerIdString) {
+  let hash = hashCache.get(peerIdString)
+  if (hash) return hash
+  const peerId = PeerId.createFromB58String(peerIdString)
+  hash = multihashing.digest(peerId.id, 'sha2-256').toString('base64')
+  hashCache.set(peerIdString, hash)
+  return hash
 }

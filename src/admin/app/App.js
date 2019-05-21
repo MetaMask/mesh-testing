@@ -103,9 +103,6 @@ class App extends Component {
                 run dht test
               </button>
             </div>
-            <div>
-              {this.state.dht && 'query is ready'}
-            </div>
             {currentView && currentView.render({ store: this.props.store, actions })}
         </div>
         <div className="AppColumn RightPanel">
