@@ -13,7 +13,6 @@ const {
 const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duration))
 const createNode = require('./libp2p/createNode')
 const createPeerConnectionTracker = require('./libp2p/peerConnectionTracker')
-const discoverAndConnect = require('./libp2p/discoverAndConnect')
 
 const TrafficExperiment = require('../experiments/traffic/client')
 const DhtExperiment = require('../experiments/dht/client')
@@ -23,9 +22,14 @@ const DebugExperiment = require('../experiments/debug/client')
 const PlatformExperiment = require('../experiments/platform/client')
 
 const BUILD_VERSION = String(process.env.BUILD_VERSION || 'development')
-const devMode = !process.browser || (!window.location.search.includes('prod') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+const devMode = !process.browser || (
+  !window.location.search.includes('prod') && 
+  (window.location.hostname === 'localhost' || 
+  window.location.hostname === '127.0.0.1')
+)
 
-const persistenceMode = !!process.browser
+// const persistenceMode = !!process.browser
+const persistenceMode = false
 
 start().catch(console.error)
 
@@ -52,15 +56,16 @@ async function start () {
   const peerInfo = await pify(PeerInfo.create)(id)
   const clientId = peerInfo.id.toB58String()
   const identity = id.toJSON()
-  const primaryAddress = devMode ? `/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${clientId}`
-    : `/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${clientId}`
+  const primaryAddress = devMode ? 
+  `/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star/ipfs/${clientId}`: 
+  `/dns4/signaller.lab.metamask.io/tcp/443/wss/p2p-webrtc-star/ipfs/${clientId}`
 
   let datastore = undefined
   if (persistenceMode) {
     datastore = new LevelStore('libp2p/client', { db: LocalStorageDown })
   }
 
-  const node = await createNode({ identity, addrs: [primaryAddress], datastore })
+  const { node, kitsunet } = await createNode({ identity, addrs: [primaryAddress], datastore })
 
   // rpc interface exposed to telemetry server and admin
   const rpcInterface = {}
@@ -73,7 +78,6 @@ async function start () {
 
   // connect to 6 peers from naive discovery 
   const peerConnectionTracker = createPeerConnectionTracker({ node })
-  discoverAndConnect({ node, clientId, peerConnectionTracker, count: 6 })
 
   // setup experiments
   const trafficExp = new TrafficExperiment({ node, rpcInterface })
@@ -85,8 +89,10 @@ async function start () {
 
   // start node
   console.log('node starting...')
-  await pify(node.start).call(node)
+  // await pify(node.start).call(node)
+  await kitsunet.start()
   console.log(`node started as ${clientId}`)
+
 
   // setup telemetry
   const connection = devMode ? connectViaWs({ devMode }) : connectViaPost({ devMode })

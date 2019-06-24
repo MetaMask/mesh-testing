@@ -24,6 +24,7 @@
     "kitsunet-telemetry": "^1.1.2",
     "libp2p": "^0.25.2",
     "libp2p-kad-dht": "github:kumavis/js-libp2p-kad-dht#feat/query-stats",
+    "kitsunet": "github:musteka-la/kitsunet-js#master",
     "libp2p-mplex": "^0.8.5",
     "libp2p-webrtc-star": "^0.15.8",
     "libp2p-websockets": "^0.12.2",
@@ -96,7 +97,6 @@
     ]
   },
   "scripts": {
-    "postinstall": "patch-package",
     "start": "wzrd src/client/index.js:client-bundle.js src/admin/index.js:admin-bundle.js src/partialRollout.js:partialRollout.js",
     "build": "npm run build:clean && npm run build:version && npm run build:base && npm run build:client && npm run build:admin",
     "build:clean": "rm -rf dist && mkdir -p dist",
