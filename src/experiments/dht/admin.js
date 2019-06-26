@@ -131,6 +131,8 @@ function buildGraphDhtQueryLinks (clientsData, graph, appState) {
       // introductions
       Object.entries(path.introductions).forEach(([peerId, intros]) => {
         intros.forEach(introId => {
+          // only draw line if they introduced someone (closer or provider)
+          if (!path.introductions[introId]) return
           links.push(createLink({ source: peerId, target: introId }))
         })
       })
