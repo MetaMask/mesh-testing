@@ -35,7 +35,26 @@ function initializeExperiment ({ graphOptions, actions, setState }) {
       // merge dht state
       setState(({ dht }) => ({ dht: { ...dht, queries } }))
     },
-    performQueryTestMany: async (state, actions) => {
+    performQueryTestOne: async (state, actions) => {
+      console.log(`performing dht query test with a single subject`)
+      const clientsData = state.networkState.clients
+      if (!clientsData) {
+        return console.warn('clients data missing') 
+      }
+      const clientIds = Object.keys(clientsData)
+      // select test subjects
+      const randomizedClients = shuffle(clientIds)
+      const subject = randomizedClients[0]
+      // select target
+      
+      const targetIndex = 1
+      const targetProvider = randomizedClients[targetIndex]
+      const dhtStats = clientsData[targetProvider].dht || {} 
+      let target = dhtStats.group
+
+      actions.dht.performQueryTest(subject, target, actions)
+    },
+    performQueryTestMany: async (maxCount, state, actions) => {
       // reset state
       // setState(({ dht }) => ({ dht: { ...dht, queries: [] } }))
 
@@ -44,7 +63,7 @@ function initializeExperiment ({ graphOptions, actions, setState }) {
         return console.warn('clients data missing') 
       }
       const clientIds = Object.keys(clientsData)
-      const count = Math.min(10, clientIds.length)
+      const count = Math.min(maxCount, clientIds.length)
       // select test subjects
       const randomizedClients = shuffle(clientIds)
       const subjects = randomizedClients.slice(0,count)
@@ -53,7 +72,7 @@ function initializeExperiment ({ graphOptions, actions, setState }) {
       const testTable = {}
       // performing lookups
       console.log(`performing dht query test with ${count} subjects`)
-      await Promise.all(
+      const queries = await Promise.all(
         subjects.map(async (clientId, index) => {
           // select random target in network
           const targetIndex = (count + index) % randomizedClients.length
@@ -82,13 +101,18 @@ function initializeExperiment ({ graphOptions, actions, setState }) {
             table: routingTable.length,
             target: target,
           }
-          // add query stats to state
-          // if (!query) return console.warn('no query present')
-          // const queries = [query]
-          // merge dht state
-          // setState(({ dht }) => ({ dht: { ...dht, queries } }))
+          // patch query object
+          const query = result.query || { paths: [] }
+          query.providers = providers
+          return query
         })
       )
+
+      // const goodQueries = queries.filter(Boolean)
+      // const lastGood = goodQueries.slice(-1)[0]
+      // const queriesToDraw = lastGood ? [lastGood] : []
+      // setState(({ dht }) => ({ dht: { ...dht, queries: queriesToDraw } }))
+
       const errorCount = Object.values(testResults).filter(result => result.error).length
       console.log(`dht query test results: ${count-errorCount}/${count} completed`, testResults)
       console.table(testTable)

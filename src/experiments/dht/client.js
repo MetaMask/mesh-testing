@@ -30,7 +30,7 @@ class DhtExperimentClient {
         const start = Date.now()
         const { result: providers, queryStats: query } = await node._dht._findNProvidersWithStatsAsync(cid, 10 * 1e3, 20)
         // map to id strings
-        const providerIds = providers.map(provider => provider.id.toB58String())
+        const providerIds = (providers || []).map(provider => provider.id.toB58String())
         const time = Date.now() - start
         console.log('dht findProviders query completed!')
         return { time, result: providerIds, query }

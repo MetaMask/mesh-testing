@@ -1,10 +1,17 @@
 const twoPi = 2 * Math.PI
 
-module.exports = { posForNode }
+module.exports = { posForNode, wobblePosForNode }
 
 function posForNode (peerIdHashString, radius) {
   const percent = peerIdHashToPercent(peerIdHashString)
   const pos = percentToPos(percent, radius, twoPi/4)
+  return pos
+}
+
+function wobblePosForNode (peerIdHashString, radius) {
+  const percent = peerIdHashToPercent(peerIdHashString)
+  const wobbleRadius = radius * (1 + 0.05 * Math.sin(120 * percent * twoPi))
+  const pos = percentToPos(percent, wobbleRadius, twoPi/4)
   return pos
 }
 

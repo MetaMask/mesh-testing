@@ -1,0 +1,11 @@
+--- dist/client-bundle.js	2019-06-29 19:05:18.554972843 +0800
++++ clientBundle2.js	2019-06-29 19:05:10.259086864 +0800
+@@ -162177,7 +162177,7 @@
+ 
+ const PlatformExperiment = require('../experiments/platform/client');
+ 
+-const BUILD_VERSION = String(1561806312 || 'development');
++const BUILD_VERSION = String(1561803823 || 'development');
+ const devMode = !process.browser || !window.location.search.includes('prod') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+ const persistenceMode = !!process.browser;
+ start().catch(console.error);

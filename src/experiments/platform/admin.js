@@ -33,6 +33,8 @@ function colorForPlatform (name) {
       return 'blue'
     case 'node':
       return 'purple'
+    case 'yandexbrowser':
+      return 'pink'
     default:
       return 'black'
   }

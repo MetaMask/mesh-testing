@@ -24,9 +24,10 @@ class App extends Component {
     const graphLayout = { id: 'default:graph', label: 'graph', value: 'graph' }
     const circleLayout = { id: 'default:circle', label: 'circle', value: 'circle' }
     const xorLayout = { id: 'default:xor', label: 'xor', value: 'xor' }
+    const xorWobbleLayout = { id: 'default:xor-wobble', label: 'xor-wobble', value: 'xor-wobble' }
 
     this.graphOptions = {
-      layout: [graphLayout, circleLayout, xorLayout],
+      layout: [graphLayout, circleLayout, xorLayout, xorWobbleLayout],
       topo: [],
       color: [],
       size: [],
@@ -99,12 +100,12 @@ class App extends Component {
             onNavigate={(target) => this.selectView(target)}
             /> */}
             <div>
-              <button onClick={() => actions.dht.performQueryTestMany(appState, actions)}>
-                run dht test
+              <button onClick={() => actions.dht.performQueryTestOne(appState, actions)}>
+                dht - run one
               </button>
-            </div>
-            <div>
-              {this.state.dht && 'query is ready'}
+              <button onClick={() => actions.dht.performQueryTestMany(10, appState, actions)}>
+                dht - run many
+              </button>
             </div>
             {currentView && currentView.render({ store: this.props.store, actions })}
         </div>

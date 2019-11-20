@@ -1,7 +1,7 @@
 const d3 = require('d3')
 const multihashing = require('multihashing')
 const PeerId = require('peer-id')
-const { posForNode } = require('./layout-peerId')
+const { posForNode, wobblePosForNode } = require('./layout-peerId')
 const BaseForceGraph = require('../../../../experiments/common/BaseForceGraph')
 
 
@@ -14,7 +14,10 @@ class CustomGraph extends BaseForceGraph {
 
     switch (config.layout.value) {
       case 'xor':
-        this.setupSimulationForces = this.setupXorLayout.bind(this)
+        this.setupSimulationForces = this.setupXorLayout.bind(this, { wobble: false })
+        break
+      case 'xor-wobble':
+        this.setupSimulationForces = this.setupXorLayout.bind(this, { wobble: true })
         break
       case 'circle':
         this.setupSimulationForces = this.setupCircleLayout.bind(this)
@@ -73,7 +76,7 @@ class CustomGraph extends BaseForceGraph {
       .force('boundry', null)
   }
 
-  setupXorLayout (simulation, state) {
+  setupXorLayout (opts, simulation, state) {
     const { nodes, links } = state    
     const { width, height, center, radius } = this.setupLayoutBasics(simulation, state)
 
@@ -90,7 +93,10 @@ class CustomGraph extends BaseForceGraph {
       let { peerIdHash } = dhtData
       peerIdHash = peerIdHash || lookupPeerIdHash(node.id)
       if (!peerIdHash) return Object.assign({}, center)
-      const { x, y } = posForNode(peerIdHash, radius)
+      const relPos = opts.wobble ?
+        wobblePosForNode(peerIdHash, radius) :
+        posForNode(peerIdHash, radius)
+      const { x, y } = relPos
       const pos = { x: center.x + x, y: center.y + y }
       return pos
     }
