@@ -45,6 +45,10 @@ function activateBundle (src) {
 function checkThreshold (rolloutThreshold) {
   if (window.localStorage.getItem('forceTest') === 'true') return true
 
+  // abort while disabled
+  console.info('Metamask Mesh Testing - this experiment has been temporarily disabled.')
+  return false
+
   // load or setup id
   let id = Number(window.localStorage.getItem('id'))
   if (!id) {
